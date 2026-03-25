@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 const BRAND = {
   title: "컨택센터 개발공수 산정 Tool",
@@ -90,6 +90,8 @@ const riskOptions = [
   { value: 1.1, label: "보통 (1.1)" },
   { value: 1.2, label: "높음 (1.2)" },
 ];
+
+const STORAGE_KEY = "contact-center-effort-estimator:v1";
 
 function fmt(n) {
   return new Intl.NumberFormat("ko-KR", {
@@ -183,6 +185,14 @@ function StatusPill({ children }) {
   );
 }
 
+function SavePill({ savedAt }) {
+  return (
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+      자동 저장 {savedAt || "대기 중"}
+    </span>
+  );
+}
+
 export default function ContactCenterEffortEstimator() {
   const [activeTab, setActiveTab] = useState("pbx");
   const [projectName, setProjectName] = useState("새 컨택센터 프로젝트");
@@ -190,6 +200,8 @@ export default function ContactCenterEffortEstimator() {
   const [scaleFactor, setScaleFactor] = useState(1.0);
   const [riskFactor, setRiskFactor] = useState(1.0);
   const [mgmtRate, setMgmtRate] = useState(10);
+  const [savedAt, setSavedAt] = useState("");
+  const [saveEnabled, setSaveEnabled] = useState(false);
 
   const solutionTotals = useMemo(() => {
     const result = {};
@@ -221,6 +233,55 @@ export default function ContactCenterEffortEstimator() {
   );
 
   const currentItems = itemsBySolution[activeTab] || [];
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        setSaveEnabled(true);
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed.projectName) setProjectName(parsed.projectName);
+      if (parsed.itemsBySolution) setItemsBySolution(parsed.itemsBySolution);
+      if (typeof parsed.scaleFactor !== "undefined") setScaleFactor(Number(parsed.scaleFactor));
+      if (typeof parsed.riskFactor !== "undefined") setRiskFactor(Number(parsed.riskFactor));
+      if (typeof parsed.mgmtRate !== "undefined") setMgmtRate(Number(parsed.mgmtRate));
+      if (parsed.activeTab) setActiveTab(parsed.activeTab);
+      if (parsed.savedAt) setSavedAt(parsed.savedAt);
+    } catch (error) {
+      console.error("저장 데이터 불러오기 실패", error);
+    } finally {
+      setSaveEnabled(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!saveEnabled) return;
+    try {
+      const now = new Date();
+      const label = now.toLocaleString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const payload = {
+        activeTab,
+        projectName,
+        itemsBySolution,
+        scaleFactor,
+        riskFactor,
+        mgmtRate,
+        savedAt: label,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      setSavedAt(label);
+    } catch (error) {
+      console.error("저장 실패", error);
+    }
+  }, [activeTab, projectName, itemsBySolution, scaleFactor, riskFactor, mgmtRate, saveEnabled]);
 
   const updateItem = (solutionKey, index, field, value) => {
     setItemsBySolution((prev) => {
@@ -255,6 +316,8 @@ export default function ContactCenterEffortEstimator() {
     setRiskFactor(1.0);
     setMgmtRate(10);
     setActiveTab("pbx");
+    localStorage.removeItem(STORAGE_KEY);
+    setSavedAt("");
   };
 
   return (
@@ -272,6 +335,7 @@ export default function ContactCenterEffortEstimator() {
                     {BRAND.title}
                   </div>
                   <StatusPill>{BRAND.version}</StatusPill>
+                  <SavePill savedAt={savedAt} />
                 </div>
                 <div className="mt-1 text-sm font-medium text-slate-500">{BRAND.subtitle}</div>
                 <div className="mt-1 text-sm text-slate-400">{BRAND.updatedAt}</div>
