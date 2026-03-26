@@ -661,6 +661,14 @@ export default function ContactCenterEffortEstimator() {
     createNewProject();
   };
 
+function SavePill({ savedAt }) {
+  return (
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+      최근 저장 {savedAt || "없음"}
+    </span>
+  );
+}
+
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#eef4ff_0%,#f7f9fc_180px,#f5f7fb_100%)] p-6">
       <div className="mx-auto max-w-[1360px] space-y-5">
