@@ -1,12 +1,17 @@
 // src/App.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
 
 const BRAND = {
   title: "컨택센터 개발공수 산정 Tool",
   subtitle: "Enterprise Estimation Workspace",
-  version: "표준공수체계 V2.0",
-  updatedAt: "최근 업데이트: 2026. 3. 25.",
+  version: "표준공수체계 V2.1",
+  updatedAt: "최근 업데이트: 2026. 3. 26.",
 };
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 const SOLUTIONS = [
   { key: "summary", label: "전체 요약", icon: "📋" },
@@ -91,20 +96,8 @@ const riskOptions = [
   { value: 1.2, label: "높음 (1.2)" },
 ];
 
-const STORAGE_KEY = "contact-center-effort-estimator:v1";
-const FILE_VERSION = "1.0";
-const EXCEL_XML_HEADER = `<?xml version="1.0"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:html="http://www.w3.org/TR/REC-html40">
- <Styles>
-  <Style ss:ID="Header"><Font ss:Bold="1"/><Interior ss:Color="#DCEBFF" ss:Pattern="Solid"/></Style>
-  <Style ss:ID="Section"><Font ss:Bold="1"/><Interior ss:Color="#EEF4FF" ss:Pattern="Solid"/></Style>
-  <Style ss:ID="Number"><NumberFormat ss:Format="0.00"/></Style>
- </Styles>`;
+const FILE_VERSION = "2.0";
+const TABLE_NAME = "estimation_projects";
 
 function fmt(n) {
   return new Intl.NumberFormat("ko-KR", {
@@ -158,51 +151,82 @@ function row(cells) {
   return `<Row>${cells.join("")}</Row>`;
 }
 
-function buildExcelXml({ projectName, activeTab, itemsBySolution, solutionTotals, grandBaseTotal, scaledTotal, riskAppliedTotal, mgmtRate, mgmtMd, finalTotal, scaleFactor, riskFactor, savedAt }) {
+const EXCEL_XML_HEADER = `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Header"><Font ss:Bold="1"/><Interior ss:Color="#DCEBFF" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="Section"><Font ss:Bold="1"/><Interior ss:Color="#EEF4FF" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="Number"><NumberFormat ss:Format="0.00"/></Style>
+ </Styles>`;
+
+function buildExcelXml({
+  projectName,
+  activeTab,
+  itemsBySolution,
+  solutionTotals,
+  grandBaseTotal,
+  scaledTotal,
+  riskAppliedTotal,
+  mgmtRate,
+  mgmtMd,
+  finalTotal,
+  scaleFactor,
+  riskFactor,
+  savedAt,
+}) {
   const summaryRows = [];
   summaryRows.push(row([cell("프로젝트명", "String", "Header"), cell(projectName)]));
   summaryRows.push(row([cell("현재 탭", "String", "Header"), cell(activeTab)]));
-  summaryRows.push(row([cell("자동 저장 시각", "String", "Header"), cell(savedAt || "-")]))
-  summaryRows.push(row([cell("", "String"), cell("")]))
-  summaryRows.push(row([cell("솔루션", "String", "Header"), cell("기본 산정 합계(MD)", "String", "Header")]))
+  summaryRows.push(row([cell("저장 시각", "String", "Header"), cell(savedAt || "-")]));
+  summaryRows.push(row([cell("", "String"), cell("")]));
+  summaryRows.push(row([cell("솔루션", "String", "Header"), cell("기본 산정 합계(MD)", "String", "Header")]));
   SOLUTIONS.filter((s) => s.key !== "summary").forEach((sol) => {
-    summaryRows.push(row([cell(sol.label), cell(solutionTotals[sol.key] || 0, "Number", "Number")]))
+    summaryRows.push(row([cell(sol.label), cell(solutionTotals[sol.key] || 0, "Number", "Number")]));
   });
-  summaryRows.push(row([cell("", "String"), cell("")]))
-  summaryRows.push(row([cell("규모 계수", "String", "Header"), cell(scaleFactor, "Number", "Number")]))
-  summaryRows.push(row([cell("리스크 계수", "String", "Header"), cell(riskFactor, "Number", "Number")]))
-  summaryRows.push(row([cell("관리 비율(%)", "String", "Header"), cell(mgmtRate, "Number", "Number")]))
-  summaryRows.push(row([cell("기본 산정 소계", "String", "Header"), cell(grandBaseTotal, "Number", "Number")]))
-  summaryRows.push(row([cell("규모 반영", "String", "Header"), cell(scaledTotal, "Number", "Number")]))
-  summaryRows.push(row([cell("리스크 반영", "String", "Header"), cell(riskAppliedTotal, "Number", "Number")]))
-  summaryRows.push(row([cell("관리 공수", "String", "Header"), cell(mgmtMd, "Number", "Number")]))
-  summaryRows.push(row([cell("최종 산출 공수", "String", "Header"), cell(finalTotal, "Number", "Number")]))
+  summaryRows.push(row([cell("", "String"), cell("")]));
+  summaryRows.push(row([cell("규모 계수", "String", "Header"), cell(scaleFactor, "Number", "Number")]));
+  summaryRows.push(row([cell("리스크 계수", "String", "Header"), cell(riskFactor, "Number", "Number")]));
+  summaryRows.push(row([cell("관리 비율(%)", "String", "Header"), cell(mgmtRate, "Number", "Number")]));
+  summaryRows.push(row([cell("기본 산정 소계", "String", "Header"), cell(grandBaseTotal, "Number", "Number")]));
+  summaryRows.push(row([cell("규모 반영", "String", "Header"), cell(scaledTotal, "Number", "Number")]));
+  summaryRows.push(row([cell("리스크 반영", "String", "Header"), cell(riskAppliedTotal, "Number", "Number")]));
+  summaryRows.push(row([cell("관리 공수", "String", "Header"), cell(mgmtMd, "Number", "Number")]));
+  summaryRows.push(row([cell("최종 산출 공수", "String", "Header"), cell(finalTotal, "Number", "Number")]));
 
   const detailRows = [];
   Object.entries(itemsBySolution).forEach(([solutionKey, items]) => {
     const sol = SOLUTIONS.find((s) => s.key === solutionKey);
-    detailRows.push(row([cell(sol?.label || solutionKey, "String", "Section")]))
-    detailRows.push(row([
-      cell("업무 기능", "String", "Header"),
-      cell("기본공수(MD)", "String", "Header"),
-      cell("난이도", "String", "Header"),
-      cell("복잡도", "String", "Header"),
-      cell("산정공수(MD)", "String", "Header"),
-      cell("비고", "String", "Header"),
-    ]))
+    detailRows.push(row([cell(sol?.label || solutionKey, "String", "Section")]));
+    detailRows.push(
+      row([
+        cell("업무 기능", "String", "Header"),
+        cell("기본공수(MD)", "String", "Header"),
+        cell("난이도", "String", "Header"),
+        cell("복잡도", "String", "Header"),
+        cell("산정공수(MD)", "String", "Header"),
+        cell("비고", "String", "Header"),
+      ])
+    );
     items.forEach((item) => {
-      detailRows.push(row([
-        cell(item.name),
-        cell(item.baseMd, "Number", "Number"),
-        cell(item.difficulty, "Number", "Number"),
-        cell(item.complexity, "Number", "Number"),
-        cell(calcItemMd(item), "Number", "Number"),
-        cell(item.note || ""),
-      ]))
-    })
-    detailRows.push(row([cell("소계", "String", "Header"), cell(solutionTotals[solutionKey] || 0, "Number", "Number")]))
-    detailRows.push(row([cell("", "String")]))
-  })
+      detailRows.push(
+        row([
+          cell(item.name),
+          cell(item.baseMd, "Number", "Number"),
+          cell(item.difficulty, "Number", "Number"),
+          cell(item.complexity, "Number", "Number"),
+          cell(calcItemMd(item), "Number", "Number"),
+          cell(item.note || ""),
+        ])
+      );
+    });
+    detailRows.push(row([cell("소계", "String", "Header"), cell(solutionTotals[solutionKey] || 0, "Number", "Number")]));
+    detailRows.push(row([cell("", "String")]));
+  });
 
   return `${EXCEL_XML_HEADER}
  <Worksheet ss:Name="Summary">
@@ -212,6 +236,32 @@ function buildExcelXml({ projectName, activeTab, itemsBySolution, solutionTotals
   <Table>${detailRows.join("")}</Table>
  </Worksheet>
 </Workbook>`;
+}
+
+function emptyProjectState() {
+  return {
+    id: null,
+    activeTab: "pbx",
+    projectName: "새 컨택센터 프로젝트",
+    itemsBySolution: deepCloneItems(),
+    scaleFactor: 1.0,
+    riskFactor: 1.0,
+    mgmtRate: 10,
+    savedAt: "",
+  };
+}
+
+function toPayload({ activeTab, projectName, itemsBySolution, scaleFactor, riskFactor, mgmtRate, savedAt }) {
+  return {
+    fileVersion: FILE_VERSION,
+    activeTab,
+    projectName,
+    itemsBySolution,
+    scaleFactor,
+    riskFactor,
+    mgmtRate,
+    savedAt,
+  };
 }
 
 function Panel({ title, children, right, subtle = false }) {
@@ -230,7 +280,7 @@ function ActionButton({ children, primary = false, ...props }) {
   return (
     <button
       {...props}
-      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${primary ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700" : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"} ${props.className || ""}`}
+      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${primary ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700 disabled:bg-slate-300" : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:text-slate-300"} ${props.className || ""}`}
     >
       {children}
     </button>
@@ -284,21 +334,25 @@ function StatusPill({ children }) {
 function SavePill({ savedAt }) {
   return (
     <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-      자동 저장 {savedAt || "대기 중"}
+      최근 저장 {savedAt || "없음"}
     </span>
   );
 }
 
 export default function ContactCenterEffortEstimator() {
-  const [activeTab, setActiveTab] = useState("pbx");
-  const [projectName, setProjectName] = useState("새 컨택센터 프로젝트");
-  const [itemsBySolution, setItemsBySolution] = useState(deepCloneItems());
-  const [scaleFactor, setScaleFactor] = useState(1.0);
-  const [riskFactor, setRiskFactor] = useState(1.0);
-  const [mgmtRate, setMgmtRate] = useState(10);
-  const [savedAt, setSavedAt] = useState("");
-  const [saveEnabled, setSaveEnabled] = useState(false);
+  const initial = emptyProjectState();
+  const [projectId, setProjectId] = useState(initial.id);
+  const [activeTab, setActiveTab] = useState(initial.activeTab);
+  const [projectName, setProjectName] = useState(initial.projectName);
+  const [itemsBySolution, setItemsBySolution] = useState(initial.itemsBySolution);
+  const [scaleFactor, setScaleFactor] = useState(initial.scaleFactor);
+  const [riskFactor, setRiskFactor] = useState(initial.riskFactor);
+  const [mgmtRate, setMgmtRate] = useState(initial.mgmtRate);
+  const [savedAt, setSavedAt] = useState(initial.savedAt);
   const [message, setMessage] = useState("");
+  const [projects, setProjects] = useState([]);
+  const [isBusy, setIsBusy] = useState(false);
+  const [dbReady, setDbReady] = useState(Boolean(supabase));
 
   const solutionTotals = useMemo(() => {
     const result = {};
@@ -331,54 +385,30 @@ export default function ContactCenterEffortEstimator() {
 
   const currentItems = itemsBySolution[activeTab] || [];
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        setSaveEnabled(true);
-        return;
-      }
-      const parsed = JSON.parse(raw);
-      if (parsed.projectName) setProjectName(parsed.projectName);
-      if (parsed.itemsBySolution) setItemsBySolution(parsed.itemsBySolution);
-      if (typeof parsed.scaleFactor !== "undefined") setScaleFactor(Number(parsed.scaleFactor));
-      if (typeof parsed.riskFactor !== "undefined") setRiskFactor(Number(parsed.riskFactor));
-      if (typeof parsed.mgmtRate !== "undefined") setMgmtRate(Number(parsed.mgmtRate));
-      if (parsed.activeTab) setActiveTab(parsed.activeTab);
-      if (parsed.savedAt) setSavedAt(parsed.savedAt);
-    } catch (error) {
-      console.error("저장 데이터 불러오기 실패", error);
-    } finally {
-      setSaveEnabled(true);
+  const refreshProjects = async () => {
+    if (!supabase) {
+      setDbReady(false);
+      return;
     }
-  }, []);
+    setIsBusy(true);
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("id, project_name, updated_at")
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      setMessage("프로젝트 목록 조회 실패");
+    } else {
+      setProjects(data || []);
+      setDbReady(true);
+    }
+    setIsBusy(false);
+  };
 
   useEffect(() => {
-    if (!saveEnabled) return;
-    try {
-      const now = new Date();
-      const label = now.toLocaleString("ko-KR", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      const payload = {
-        activeTab,
-        projectName,
-        itemsBySolution,
-        scaleFactor,
-        riskFactor,
-        mgmtRate,
-        savedAt: label,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      setSavedAt(label);
-    } catch (error) {
-      console.error("저장 실패", error);
-    }
-  }, [activeTab, projectName, itemsBySolution, scaleFactor, riskFactor, mgmtRate, saveEnabled]);
+    refreshProjects();
+  }, []);
 
   const updateItem = (solutionKey, index, field, value) => {
     setItemsBySolution((prev) => {
@@ -409,19 +439,10 @@ export default function ContactCenterEffortEstimator() {
   const downloadJson = () => {
     try {
       const payload = {
-        fileVersion: FILE_VERSION,
+        ...toPayload({ activeTab, projectName, itemsBySolution, scaleFactor, riskFactor, mgmtRate, savedAt }),
         exportedAt: new Date().toISOString(),
-        activeTab,
-        projectName,
-        itemsBySolution,
-        scaleFactor,
-        riskFactor,
-        mgmtRate,
-        savedAt,
       };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], {
-        type: "application/json;charset=utf-8",
-      });
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       const safeProjectName = (projectName || "contact-center-project").replace(/[\/:*?"<>|]/g, "-");
@@ -431,7 +452,7 @@ export default function ContactCenterEffortEstimator() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      setMessage("JSON 파일로 저장 완료");
+      setMessage("JSON 파일 저장 완료");
     } catch (error) {
       console.error(error);
       setMessage("JSON 저장 실패");
@@ -475,13 +496,13 @@ export default function ContactCenterEffortEstimator() {
   const importJson = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     try {
       const text = await readJsonFile(file);
       const parsed = JSON.parse(text);
       if (!parsed.itemsBySolution || !parsed.projectName) {
         throw new Error("형식이 올바르지 않은 파일입니다.");
       }
+      setProjectId(null);
       setActiveTab(parsed.activeTab || "pbx");
       setProjectName(parsed.projectName || "새 컨택센터 프로젝트");
       setItemsBySolution(parsed.itemsBySolution || deepCloneItems());
@@ -499,16 +520,107 @@ export default function ContactCenterEffortEstimator() {
     }
   };
 
-  const resetAll = () => {
-    setProjectName("새 컨택센터 프로젝트");
-    setItemsBySolution(deepCloneItems());
-    setScaleFactor(1.0);
-    setRiskFactor(1.0);
-    setMgmtRate(10);
-    setActiveTab("pbx");
-    localStorage.removeItem(STORAGE_KEY);
+  const createNewProject = () => {
+    const next = emptyProjectState();
+    setProjectId(next.id);
+    setActiveTab(next.activeTab);
+    setProjectName(next.projectName);
+    setItemsBySolution(next.itemsBySolution);
+    setScaleFactor(next.scaleFactor);
+    setRiskFactor(next.riskFactor);
+    setMgmtRate(next.mgmtRate);
     setSavedAt("");
-    setMessage("초기화 완료");
+    setMessage("새 프로젝트 작성 시작");
+  };
+
+  const saveProject = async () => {
+    if (!supabase) {
+      setMessage("Supabase 환경변수가 설정되지 않았습니다.");
+      return;
+    }
+    setIsBusy(true);
+    const label = new Date().toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const payload = toPayload({
+      activeTab,
+      projectName,
+      itemsBySolution,
+      scaleFactor,
+      riskFactor,
+      mgmtRate,
+      savedAt: label,
+    });
+
+    const rowData = {
+      project_name: projectName,
+      payload,
+    };
+
+    let result;
+    if (projectId) {
+      result = await supabase
+        .from(TABLE_NAME)
+        .update(rowData)
+        .eq("id", projectId)
+        .select("id, updated_at")
+        .single();
+    } else {
+      result = await supabase
+        .from(TABLE_NAME)
+        .insert(rowData)
+        .select("id, updated_at")
+        .single();
+    }
+
+    if (result.error) {
+      console.error(result.error);
+      setMessage("DB 저장 실패");
+    } else {
+      setProjectId(result.data.id);
+      setSavedAt(label);
+      setMessage(projectId ? "DB 저장 완료" : "신규 프로젝트 저장 완료");
+      await refreshProjects();
+    }
+    setIsBusy(false);
+  };
+
+  const loadProject = async (id) => {
+    if (!supabase) return;
+    setIsBusy(true);
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("id, project_name, payload, updated_at")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      console.error(error);
+      setMessage("프로젝트 불러오기 실패");
+      setIsBusy(false);
+      return;
+    }
+
+    const payload = data.payload || {};
+    setProjectId(data.id);
+    setProjectName(data.project_name || payload.projectName || "새 컨택센터 프로젝트");
+    setActiveTab(payload.activeTab || "pbx");
+    setItemsBySolution(payload.itemsBySolution || deepCloneItems());
+    setScaleFactor(Number(payload.scaleFactor ?? 1.0));
+    setRiskFactor(Number(payload.riskFactor ?? 1.0));
+    setMgmtRate(Number(payload.mgmtRate ?? 10));
+    setSavedAt(payload.savedAt || data.updated_at || "");
+    setMessage("프로젝트 불러오기 완료");
+    setIsBusy(false);
+  };
+
+  const resetAll = () => {
+    createNewProject();
   };
 
   return (
@@ -517,38 +629,32 @@ export default function ContactCenterEffortEstimator() {
         <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
           <div className="flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-2xl text-white shadow-sm">
-                📘
-              </div>
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-2xl text-white shadow-sm">📘</div>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="text-[30px] font-extrabold tracking-tight text-slate-900">
-                    {BRAND.title}
-                  </div>
+                  <div className="text-[30px] font-extrabold tracking-tight text-slate-900">{BRAND.title}</div>
                   <StatusPill>{BRAND.version}</StatusPill>
                   <SavePill savedAt={savedAt} />
+                  {projectId ? <StatusPill>DB 저장 프로젝트</StatusPill> : null}
                 </div>
                 <div className="mt-1 text-sm font-medium text-slate-500">{BRAND.subtitle}</div>
                 <div className="mt-1 text-sm text-slate-400">{BRAND.updatedAt}</div>
                 {message ? <div className="mt-2 text-xs font-semibold text-blue-600">{message}</div> : null}
+                {!dbReady ? <div className="mt-1 text-xs font-semibold text-red-500">Supabase 연결 정보가 없어서 DB 기능이 비활성화되었습니다.</div> : null}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <SmallInput
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                className="w-[240px] bg-slate-50"
-              />
+              <SmallInput value={projectName} onChange={(e) => setProjectName(e.target.value)} className="w-[240px] bg-slate-50" />
+              <ActionButton onClick={createNewProject}>새 프로젝트</ActionButton>
+              <ActionButton primary onClick={saveProject} disabled={!dbReady || isBusy}>{projectId ? "DB 업데이트" : "DB 저장"}</ActionButton>
               <label className="inline-flex cursor-pointer items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                 JSON 불러오기
                 <input type="file" accept="application/json,.json" className="hidden" onChange={importJson} />
               </label>
               <ActionButton onClick={downloadJson}>JSON 저장</ActionButton>
               <ActionButton onClick={downloadExcel}>엑셀 저장</ActionButton>
-              <ActionButton onClick={resetAll}>전체 초기화</ActionButton>
-              <ActionButton primary onClick={() => window.print()}>
-                PDF / 인쇄
-              </ActionButton>
+              <ActionButton onClick={resetAll}>초기화</ActionButton>
+              <ActionButton onClick={() => window.print()}>PDF / 인쇄</ActionButton>
             </div>
           </div>
 
@@ -564,22 +670,46 @@ export default function ContactCenterEffortEstimator() {
           </div>
         </div>
 
-        <div className="rounded-[28px] border border-slate-200 bg-white p-3 shadow-sm">
-          <div className="flex flex-wrap gap-2">
-            {SOLUTIONS.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`rounded-2xl px-5 py-3 text-sm font-semibold transition ${
-                  activeTab === tab.key
-                    ? "border border-blue-200 bg-gradient-to-b from-white to-blue-50 text-slate-900 shadow-sm"
-                    : "bg-transparent text-slate-500 hover:bg-slate-50"
-                }`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
+        <div className="grid items-start gap-5 lg:grid-cols-[1.15fr_2fr]">
+          <Panel title="DB 프로젝트 목록" subtle right={<ActionButton onClick={refreshProjects} disabled={!dbReady || isBusy}>새로고침</ActionButton>}>
+            <div className="space-y-3">
+              {projects.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                  저장된 프로젝트가 없습니다.
+                </div>
+              ) : (
+                projects.map((project) => (
+                  <button
+                    key={project.id}
+                    onClick={() => loadProject(project.id)}
+                    className={`w-full rounded-2xl border px-4 py-3 text-left transition hover:bg-slate-50 ${projectId === project.id ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-white"}`}
+                  >
+                    <div className="font-semibold text-slate-900">{project.project_name}</div>
+                    <div className="mt-1 text-xs text-slate-500">ID: {project.id}</div>
+                    <div className="mt-1 text-xs text-slate-400">업데이트: {project.updated_at ? new Date(project.updated_at).toLocaleString("ko-KR") : "-"}</div>
+                  </button>
+                ))
+              )}
+            </div>
+          </Panel>
+
+          <div className="rounded-[28px] border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="flex flex-wrap gap-2">
+              {SOLUTIONS.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`rounded-2xl px-5 py-3 text-sm font-semibold transition ${
+                    activeTab === tab.key
+                      ? "border border-blue-200 bg-gradient-to-b from-white to-blue-50 text-slate-900 shadow-sm"
+                      : "bg-transparent text-slate-500 hover:bg-slate-50"
+                  }`}
+                >
+                  <span className="mr-2">{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -601,9 +731,7 @@ export default function ContactCenterEffortEstimator() {
                       const ratio = grandBaseTotal > 0 ? (total / grandBaseTotal) * 100 : 0;
                       return (
                         <tr key={sol.key} className="border-b border-slate-100 text-sm">
-                          <td className="py-4 pr-4 pl-4 font-semibold text-slate-900">
-                            {sol.icon} {sol.label}
-                          </td>
+                          <td className="py-4 pr-4 pl-4 font-semibold text-slate-900">{sol.icon} {sol.label}</td>
                           <td className="py-4 pr-4 text-right text-slate-800">{fmt(total)} MD</td>
                           <td className="py-4 pr-4 text-right text-slate-500">{fmt(ratio)}%</td>
                         </tr>
@@ -618,32 +746,19 @@ export default function ContactCenterEffortEstimator() {
               <Panel title="환경 변수 설정" subtle>
                 <div className="space-y-5">
                   <div>
-                    <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800">
-                      <span>규모 (Scale Factor)</span>
-                      <span className="text-blue-600">{fmt(scaleFactor)}x</span>
-                    </div>
+                    <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800"><span>규모 (Scale Factor)</span><span className="text-blue-600">{fmt(scaleFactor)}x</span></div>
                     <SmallSelect value={scaleFactor} onChange={(e) => setScaleFactor(Number(e.target.value))}>
-                      {scaleOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
+                      {scaleOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                     </SmallSelect>
                   </div>
                   <div>
-                    <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800">
-                      <span>리스크 (Risk Factor)</span>
-                      <span className="text-blue-600">{fmt(riskFactor)}x</span>
-                    </div>
+                    <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800"><span>리스크 (Risk Factor)</span><span className="text-blue-600">{fmt(riskFactor)}x</span></div>
                     <SmallSelect value={riskFactor} onChange={(e) => setRiskFactor(Number(e.target.value))}>
-                      {riskOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
+                      {riskOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                     </SmallSelect>
                   </div>
                   <div>
-                    <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800">
-                      <span>관리 비율 (Project Mgmt)</span>
-                      <span className="text-blue-600">{mgmtRate}%</span>
-                    </div>
+                    <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800"><span>관리 비율 (Project Mgmt)</span><span className="text-blue-600">{mgmtRate}%</span></div>
                     <div className="flex items-center gap-2">
                       <SmallInput type="number" value={mgmtRate} onChange={(e) => setMgmtRate(Number(e.target.value || 0))} />
                       <span className="text-sm text-slate-500">%</span>
@@ -668,10 +783,7 @@ export default function ContactCenterEffortEstimator() {
           </div>
         ) : (
           <div className="grid items-start gap-5 lg:grid-cols-[1.7fr_0.9fr]">
-            <Panel
-              title="상세 업무 목록"
-              right={<ActionButton primary onClick={() => addItem(activeTab)}>＋ 항목 추가</ActionButton>}
-            >
+            <Panel title="상세 업무 목록" right={<ActionButton primary onClick={() => addItem(activeTab)}>＋ 항목 추가</ActionButton>}>
               <div className="overflow-x-auto rounded-2xl border border-slate-100">
                 <table className="min-w-full border-collapse bg-white">
                   <thead>
@@ -688,35 +800,13 @@ export default function ContactCenterEffortEstimator() {
                   <tbody>
                     {currentItems.map((item, index) => (
                       <tr key={`${activeTab}-${index}`} className="border-b border-slate-100 align-top text-sm">
-                        <td className="py-2 pr-3 pl-4">
-                          <SmallInput value={item.name} onChange={(e) => updateItem(activeTab, index, "name", e.target.value)} />
-                        </td>
-                        <td className="py-2 pr-3">
-                          <SmallInput type="number" step="0.1" value={item.baseMd} onChange={(e) => updateItem(activeTab, index, "baseMd", Number(e.target.value || 0))} className="text-center font-semibold" />
-                        </td>
-                        <td className="py-2 pr-3">
-                          <SmallSelect value={item.difficulty} onChange={(e) => updateItem(activeTab, index, "difficulty", Number(e.target.value))}>
-                            {difficultyOptions.map((opt) => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </SmallSelect>
-                        </td>
-                        <td className="py-2 pr-3">
-                          <SmallSelect value={item.complexity} onChange={(e) => updateItem(activeTab, index, "complexity", Number(e.target.value))}>
-                            {complexityOptions.map((opt) => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </SmallSelect>
-                        </td>
-                        <td className="py-2 pr-3 text-right align-middle">
-                          <div className="rounded-xl bg-blue-50 px-3 py-2 font-bold text-blue-600">{fmt(calcItemMd(item))}</div>
-                        </td>
-                        <td className="py-2 pr-3">
-                          <SmallInput value={item.note} onChange={(e) => updateItem(activeTab, index, "note", e.target.value)} placeholder="비고 입력" />
-                        </td>
-                        <td className="py-2 pr-4 text-center">
-                          <button onClick={() => removeItem(activeTab, index)} className="rounded-lg px-2 py-2 text-slate-400 transition hover:bg-slate-100 hover:text-red-500">🗑️</button>
-                        </td>
+                        <td className="py-2 pr-3 pl-4"><SmallInput value={item.name} onChange={(e) => updateItem(activeTab, index, "name", e.target.value)} /></td>
+                        <td className="py-2 pr-3"><SmallInput type="number" step="0.1" value={item.baseMd} onChange={(e) => updateItem(activeTab, index, "baseMd", Number(e.target.value || 0))} className="text-center font-semibold" /></td>
+                        <td className="py-2 pr-3"><SmallSelect value={item.difficulty} onChange={(e) => updateItem(activeTab, index, "difficulty", Number(e.target.value))}>{difficultyOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</SmallSelect></td>
+                        <td className="py-2 pr-3"><SmallSelect value={item.complexity} onChange={(e) => updateItem(activeTab, index, "complexity", Number(e.target.value))}>{complexityOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</SmallSelect></td>
+                        <td className="py-2 pr-3 text-right align-middle"><div className="rounded-xl bg-blue-50 px-3 py-2 font-bold text-blue-600">{fmt(calcItemMd(item))}</div></td>
+                        <td className="py-2 pr-3"><SmallInput value={item.note} onChange={(e) => updateItem(activeTab, index, "note", e.target.value)} placeholder="비고 입력" /></td>
+                        <td className="py-2 pr-4 text-center"><button onClick={() => removeItem(activeTab, index)} className="rounded-lg px-2 py-2 text-slate-400 transition hover:bg-slate-100 hover:text-red-500">🗑️</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -728,32 +818,15 @@ export default function ContactCenterEffortEstimator() {
               <Panel title="환경 변수 설정" subtle>
                 <div className="space-y-5">
                   <div>
-                    <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800">
-                      <span>규모 (Scale Factor)</span>
-                      <span className="text-blue-600">{fmt(scaleFactor)}x</span>
-                    </div>
-                    <SmallSelect value={scaleFactor} onChange={(e) => setScaleFactor(Number(e.target.value))}>
-                      {scaleOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </SmallSelect>
+                    <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800"><span>규모 (Scale Factor)</span><span className="text-blue-600">{fmt(scaleFactor)}x</span></div>
+                    <SmallSelect value={scaleFactor} onChange={(e) => setScaleFactor(Number(e.target.value))}>{scaleOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</SmallSelect>
                   </div>
                   <div>
-                    <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800">
-                      <span>리스크 (Risk Factor)</span>
-                      <span className="text-blue-600">{fmt(riskFactor)}x</span>
-                    </div>
-                    <SmallSelect value={riskFactor} onChange={(e) => setRiskFactor(Number(e.target.value))}>
-                      {riskOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </SmallSelect>
+                    <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800"><span>리스크 (Risk Factor)</span><span className="text-blue-600">{fmt(riskFactor)}x</span></div>
+                    <SmallSelect value={riskFactor} onChange={(e) => setRiskFactor(Number(e.target.value))}>{riskOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</SmallSelect>
                   </div>
                   <div>
-                    <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800">
-                      <span>관리 비율 (Project Mgmt)</span>
-                      <span className="text-blue-600">{mgmtRate}%</span>
-                    </div>
+                    <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800"><span>관리 비율 (Project Mgmt)</span><span className="text-blue-600">{mgmtRate}%</span></div>
                     <div className="flex items-center gap-2">
                       <SmallInput type="number" value={mgmtRate} onChange={(e) => setMgmtRate(Number(e.target.value || 0))} />
                       <span className="text-sm text-slate-500">%</span>
@@ -779,9 +852,7 @@ export default function ContactCenterEffortEstimator() {
           </div>
         )}
 
-        <div className="px-2 pb-2 pt-1 text-center text-xs text-slate-400">
-          © 2026 Contact Center Estimation Workspace · Internal Planning Use
-        </div>
+        <div className="px-2 pb-2 pt-1 text-center text-xs text-slate-400">© 2026 Contact Center Estimation Workspace · Internal Planning Use</div>
       </div>
     </div>
   );
