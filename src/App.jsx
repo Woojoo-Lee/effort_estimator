@@ -1,5 +1,4 @@
-// src/App.jsx
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 
 import HeaderBar from "./components/HeaderBar";
 import ProjectListPanel from "./components/ProjectListPanel";
@@ -9,53 +8,37 @@ import Toast from "./components/Toast";
 import SolutionTabs from "./components/SolutionTabs";
 import SummaryView from "./components/SummaryView";
 
-import { useToast } from "./hooks/useToast";
-import { useProjectManager } from "./hooks/useProjectManager";
-
-import {
-  buildExcelXml,
-  downloadExcelFile,
-  toExportPayload,
-} from "./utils/excelExport";
-
-import { readJsonFile, downloadJsonFile } from "./utils/jsonUtils";
-
-import {
-  deepCloneItems,
-  calcSolutionTotals,
-  calcGrandBaseTotal,
-  calcScaledTotal,
-  calcRiskAppliedTotal,
-  calcMgmtMd,
-  calcFinalTotal,
-} from "./utils/estimatorMath";
+import { useExportManager } from "./hooks/useExportManager";
+import { useEstimatorStore } from "./store/useEstimatorStore";
 
 export default function ContactCenterEffortEstimator() {
-  const { toast, showToast } = useToast();
-
   const {
     projectId,
-    setProjectId,
     activeTab,
-    setActiveTab,
     projectName,
-    setProjectName,
     itemsBySolution,
-    setItemsBySolution,
     scaleFactor,
-    setScaleFactor,
     riskFactor,
-    setRiskFactor,
     mgmtRate,
-    setMgmtRate,
     savedAt,
-    setSavedAt,
     projects,
     isBusy,
     dbReady,
     isDirty,
+    toast,
+
+    setProjectId,
+    setActiveTab,
+    setProjectNameWithDirty,
+    setItemsBySolution,
+    setScaleFactor,
+    setRiskFactor,
+    setMgmtRate,
+    setSavedAt,
     setIsDirty,
+
     markDirty,
+    showToast,
     refreshProjects,
     updateItem,
     addItem,
@@ -63,158 +46,101 @@ export default function ContactCenterEffortEstimator() {
     createNewProject,
     handleSaveProject,
     loadProject,
-  } = useProjectManager(showToast);
+
+    getSolutionTotals,
+    getGrandBaseTotal,
+    getScaledTotal,
+    getRiskAppliedTotal,
+    getMgmtMd,
+    getFinalTotal,
+    getCurrentItems,
+  } = useEstimatorStore();
 
   useEffect(() => {
     refreshProjects();
   }, [refreshProjects]);
 
-  const solutionTotals = useMemo(
-    () => calcSolutionTotals(itemsBySolution),
-    [itemsBySolution]
-  );
+  const solutionTotals = getSolutionTotals();
+  const grandBaseTotal = getGrandBaseTotal();
+  const scaledTotal = getScaledTotal();
+  const riskAppliedTotal = getRiskAppliedTotal();
+  const mgmtMd = getMgmtMd();
+  const finalTotal = getFinalTotal();
+  const currentItems = getCurrentItems();
 
-  const grandBaseTotal = useMemo(
-    () => calcGrandBaseTotal(solutionTotals),
-    [solutionTotals]
-  );
-
-  const scaledTotal = useMemo(
-    () => calcScaledTotal(grandBaseTotal, scaleFactor),
-    [grandBaseTotal, scaleFactor]
-  );
-
-  const riskAppliedTotal = useMemo(
-    () => calcRiskAppliedTotal(scaledTotal, riskFactor),
-    [scaledTotal, riskFactor]
-  );
-
-  const mgmtMd = useMemo(
-    () => calcMgmtMd(riskAppliedTotal, mgmtRate),
-    [riskAppliedTotal, mgmtRate]
-  );
-
-  const finalTotal = useMemo(
-    () => calcFinalTotal(riskAppliedTotal, mgmtMd),
-    [riskAppliedTotal, mgmtMd]
-  );
-
-  const currentItems = itemsBySolution[activeTab] || [];
-
-  const downloadJson = () => {
-    try {
-      const payload = {
-        ...toExportPayload({
-          activeTab,
-          projectName,
-          itemsBySolution,
-          scaleFactor,
-          riskFactor,
-          mgmtRate,
-          savedAt,
-        }),
-        exportedAt: new Date().toISOString(),
-      };
-
-      downloadJsonFile({
-        projectName,
-        payload,
-      });
-
-      showToast("JSON 파일 저장 완료", "emerald");
-    } catch (error) {
-      console.error(error);
-      showToast("JSON 저장 실패", "red");
-    }
+  const projectState = {
+    projectName,
+    activeTab,
+    itemsBySolution,
+    scaleFactor,
+    riskFactor,
+    mgmtRate,
+    savedAt,
   };
 
-  const downloadExcel = () => {
-    try {
-      const xml = buildExcelXml({
-        projectName,
-        activeTab,
-        itemsBySolution,
-        solutionTotals,
-        grandBaseTotal,
-        scaledTotal,
-        riskAppliedTotal,
-        mgmtRate,
-        mgmtMd,
-        finalTotal,
-        scaleFactor,
-        riskFactor,
-        savedAt,
-      });
-
-      downloadExcelFile({
-        projectName,
-        xml,
-      });
-
-      showToast("엑셀 파일 저장 완료", "emerald");
-    } catch (error) {
-      console.error(error);
-      showToast("엑셀 저장 실패", "red");
-    }
+  const calcState = {
+    solutionTotals,
+    grandBaseTotal,
+    scaledTotal,
+    riskAppliedTotal,
+    mgmtMd,
+    finalTotal,
   };
 
-  const importJson = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const text = await readJsonFile(file);
-      const parsed = JSON.parse(text);
-
-      if (!parsed.itemsBySolution || !parsed.projectName) {
-        throw new Error("형식이 올바르지 않은 파일입니다.");
-      }
-
-      setProjectId(null);
-      setActiveTab(parsed.activeTab || "pbx");
-      setProjectName(parsed.projectName || "새 컨택센터 프로젝트");
-      setItemsBySolution(parsed.itemsBySolution || deepCloneItems());
-      setScaleFactor(Number(parsed.scaleFactor ?? 1.0));
-      setRiskFactor(Number(parsed.riskFactor ?? 1.0));
-      setMgmtRate(Number(parsed.mgmtRate ?? 10));
-      setSavedAt(parsed.savedAt || "");
-      setIsDirty(true);
-
-      showToast("JSON 불러오기 완료", "emerald");
-    } catch (error) {
-      console.error(error);
-      showToast("JSON 불러오기 실패", "red");
-      alert("JSON 파일을 불러오지 못했습니다. 파일 형식을 확인해 주세요.");
-    } finally {
-      event.target.value = "";
-    }
+  const setters = {
+    setProjectId,
+    setActiveTab,
+    setProjectName: setProjectNameWithDirty,
+    setItemsBySolution,
+    setScaleFactor,
+    setRiskFactor,
+    setMgmtRate,
+    setSavedAt,
+    setIsDirty,
   };
 
-  const resetAll = () => {
-    createNewProject();
+  const { downloadJson, downloadExcel, importJson } = useExportManager({
+    projectState,
+    calcState,
+    setters,
+  });
+
+  const projectMeta = {
+    projectId,
+    projectName,
+    savedAt,
+  };
+
+  const status = {
+    isDirty,
+    dbReady,
+    isBusy,
+  };
+
+  const actions = {
+    setProjectName: setProjectNameWithDirty,
+    createNewProject: () => {
+      createNewProject();
+      showToast("새 프로젝트 작성 시작", "blue");
+    },
+    handleSaveProject,
+    importJson,
+    downloadJson,
+    downloadExcel,
+    resetAll: () => {
+      createNewProject();
+      showToast("초기화 완료", "blue");
+    },
+    showPrint: () => window.print(),
   };
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#eef4ff_0%,#f7f9fc_180px,#f5f7fb_100%)] p-6">
       <div className="mx-auto max-w-[1360px] space-y-5">
         <HeaderBar
-          projectId={projectId}
-          projectName={projectName}
-          setProjectName={(value) => {
-            setProjectName(value);
-            markDirty();
-          }}
-          savedAt={savedAt}
-          isDirty={isDirty}
-          dbReady={dbReady}
-          isBusy={isBusy}
-          createNewProject={createNewProject}
-          handleSaveProject={handleSaveProject}
-          importJson={importJson}
-          downloadJson={downloadJson}
-          downloadExcel={downloadExcel}
-          resetAll={resetAll}
-          showPrint={() => window.print()}
+          projectMeta={projectMeta}
+          status={status}
+          actions={actions}
         />
 
         <div className="grid items-start gap-5 lg:grid-cols-[1.15fr_2fr]">
@@ -261,8 +187,14 @@ export default function ContactCenterEffortEstimator() {
               activeTab={activeTab}
               currentItems={currentItems}
               updateItem={updateItem}
-              addItem={addItem}
-              removeItem={removeItem}
+              addItem={(solutionKey) => {
+                addItem(solutionKey);
+                showToast("항목 추가 완료", "blue");
+              }}
+              removeItem={(solutionKey, index) => {
+                removeItem(solutionKey, index);
+                showToast("항목 삭제 완료", "blue");
+              }}
             />
 
             <RightSidebar

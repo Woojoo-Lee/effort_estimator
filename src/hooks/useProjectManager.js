@@ -30,9 +30,7 @@ export function useProjectManager(showToast) {
   const [dbReady, setDbReady] = useState(isSupabaseReady);
   const [isDirty, setIsDirty] = useState(false);
 
-  const markDirty = useCallback(() => {
-    setIsDirty(true);
-  }, []);
+  const markDirty = useCallback(() => setIsDirty(true), []);
 
   const refreshProjects = useCallback(async () => {
     if (!dbReady) {
@@ -41,7 +39,6 @@ export function useProjectManager(showToast) {
     }
 
     setIsBusy(true);
-
     const { data, error } = await fetchProjects();
 
     if (error) {
@@ -65,7 +62,6 @@ export function useProjectManager(showToast) {
       };
       return next;
     });
-
     setIsDirty(true);
   }, []);
 
@@ -83,7 +79,6 @@ export function useProjectManager(showToast) {
         },
       ],
     }));
-
     setIsDirty(true);
     showToast("항목 추가 완료", "blue");
   }, [showToast]);
@@ -93,7 +88,6 @@ export function useProjectManager(showToast) {
       ...prev,
       [solutionKey]: prev[solutionKey].filter((_, i) => i !== index),
     }));
-
     setIsDirty(true);
     showToast("항목 삭제 완료", "blue");
   }, [showToast]);
@@ -122,13 +116,7 @@ export function useProjectManager(showToast) {
 
     setIsBusy(true);
 
-    const label = new Date().toLocaleString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const label = new Date().toLocaleString("ko-KR");
 
     const { data, error } = await saveProject({
       projectId,
@@ -148,17 +136,13 @@ export function useProjectManager(showToast) {
       setProjectId(data.id);
       setSavedAt(label);
       setIsDirty(false);
-      showToast(
-        projectId ? "DB 업데이트 완료" : "신규 프로젝트 저장 완료",
-        "emerald"
-      );
+      showToast("저장 완료", "emerald");
       await refreshProjects();
     }
 
     setIsBusy(false);
   }, [
     dbReady,
-    showToast,
     projectId,
     activeTab,
     projectName,
@@ -167,18 +151,17 @@ export function useProjectManager(showToast) {
     riskFactor,
     mgmtRate,
     refreshProjects,
+    showToast,
   ]);
 
   const loadProject = useCallback(async (id) => {
     if (!dbReady) return;
 
     setIsBusy(true);
-
     const { data, error } = await fetchProjectById(id);
 
     if (error) {
-      console.error(error);
-      showToast("프로젝트 불러오기 실패", "red");
+      showToast("불러오기 실패", "red");
       setIsBusy(false);
       return;
     }
@@ -186,23 +169,16 @@ export function useProjectManager(showToast) {
     const payload = data.payload || {};
 
     setProjectId(data.id);
-    setProjectName(
-      data.project_name || payload.projectName || "새 컨택센터 프로젝트"
-    );
-    setActiveTab(payload.activeTab || "pbx");
+    setProjectName(payload.projectName);
+    setActiveTab(payload.activeTab);
     setItemsBySolution(payload.itemsBySolution || deepCloneItems());
-    setScaleFactor(Number(payload.scaleFactor ?? 1.0));
-    setRiskFactor(Number(payload.riskFactor ?? 1.0));
-    setMgmtRate(Number(payload.mgmtRate ?? 10));
-    setSavedAt(
-      payload.savedAt ||
-        (data.updated_at
-          ? new Date(data.updated_at).toLocaleString("ko-KR")
-          : "")
-    );
-    setIsDirty(false);
+    setScaleFactor(payload.scaleFactor);
+    setRiskFactor(payload.riskFactor);
+    setMgmtRate(payload.mgmtRate);
+    setSavedAt(payload.savedAt);
 
-    showToast("프로젝트 불러오기 완료", "emerald");
+    setIsDirty(false);
+    showToast("불러오기 완료", "emerald");
     setIsBusy(false);
   }, [dbReady, showToast]);
 
