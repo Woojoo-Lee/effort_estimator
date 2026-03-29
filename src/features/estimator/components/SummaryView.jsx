@@ -42,7 +42,7 @@ export default function SummaryView({ solutionTotals, grandBaseTotal }) {
                     {sol.icon} {sol.label}
                   </td>
                   <td className="py-4 pr-4 text-right text-slate-800">
-                    {fmt(total)} MD
+                    {fmt(total)} M/M
                   </td>
                   <td className="py-4 pr-4 text-right text-slate-500">
                     {fmt(ratio)}%

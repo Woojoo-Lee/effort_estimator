@@ -108,28 +108,28 @@ export default function RightSidebar({
             {!isSummary && (
               <div className="flex justify-between">
                 <span className="text-slate-500">현재 탭</span>
-                <strong>{fmt(solutionTotals[activeTab] || 0)} MD</strong>
+                <strong>{fmt(solutionTotals[activeTab] || 0)} M/M</strong>
               </div>
             )}
 
             <div className="flex justify-between">
               <span className="text-slate-500">전체</span>
-              <strong>{fmt(grandBaseTotal)} MD</strong>
+              <strong>{fmt(grandBaseTotal)} M/M</strong>
             </div>
 
             <div className="flex justify-between">
               <span className="text-slate-500">규모 반영</span>
-              <strong>{fmt(scaledTotal)} MD</strong>
+              <strong>{fmt(scaledTotal)} M/M</strong>
             </div>
 
             <div className="flex justify-between">
               <span className="text-slate-500">리스크 반영</span>
-              <strong>{fmt(riskAppliedTotal)} MD</strong>
+              <strong>{fmt(riskAppliedTotal)} M/M</strong>
             </div>
 
             <div className="flex justify-between">
               <span className="text-slate-500">관리 ({mgmtRate}%)</span>
-              <strong>{fmt(mgmtMd)} MD</strong>
+              <strong>{fmt(mgmtMd)} M/M</strong>
             </div>
           </div>
 
@@ -138,7 +138,7 @@ export default function RightSidebar({
               최종 공수
             </div>
             <div className="text-3xl font-extrabold text-blue-600">
-              {fmt(finalTotal)} MD
+              {fmt(finalTotal)} M/M
             </div>
           </div>
         </div>

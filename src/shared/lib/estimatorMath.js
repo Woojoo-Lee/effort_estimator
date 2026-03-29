@@ -1,10 +1,18 @@
 import { DEFAULT_ITEMS } from "../constants/constants";
 
-export function fmt(n) {
+export function fmt(value) {
+  const num = Number(value ?? 0);
+
+  if (!Number.isFinite(num)) {
+    return "0";
+  }
+
+  const rounded = Math.round(num * 10) / 10;
+
   return new Intl.NumberFormat("ko-KR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  }).format(rounded);
 }
 
 export function deepCloneItems() {

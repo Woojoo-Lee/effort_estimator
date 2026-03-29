@@ -5,7 +5,6 @@ import { useEstimatorStore } from "../store/useEstimatorStore";
 import { useHeaderModel } from "../hooks/useHeaderModel";
 import { useProjectSelectorModel } from "../hooks/useProjectSelectorModel";
 import { useEstimatorViewModel } from "../hooks/useEstimatorViewModel";
-import { useProjectStore } from "../store/useProjectStore";
 
 export function useAppPageModel() {
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
@@ -36,7 +35,7 @@ export function useAppPageModel() {
   const setSavedAt = useEstimatorStore((s) => s.setSavedAt);
   const setIsDirty = useEstimatorStore((s) => s.setIsDirty);
 
-  const refreshProjects = useProjectStore((s) => s.refreshProjects);
+  const refreshProjects = useEstimatorStore((s) => s.refreshProjects);
 
   useEffect(() => {
     refreshProjects();

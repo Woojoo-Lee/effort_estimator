@@ -1,5 +1,61 @@
 import React from "react";
 
+function StatusBadge({ children, tone = "slate" }) {
+  const toneClass = {
+    slate: "bg-slate-100 text-slate-600",
+    blue: "bg-blue-100 text-blue-700",
+    amber: "bg-amber-100 text-amber-700",
+    emerald: "bg-emerald-100 text-emerald-700",
+    red: "bg-red-100 text-red-600",
+  };
+
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-medium ${toneClass[tone]}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function SecondaryButton({
+  children,
+  onClick,
+  disabled = false,
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {children}
+    </button>
+  );
+}
+
+function AccentButton({
+  children,
+  onClick,
+  disabled = false,
+  tone = "blue",
+}) {
+  const toneClass = {
+    blue: "bg-blue-600 hover:bg-blue-700",
+    violet: "bg-violet-600 hover:bg-violet-700",
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`h-10 rounded-lg px-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${toneClass[tone]}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function HeaderBar({
   projectMeta,
   status,
@@ -12,27 +68,15 @@ export default function HeaderBar({
     setProjectName,
     createNewProject,
     handleSaveProject,
-    importJson,
-    downloadJson,
     downloadExcel,
     resetAll,
     showPrint,
     openVersionHistory,
   } = actions;
 
-  function handleImportChange(event) {
-    const file = event.target.files?.[0];
-
-    if (file) {
-      importJson(file);
-    }
-
-    event.target.value = "";
-  }
-
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-4 rounded-t-2xl border border-slate-200 border-b-0 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-800">
             컨택센터 공수 산정
@@ -44,47 +88,18 @@ export default function HeaderBar({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-xs">
-          {!dbReady && (
-            <span className="rounded-full bg-red-100 px-2 py-1 text-red-600">
-              DB 미연결
-            </span>
-          )}
-
-          {saveStatus === "dirty" && (
-            <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-700">
-              수정됨
-            </span>
-          )}
-
-          {saveStatus === "saving" && (
-            <span className="rounded-full bg-blue-100 px-2 py-1 text-blue-700">
-              저장 중...
-            </span>
-          )}
-
-          {saveStatus === "saved" && (
-            <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700">
-              저장됨
-            </span>
-          )}
-
-          {saveStatus === "error" && (
-            <span className="rounded-full bg-red-100 px-2 py-1 text-red-600">
-              저장 실패
-            </span>
-          )}
-
-          {isBusy && (
-            <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
-              처리 중...
-            </span>
-          )}
+        <div className="flex flex-wrap items-center gap-2">
+          {!dbReady && <StatusBadge tone="red">DB 미연결</StatusBadge>}
+          {saveStatus === "dirty" && <StatusBadge tone="amber">수정됨</StatusBadge>}
+          {saveStatus === "saving" && <StatusBadge tone="blue">저장 중...</StatusBadge>}
+          {saveStatus === "saved" && <StatusBadge tone="emerald">저장됨</StatusBadge>}
+          {saveStatus === "error" && <StatusBadge tone="red">저장 실패</StatusBadge>}
+          {isBusy && <StatusBadge tone="slate">처리 중...</StatusBadge>}
         </div>
       </div>
 
       <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-slate-600">
+        <label className="shrink-0 text-sm font-medium text-slate-600">
           프로젝트명
         </label>
 
@@ -97,67 +112,38 @@ export default function HeaderBar({
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={createNewProject}
-          className="rounded-lg bg-slate-100 px-3 py-2 text-sm hover:bg-slate-200"
-        >
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-1">
+        <SecondaryButton onClick={createNewProject}>
           신규
-        </button>
+        </SecondaryButton>
 
-        <button
-          onClick={handleSaveProject}
-          disabled={!dbReady || isBusy}
-          className="rounded-lg bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          저장
-        </button>
-
-        <button
+        <AccentButton
           onClick={openVersionHistory}
           disabled={!projectId}
-          className="rounded-lg bg-violet-600 px-3 py-2 text-sm text-white hover:bg-violet-700 disabled:opacity-50"
+          tone="violet"
         >
           버전 보기
-        </button>
+        </AccentButton>
 
-        <button
-          onClick={downloadJson}
-          className="rounded-lg bg-emerald-600 px-3 py-2 text-sm text-white hover:bg-emerald-700"
+        <AccentButton
+          onClick={handleSaveProject}
+          disabled={!dbReady || isBusy}
+          tone="blue"
         >
-          JSON 다운로드
-        </button>
+          저장
+        </AccentButton>
 
-        <button
-          onClick={downloadExcel}
-          className="rounded-lg bg-indigo-600 px-3 py-2 text-sm text-white hover:bg-indigo-700"
-        >
+        <SecondaryButton onClick={downloadExcel}>
           Excel 다운로드
-        </button>
+        </SecondaryButton>
 
-        <label className="cursor-pointer rounded-lg bg-slate-200 px-3 py-2 text-sm hover:bg-slate-300">
-          JSON 불러오기
-          <input
-            type="file"
-            accept=".json"
-            onChange={handleImportChange}
-            className="hidden"
-          />
-        </label>
-
-        <button
-          onClick={resetAll}
-          className="rounded-lg bg-amber-500 px-3 py-2 text-sm text-white hover:bg-amber-600"
-        >
+        <SecondaryButton onClick={resetAll}>
           초기화
-        </button>
+        </SecondaryButton>
 
-        <button
-          onClick={showPrint}
-          className="rounded-lg bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-800"
-        >
+        <SecondaryButton onClick={showPrint}>
           인쇄
-        </button>
+        </SecondaryButton>
       </div>
     </div>
   );

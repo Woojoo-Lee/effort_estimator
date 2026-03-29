@@ -1,12 +1,12 @@
-import { useProjectStore } from "../store/useProjectStore";
+import { useEstimatorStore } from "../store/useEstimatorStore";
 
 export function useProjectSelectorModel() {
-  const projects = useProjectStore((s) => s.projects);
-  const projectId = useProjectStore((s) => s.projectId);
-  const loadProject = useProjectStore((s) => s.loadProject);
-  const refreshProjects = useProjectStore((s) => s.refreshProjects);
-  const dbReady = useProjectStore((s) => s.dbReady);
-  const isBusy = useProjectStore((s) => s.isBusy);
+  const projects = useEstimatorStore((s) => s.projects);
+  const projectId = useEstimatorStore((s) => s.projectId);
+  const loadProject = useEstimatorStore((s) => s.loadProject);
+  const refreshProjects = useEstimatorStore((s) => s.refreshProjects);
+  const dbReady = useEstimatorStore((s) => s.dbReady);
+  const isBusy = useEstimatorStore((s) => s.isBusy);
 
   return {
     projects,

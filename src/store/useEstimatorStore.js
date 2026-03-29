@@ -18,6 +18,9 @@ import {
 
 const STORE_VERSION = 1;
 
+// =========================================
+// Helpers
+// =========================================
 const createFreshProjectState = () => {
   const initial = emptyProjectState();
 
@@ -55,11 +58,20 @@ export const useEstimatorStore = create(
       const fresh = createFreshProjectState();
 
       return {
+        // =========================================
+        // 1) Base project / estimator state
+        // =========================================
         ...fresh,
 
+        // =========================================
+        // 2) Project list / version state
+        // =========================================
         projects: [],
         versions: [],
 
+        // =========================================
+        // 3) UI / runtime state
+        // =========================================
         isBusy: false,
         isVersionsBusy: false,
         dbReady: isSupabaseReady,
@@ -67,9 +79,15 @@ export const useEstimatorStore = create(
         saveStatus: "idle",
         lastSaveError: "",
 
+        // =========================================
+        // 4) Toast state
+        // =========================================
         toast: getDefaultToast(),
         _toastTimer: null,
 
+        // =========================================
+        // 5) Toast actions
+        // =========================================
         showToast: (message, tone = "blue", duration = 3000) => {
           const timer = get()._toastTimer;
 
@@ -104,6 +122,9 @@ export const useEstimatorStore = create(
           });
         },
 
+        // =========================================
+        // 6) Basic setters
+        // =========================================
         markDirty: () => set({ isDirty: true, saveStatus: "dirty" }),
 
         setProjectId: (projectId) => set({ projectId }),
@@ -148,6 +169,9 @@ export const useEstimatorStore = create(
             saveStatus: "dirty",
           }),
 
+        // =========================================
+        // 7) DetailTable item actions
+        // =========================================
         updateItem: (solutionKey, index, field, value) =>
           set((state) => {
             const next = { ...state.itemsBySolution };
@@ -195,6 +219,9 @@ export const useEstimatorStore = create(
             saveStatus: "dirty",
           })),
 
+        // =========================================
+        // 8) Project lifecycle actions
+        // =========================================
         createNewProject: () => {
           const next = createFreshProjectState();
 
@@ -237,37 +264,6 @@ export const useEstimatorStore = create(
           set({ isBusy: false });
         },
 
-        refreshVersions: async () => {
-          const state = get();
-
-          if (!state.projectId) {
-            set({ versions: [] });
-            return;
-          }
-
-          if (!state.dbReady) {
-            set({
-              versions: [],
-              saveStatus: "error",
-              lastSaveError: "Supabase 환경변수가 설정되지 않았습니다.",
-            });
-            return;
-          }
-
-          set({ isVersionsBusy: true });
-
-          const { data, error } = await fetchProjectVersions(state.projectId);
-
-          if (error) {
-            console.error(error);
-            state.showToast("버전 목록 조회 실패", "red");
-          } else {
-            set({ versions: data || [] });
-          }
-
-          set({ isVersionsBusy: false });
-        },
-
         handleSaveProject: async ({ silent = false } = {}) => {
           const state = get();
 
@@ -298,7 +294,6 @@ export const useEstimatorStore = create(
           });
 
           const isUpdate = Boolean(state.projectId);
-
           const payload = buildProjectPayload(state, label);
 
           const { data, error } = await saveProject({
@@ -423,6 +418,40 @@ export const useEstimatorStore = create(
 
           showToast("프로젝트 불러오기 완료", "emerald");
           await get().refreshVersions();
+        },
+
+        // =========================================
+        // 9) Version actions
+        // =========================================
+        refreshVersions: async () => {
+          const state = get();
+
+          if (!state.projectId) {
+            set({ versions: [] });
+            return;
+          }
+
+          if (!state.dbReady) {
+            set({
+              versions: [],
+              saveStatus: "error",
+              lastSaveError: "Supabase 환경변수가 설정되지 않았습니다.",
+            });
+            return;
+          }
+
+          set({ isVersionsBusy: true });
+
+          const { data, error } = await fetchProjectVersions(state.projectId);
+
+          if (error) {
+            console.error(error);
+            state.showToast("버전 목록 조회 실패", "red");
+          } else {
+            set({ versions: data || [] });
+          }
+
+          set({ isVersionsBusy: false });
         },
 
         restoreVersion: async (versionRow) => {
