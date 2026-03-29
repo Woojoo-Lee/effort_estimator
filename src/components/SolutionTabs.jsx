@@ -3,20 +3,20 @@ import { SOLUTIONS } from "../utils/constants";
 
 export default function SolutionTabs({ activeTab, setActiveTab }) {
   return (
-    <div className="rounded-[28px] border border-slate-200 bg-white p-3 shadow-sm">
-      <div className="flex flex-wrap gap-2">
+    <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2">
+      <div className="grid grid-cols-7 gap-2">
         {SOLUTIONS.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`rounded-2xl px-5 py-3 text-sm font-semibold transition ${
+            className={`flex h-10 min-w-0 items-center justify-center gap-1 rounded-xl px-2 text-sm font-semibold transition ${
               activeTab === tab.key
-                ? "border border-blue-200 bg-gradient-to-b from-white to-blue-50 text-slate-900 shadow-sm"
-                : "bg-transparent text-slate-500 hover:bg-slate-50"
+                ? "bg-blue-100 text-blue-700"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
-            <span className="mr-2">{tab.icon}</span>
-            {tab.label}
+            <span className="shrink-0">{tab.icon}</span>
+            <span className="truncate">{tab.label}</span>
           </button>
         ))}
       </div>

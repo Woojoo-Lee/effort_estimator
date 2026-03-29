@@ -159,15 +159,15 @@ export default function ContactCenterEffortEstimator() {
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#eef4ff_0%,#f7f9fc_180px,#f5f7fb_100%)] p-6">
-      <div className="mx-auto max-w-[1360px] space-y-5">
-        <HeaderBar
-          projectMeta={projectMeta}
-          status={status}
-          actions={actions}
-        />
+    <div className="min-h-screen bg-[linear-gradient(180deg,#eef4ff_0%,#f7f9fc_180px,#f5f7fb_100%)]">
+      <div className="mx-auto max-w-[1360px] p-4">
+        <div className="space-y-3">
+          <HeaderBar
+            projectMeta={projectMeta}
+            status={status}
+            actions={actions}
+          />
 
-        <div className="grid items-start gap-5 lg:grid-cols-[1.15fr_2fr]">
           <ProjectListPanel
             projects={projectPanel.projects}
             projectId={projectPanel.projectId}
@@ -184,29 +184,37 @@ export default function ContactCenterEffortEstimator() {
         </div>
 
         {estimatorView.activeTab === "summary" ? (
-          <div className="grid items-start gap-5 lg:grid-cols-[1.7fr_0.9fr]">
-            <SummaryView
-              solutionTotals={estimatorView.solutionTotals}
-              grandBaseTotal={estimatorView.grandBaseTotal}
-            />
+          <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_340px] lg:items-stretch">
+            <div className="min-w-0">
+              <SummaryView
+                solutionTotals={estimatorView.solutionTotals}
+                grandBaseTotal={estimatorView.grandBaseTotal}
+              />
+            </div>
 
-            <RightSidebar {...estimatorView.sidebarModel} isSummary />
+            <div className="min-w-0 lg:h-full">
+              <RightSidebar {...estimatorView.sidebarModel} isSummary />
+            </div>
           </div>
         ) : (
-          <div className="grid items-start gap-5 lg:grid-cols-[1.7fr_0.9fr]">
-            <DetailTable
-              activeTab={estimatorView.activeTab}
-              currentItems={estimatorView.currentItems}
-              updateItem={estimatorView.detailActions.updateItem}
-              addItem={estimatorView.detailActions.addItem}
-              removeItem={estimatorView.detailActions.removeItem}
-            />
+          <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_340px] lg:items-stretch">
+            <div className="min-w-0 lg:h-full">
+              <DetailTable
+                activeTab={estimatorView.activeTab}
+                currentItems={estimatorView.currentItems}
+                updateItem={estimatorView.detailActions.updateItem}
+                addItem={estimatorView.detailActions.addItem}
+                removeItem={estimatorView.detailActions.removeItem}
+              />
+            </div>
 
-            <RightSidebar {...estimatorView.sidebarModel} />
+            <div className="min-w-0 lg:h-full">
+              <RightSidebar {...estimatorView.sidebarModel} />
+            </div>
           </div>
         )}
 
-        <div className="px-2 pb-2 pt-1 text-center text-xs text-slate-400">
+        <div className="pt-3 text-center text-xs text-slate-400">
           © 2026 Contact Center Estimation Workspace · Internal Planning Use ·{" "}
           {appVersion}
         </div>

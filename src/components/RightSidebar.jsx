@@ -4,17 +4,17 @@ import { fmt } from "../utils/estimatorMath";
 import SmallInput from "./ui/SmallInput";
 import SmallSelect from "./ui/SmallSelect";
 
-function Panel({ title, children, subtle = false }) {
+function Panel({ title, children, subtle = false, className = "" }) {
   return (
     <div
-      className={`overflow-hidden rounded-[28px] border ${
+      className={`overflow-hidden rounded-[24px] border ${
         subtle
           ? "border-blue-100 bg-gradient-to-br from-white to-blue-50/40"
           : "border-slate-200 bg-white"
-      } shadow-[0_12px_32px_rgba(15,23,42,0.05)]`}
+      } shadow-sm ${className}`}
     >
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-        <h3 className="text-[15px] font-bold tracking-tight text-slate-900">{title}</h3>
+      <div className="border-b border-slate-100 px-4 py-3">
+        <h3 className="text-sm font-bold text-slate-800">{title}</h3>
       </div>
       <div className="p-4">{children}</div>
     </div>
@@ -39,12 +39,12 @@ export default function RightSidebar({
   isSummary = false,
 }) {
   return (
-    <div className="space-y-5 lg:sticky lg:top-6">
-      <Panel title="환경 변수 설정" subtle>
-        <div className="space-y-5">
+    <div className="flex h-full flex-col gap-4">
+      <Panel title="환경 변수 설정" subtle className="shrink-0">
+        <div className="space-y-4 text-sm">
           <div>
-            <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800">
-              <span>규모 (Scale Factor)</span>
+            <div className="mb-1 flex items-center justify-between font-semibold">
+              <span>규모</span>
               <span className="text-blue-600">{fmt(scaleFactor)}x</span>
             </div>
             <SmallSelect
@@ -63,8 +63,8 @@ export default function RightSidebar({
           </div>
 
           <div>
-            <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800">
-              <span>리스크 (Risk Factor)</span>
+            <div className="mb-1 flex items-center justify-between font-semibold">
+              <span>리스크</span>
               <span className="text-blue-600">{fmt(riskFactor)}x</span>
             </div>
             <SmallSelect
@@ -83,8 +83,8 @@ export default function RightSidebar({
           </div>
 
           <div>
-            <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800">
-              <span>관리 비율 (Project Mgmt)</span>
+            <div className="mb-1 flex items-center justify-between font-semibold">
+              <span>관리 비율</span>
               <span className="text-blue-600">{mgmtRate}%</span>
             </div>
             <div className="flex items-center gap-2">
@@ -102,37 +102,43 @@ export default function RightSidebar({
         </div>
       </Panel>
 
-      <Panel title="공수 산출 요약" subtle>
-        <div className="space-y-3 text-sm leading-6">
-          {!isSummary ? (
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500">현재 탭 소계</span>
-              <strong>{fmt(solutionTotals[activeTab] || 0)} MD</strong>
+      <Panel title="공수 산출 요약" subtle className="flex-1">
+        <div className="flex h-full flex-col justify-between text-sm">
+          <div className="space-y-2">
+            {!isSummary && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">현재 탭</span>
+                <strong>{fmt(solutionTotals[activeTab] || 0)} MD</strong>
+              </div>
+            )}
+
+            <div className="flex justify-between">
+              <span className="text-slate-500">전체</span>
+              <strong>{fmt(grandBaseTotal)} MD</strong>
             </div>
-          ) : null}
 
-          <div className="flex items-center justify-between">
-            <span className="text-slate-500">전체 기본 산정</span>
-            <strong>{fmt(grandBaseTotal)} MD</strong>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-slate-500">규모 반영</span>
-            <strong>{fmt(scaledTotal)} MD</strong>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-slate-500">리스크 반영</span>
-            <strong>{fmt(riskAppliedTotal)} MD</strong>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-slate-500">관리 공수 ({mgmtRate}%)</span>
-            <strong>{fmt(mgmtMd)} MD</strong>
+            <div className="flex justify-between">
+              <span className="text-slate-500">규모 반영</span>
+              <strong>{fmt(scaledTotal)} MD</strong>
+            </div>
+
+            <div className="flex justify-between">
+              <span className="text-slate-500">리스크 반영</span>
+              <strong>{fmt(riskAppliedTotal)} MD</strong>
+            </div>
+
+            <div className="flex justify-between">
+              <span className="text-slate-500">관리 ({mgmtRate}%)</span>
+              <strong>{fmt(mgmtMd)} MD</strong>
+            </div>
           </div>
 
-          <div className="mt-4 rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5">
-            <div className="mb-2 text-sm font-bold text-blue-600">최종 산출 공수</div>
-            <div className="text-[52px] font-extrabold leading-none tracking-tight text-blue-600">
-              {fmt(finalTotal)}
-              <span className="ml-2 text-[28px]">MD</span>
+          <div className="mt-4 rounded-2xl bg-blue-50 p-4 text-center">
+            <div className="mb-1 text-xs font-bold text-blue-600">
+              최종 공수
+            </div>
+            <div className="text-3xl font-extrabold text-blue-600">
+              {fmt(finalTotal)} MD
             </div>
           </div>
         </div>

@@ -7,12 +7,12 @@ import SmallSelect from "./ui/SmallSelect";
 
 function Panel({ title, children, right }) {
   return (
-    <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
+      <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4">
         <h3 className="text-[15px] font-bold tracking-tight text-slate-900">{title}</h3>
         {right}
       </div>
-      <div className="p-4">{children}</div>
+      <div className="flex flex-1 min-h-0 flex-col p-4">{children}</div>
     </div>
   );
 }
@@ -27,9 +27,13 @@ export default function DetailTable({
   return (
     <Panel
       title="상세 업무 목록"
-      right={<ActionButton primary onClick={() => addItem(activeTab)}>＋ 항목 추가</ActionButton>}
+      right={
+        <ActionButton primary onClick={() => addItem(activeTab)}>
+          ＋ 항목 추가
+        </ActionButton>
+      }
     >
-      <div className="mb-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+      <div className="mb-3 shrink-0 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-500">
         현재 탭:{" "}
         <span className="font-semibold text-slate-700">
           {SOLUTIONS.find((s) => s.key === activeTab)?.label}
@@ -37,10 +41,10 @@ export default function DetailTable({
         · 입력값을 변경하면 우측 요약과 상단 공수가 즉시 반영됩니다.
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-100">
+      <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-slate-100">
         <table className="min-w-full border-collapse bg-white">
-          <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-left text-sm text-slate-500">
+          <thead className="sticky top-0 z-10 bg-slate-50">
+            <tr className="border-b border-slate-200 text-left text-sm text-slate-500">
               <th className="py-3 pr-3 pl-4">업무 기능</th>
               <th className="py-3 pr-3 text-center">기본공수(MD)</th>
               <th className="py-3 pr-3 text-center">난이도</th>
@@ -50,6 +54,7 @@ export default function DetailTable({
               <th className="py-3 pr-4 text-center">삭제</th>
             </tr>
           </thead>
+
           <tbody>
             {currentItems.map((item, index) => (
               <tr
@@ -62,6 +67,7 @@ export default function DetailTable({
                     onChange={(e) => updateItem(activeTab, index, "name", e.target.value)}
                   />
                 </td>
+
                 <td className="py-2 pr-3">
                   <SmallInput
                     type="number"
@@ -73,6 +79,7 @@ export default function DetailTable({
                     className="text-center font-semibold"
                   />
                 </td>
+
                 <td className="py-2 pr-3">
                   <SmallSelect
                     value={item.difficulty}
@@ -87,6 +94,7 @@ export default function DetailTable({
                     ))}
                   </SmallSelect>
                 </td>
+
                 <td className="py-2 pr-3">
                   <SmallSelect
                     value={item.complexity}
@@ -101,11 +109,13 @@ export default function DetailTable({
                     ))}
                   </SmallSelect>
                 </td>
+
                 <td className="py-2 pr-3 text-right align-middle">
                   <div className="rounded-xl bg-blue-50 px-3 py-2 font-bold text-blue-600">
                     {fmt(calcItemMd(item))}
                   </div>
                 </td>
+
                 <td className="py-2 pr-3">
                   <SmallInput
                     value={item.note}
@@ -113,6 +123,7 @@ export default function DetailTable({
                     placeholder="비고 입력"
                   />
                 </td>
+
                 <td className="py-2 pr-4 text-center">
                   <button
                     onClick={() => removeItem(activeTab, index)}
