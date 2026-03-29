@@ -1,6 +1,8 @@
 import { FILE_VERSION, TABLE_NAME } from "../utils/constants";
 import { supabase } from "./supabaseClient";
 
+const VERSION_TABLE_NAME = "estimation_project_versions";
+
 export function toPayload({
   activeTab,
   projectName,
@@ -27,12 +29,10 @@ export async function fetchProjects() {
     return { data: null, error: new Error("Supabase client not initialized.") };
   }
 
-  const result = await supabase
+  return await supabase
     .from(TABLE_NAME)
     .select("id, project_name, updated_at")
     .order("updated_at", { ascending: false });
-
-  return result;
 }
 
 export async function fetchProjectById(id) {
@@ -40,38 +40,21 @@ export async function fetchProjectById(id) {
     return { data: null, error: new Error("Supabase client not initialized.") };
   }
 
-  const result = await supabase
+  return await supabase
     .from(TABLE_NAME)
     .select("id, project_name, payload, updated_at")
     .eq("id", id)
     .single();
-
-  return result;
 }
 
 export async function saveProject({
   projectId,
-  activeTab,
   projectName,
-  itemsBySolution,
-  scaleFactor,
-  riskFactor,
-  mgmtRate,
-  savedAt,
+  payload,
 }) {
   if (!supabase) {
     return { data: null, error: new Error("Supabase client not initialized.") };
   }
-
-  const payload = toPayload({
-    activeTab,
-    projectName,
-    itemsBySolution,
-    scaleFactor,
-    riskFactor,
-    mgmtRate,
-    savedAt,
-  });
 
   const rowData = {
     project_name: projectName,
@@ -92,4 +75,62 @@ export async function saveProject({
     .insert(rowData)
     .select("id, updated_at")
     .single();
+}
+
+export async function saveProjectVersion({
+  projectId,
+  versionNo,
+  savedType = "manual",
+  projectName,
+  payload,
+}) {
+  if (!supabase) {
+    return { data: null, error: new Error("Supabase client not initialized.") };
+  }
+
+  const { data, error } = await supabase
+    .from(VERSION_TABLE_NAME)
+    .insert([
+      {
+        project_id: projectId,
+        version_no: versionNo,
+        saved_type: savedType,
+        project_name: projectName,
+        payload,
+      },
+    ])
+    .select()
+    .single();
+
+  return { data, error };
+}
+
+export async function fetchProjectVersions(projectId) {
+  if (!supabase) {
+    return { data: null, error: new Error("Supabase client not initialized.") };
+  }
+
+  const { data, error } = await supabase
+    .from(VERSION_TABLE_NAME)
+    .select("*")
+    .eq("project_id", projectId)
+    .order("version_no", { ascending: false });
+
+  return { data, error };
+}
+
+export async function fetchLatestProjectVersionNo(projectId) {
+  if (!supabase) {
+    return { data: null, error: new Error("Supabase client not initialized.") };
+  }
+
+  const { data, error } = await supabase
+    .from(VERSION_TABLE_NAME)
+    .select("version_no")
+    .eq("project_id", projectId)
+    .order("version_no", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return { data, error };
 }

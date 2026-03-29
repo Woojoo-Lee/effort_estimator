@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import HeaderBar from "./components/HeaderBar";
 import ProjectListPanel from "./components/ProjectListPanel";
@@ -7,132 +7,156 @@ import RightSidebar from "./components/RightSidebar";
 import Toast from "./components/Toast";
 import SolutionTabs from "./components/SolutionTabs";
 import SummaryView from "./components/SummaryView";
+import VersionHistoryModal from "./components/VersionHistoryModal";
 
 import { useExportManager } from "./hooks/useExportManager";
 import { useEstimatorStore } from "./store/useEstimatorStore";
+import { useHeaderModel } from "./hooks/useHeaderModel";
+import { useProjectPanelModel } from "./hooks/useProjectPanelModel";
+import { useEstimatorViewModel } from "./hooks/useEstimatorViewModel";
+import { useToastState } from "./hooks/useToastState";
+import { useAutoSave } from "./hooks/useAutoSave";
+import { getAppVersion } from "./utils/appVersion";
+
+function GlobalToast() {
+  const toast = useToastState();
+  return <Toast message={toast.message} tone={toast.tone} />;
+}
 
 export default function ContactCenterEffortEstimator() {
-  const {
-    projectId,
-    activeTab,
-    projectName,
-    itemsBySolution,
-    scaleFactor,
-    riskFactor,
-    mgmtRate,
-    savedAt,
-    projects,
-    isBusy,
-    dbReady,
-    isDirty,
-    toast,
+  const appVersion = getAppVersion();
+  const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
 
-    setProjectId,
-    setActiveTab,
-    setProjectNameWithDirty,
-    setItemsBySolution,
-    setScaleFactor,
-    setRiskFactor,
-    setMgmtRate,
-    setSavedAt,
-    setIsDirty,
+  useAutoSave();
 
-    markDirty,
-    showToast,
-    refreshProjects,
-    updateItem,
-    addItem,
-    removeItem,
-    createNewProject,
-    handleSaveProject,
-    loadProject,
+  const projectId = useEstimatorStore((s) => s.projectId);
+  const activeTab = useEstimatorStore((s) => s.activeTab);
+  const projectName = useEstimatorStore((s) => s.projectName);
+  const itemsBySolution = useEstimatorStore((s) => s.itemsBySolution);
+  const scaleFactor = useEstimatorStore((s) => s.scaleFactor);
+  const riskFactor = useEstimatorStore((s) => s.riskFactor);
+  const mgmtRate = useEstimatorStore((s) => s.mgmtRate);
+  const savedAt = useEstimatorStore((s) => s.savedAt);
 
-    getSolutionTotals,
-    getGrandBaseTotal,
-    getScaledTotal,
-    getRiskAppliedTotal,
-    getMgmtMd,
-    getFinalTotal,
-    getCurrentItems,
-  } = useEstimatorStore();
+  const versions = useEstimatorStore((s) => s.versions);
+  const isVersionsBusy = useEstimatorStore((s) => s.isVersionsBusy);
+  const refreshVersions = useEstimatorStore((s) => s.refreshVersions);
+  const restoreVersion = useEstimatorStore((s) => s.restoreVersion);
+
+  const setProjectId = useEstimatorStore((s) => s.setProjectId);
+  const setActiveTab = useEstimatorStore((s) => s.setActiveTab);
+  const setProjectNameWithDirty = useEstimatorStore(
+    (s) => s.setProjectNameWithDirty
+  );
+  const setItemsBySolution = useEstimatorStore((s) => s.setItemsBySolution);
+  const setScaleFactor = useEstimatorStore((s) => s.setScaleFactor);
+  const setRiskFactor = useEstimatorStore((s) => s.setRiskFactor);
+  const setMgmtRate = useEstimatorStore((s) => s.setMgmtRate);
+  const setSavedAt = useEstimatorStore((s) => s.setSavedAt);
+  const setIsDirty = useEstimatorStore((s) => s.setIsDirty);
+
+  const refreshProjects = useEstimatorStore((s) => s.refreshProjects);
 
   useEffect(() => {
     refreshProjects();
   }, [refreshProjects]);
 
-  const solutionTotals = getSolutionTotals();
-  const grandBaseTotal = getGrandBaseTotal();
-  const scaledTotal = getScaledTotal();
-  const riskAppliedTotal = getRiskAppliedTotal();
-  const mgmtMd = getMgmtMd();
-  const finalTotal = getFinalTotal();
-  const currentItems = getCurrentItems();
+  useEffect(() => {
+    if (isVersionModalOpen && projectId) {
+      refreshVersions();
+    }
+  }, [isVersionModalOpen, projectId, refreshVersions]);
 
-  const projectState = {
-    projectName,
-    activeTab,
-    itemsBySolution,
-    scaleFactor,
-    riskFactor,
-    mgmtRate,
-    savedAt,
-  };
+  const estimatorView = useEstimatorViewModel();
+  const projectPanel = useProjectPanelModel();
 
-  const calcState = {
-    solutionTotals,
-    grandBaseTotal,
-    scaledTotal,
-    riskAppliedTotal,
-    mgmtMd,
-    finalTotal,
-  };
+  const projectState = useMemo(
+    () => ({
+      projectName,
+      activeTab,
+      itemsBySolution,
+      scaleFactor,
+      riskFactor,
+      mgmtRate,
+      savedAt,
+    }),
+    [
+      projectName,
+      activeTab,
+      itemsBySolution,
+      scaleFactor,
+      riskFactor,
+      mgmtRate,
+      savedAt,
+    ]
+  );
 
-  const setters = {
-    setProjectId,
-    setActiveTab,
-    setProjectName: setProjectNameWithDirty,
-    setItemsBySolution,
-    setScaleFactor,
-    setRiskFactor,
-    setMgmtRate,
-    setSavedAt,
-    setIsDirty,
-  };
+  const calcState = useMemo(
+    () => ({
+      solutionTotals: estimatorView.solutionTotals,
+      grandBaseTotal: estimatorView.grandBaseTotal,
+      scaledTotal: estimatorView.scaledTotal,
+      riskAppliedTotal: estimatorView.riskAppliedTotal,
+      mgmtMd: estimatorView.mgmtMd,
+      finalTotal: estimatorView.finalTotal,
+    }),
+    [
+      estimatorView.solutionTotals,
+      estimatorView.grandBaseTotal,
+      estimatorView.scaledTotal,
+      estimatorView.riskAppliedTotal,
+      estimatorView.mgmtMd,
+      estimatorView.finalTotal,
+    ]
+  );
 
-  const { downloadJson, downloadExcel, importJson } = useExportManager({
+  const setters = useMemo(
+    () => ({
+      setProjectId,
+      setActiveTab,
+      setProjectName: setProjectNameWithDirty,
+      setItemsBySolution,
+      setScaleFactor,
+      setRiskFactor,
+      setMgmtRate,
+      setSavedAt,
+      setIsDirty,
+    }),
+    [
+      setProjectId,
+      setActiveTab,
+      setProjectNameWithDirty,
+      setItemsBySolution,
+      setScaleFactor,
+      setRiskFactor,
+      setMgmtRate,
+      setSavedAt,
+      setIsDirty,
+    ]
+  );
+
+  const importExportActions = useExportManager({
     projectState,
     calcState,
     setters,
   });
 
-  const projectMeta = {
-    projectId,
-    projectName,
-    savedAt,
-  };
+  const versionActions = useMemo(
+    () => ({
+      openVersionHistory: () => setIsVersionModalOpen(true),
+    }),
+    []
+  );
 
-  const status = {
-    isDirty,
-    dbReady,
-    isBusy,
-  };
+  const { projectMeta, status, actions } = useHeaderModel(
+    importExportActions,
+    versionActions
+  );
 
-  const actions = {
-    setProjectName: setProjectNameWithDirty,
-    createNewProject: () => {
-      createNewProject();
-      showToast("새 프로젝트 작성 시작", "blue");
-    },
-    handleSaveProject,
-    importJson,
-    downloadJson,
-    downloadExcel,
-    resetAll: () => {
-      createNewProject();
-      showToast("초기화 완료", "blue");
-    },
-    showPrint: () => window.print(),
-  };
+  async function handleRestoreVersion(version) {
+    await restoreVersion(version);
+    setIsVersionModalOpen(false);
+  }
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#eef4ff_0%,#f7f9fc_180px,#f5f7fb_100%)] p-6">
@@ -145,83 +169,58 @@ export default function ContactCenterEffortEstimator() {
 
         <div className="grid items-start gap-5 lg:grid-cols-[1.15fr_2fr]">
           <ProjectListPanel
-            projects={projects}
-            projectId={projectId}
-            loadProject={loadProject}
-            refreshProjects={refreshProjects}
-            dbReady={dbReady}
-            isBusy={isBusy}
+            projects={projectPanel.projects}
+            projectId={projectPanel.projectId}
+            loadProject={projectPanel.loadProject}
+            refreshProjects={projectPanel.refreshProjects}
+            dbReady={projectPanel.dbReady}
+            isBusy={projectPanel.isBusy}
           />
 
-          <SolutionTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+          <SolutionTabs
+            activeTab={estimatorView.activeTab}
+            setActiveTab={estimatorView.setActiveTab}
+          />
         </div>
 
-        {activeTab === "summary" ? (
+        {estimatorView.activeTab === "summary" ? (
           <div className="grid items-start gap-5 lg:grid-cols-[1.7fr_0.9fr]">
             <SummaryView
-              solutionTotals={solutionTotals}
-              grandBaseTotal={grandBaseTotal}
+              solutionTotals={estimatorView.solutionTotals}
+              grandBaseTotal={estimatorView.grandBaseTotal}
             />
 
-            <RightSidebar
-              activeTab={activeTab}
-              solutionTotals={solutionTotals}
-              grandBaseTotal={grandBaseTotal}
-              scaledTotal={scaledTotal}
-              riskAppliedTotal={riskAppliedTotal}
-              mgmtRate={mgmtRate}
-              mgmtMd={mgmtMd}
-              finalTotal={finalTotal}
-              scaleFactor={scaleFactor}
-              setScaleFactor={setScaleFactor}
-              riskFactor={riskFactor}
-              setRiskFactor={setRiskFactor}
-              setMgmtRate={setMgmtRate}
-              markDirty={markDirty}
-              isSummary
-            />
+            <RightSidebar {...estimatorView.sidebarModel} isSummary />
           </div>
         ) : (
           <div className="grid items-start gap-5 lg:grid-cols-[1.7fr_0.9fr]">
             <DetailTable
-              activeTab={activeTab}
-              currentItems={currentItems}
-              updateItem={updateItem}
-              addItem={(solutionKey) => {
-                addItem(solutionKey);
-                showToast("항목 추가 완료", "blue");
-              }}
-              removeItem={(solutionKey, index) => {
-                removeItem(solutionKey, index);
-                showToast("항목 삭제 완료", "blue");
-              }}
+              activeTab={estimatorView.activeTab}
+              currentItems={estimatorView.currentItems}
+              updateItem={estimatorView.detailActions.updateItem}
+              addItem={estimatorView.detailActions.addItem}
+              removeItem={estimatorView.detailActions.removeItem}
             />
 
-            <RightSidebar
-              activeTab={activeTab}
-              solutionTotals={solutionTotals}
-              grandBaseTotal={grandBaseTotal}
-              scaledTotal={scaledTotal}
-              riskAppliedTotal={riskAppliedTotal}
-              mgmtRate={mgmtRate}
-              mgmtMd={mgmtMd}
-              finalTotal={finalTotal}
-              scaleFactor={scaleFactor}
-              setScaleFactor={setScaleFactor}
-              riskFactor={riskFactor}
-              setRiskFactor={setRiskFactor}
-              setMgmtRate={setMgmtRate}
-              markDirty={markDirty}
-            />
+            <RightSidebar {...estimatorView.sidebarModel} />
           </div>
         )}
 
         <div className="px-2 pb-2 pt-1 text-center text-xs text-slate-400">
-          © 2026 Contact Center Estimation Workspace · Internal Planning Use
+          © 2026 Contact Center Estimation Workspace · Internal Planning Use ·{" "}
+          {appVersion}
         </div>
       </div>
 
-      <Toast message={toast.message} tone={toast.tone} />
+      <VersionHistoryModal
+        isOpen={isVersionModalOpen}
+        onClose={() => setIsVersionModalOpen(false)}
+        versions={versions}
+        isLoading={isVersionsBusy}
+        onRestore={handleRestoreVersion}
+      />
+
+      <GlobalToast />
     </div>
   );
 }

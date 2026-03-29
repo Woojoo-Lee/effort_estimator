@@ -1,134 +1,95 @@
-import {
-  buildExcelXml,
-  downloadExcelFile,
-  toExportPayload,
-} from "../utils/excelExport";
-import { readJsonFile, downloadJsonFile } from "../utils/jsonUtils";
-import { deepCloneItems } from "../utils/estimatorMath";
+import { useCallback } from "react";
+import * as XLSX from "xlsx";
+
+import { downloadFile } from "../utils/io/downloadFile";
+import { readJsonFile } from "../utils/io/readJsonFile";
+import { buildProjectExportPayload } from "../utils/export/buildProjectExportPayload";
+import { mapEstimatorToExcelRows } from "../utils/export/mapEstimatorToExcelRows";
+import { validateImportData } from "../utils/import/validateImportData";
+import { normalizeImportData } from "../utils/import/normalizeImportData";
 import { useEstimatorStore } from "../store/useEstimatorStore";
 
+function buildJsonFilename(projectName) {
+  const safeName = (projectName || "contact-center-estimate").trim();
+  return `${safeName}.json`;
+}
+
+function buildExcelFilename(projectName) {
+  const safeName = (projectName || "contact-center-estimate").trim();
+  return `${safeName}.xlsx`;
+}
+
 export function useExportManager({ projectState, calcState, setters }) {
-  const showToast = useEstimatorStore((state) => state.showToast);
+  const showToast = useEstimatorStore((s) => s.showToast);
 
-  const {
-    projectName,
-    activeTab,
-    itemsBySolution,
-    scaleFactor,
-    riskFactor,
-    mgmtRate,
-    savedAt,
-  } = projectState;
-
-  const {
-    solutionTotals,
-    grandBaseTotal,
-    scaledTotal,
-    riskAppliedTotal,
-    mgmtMd,
-    finalTotal,
-  } = calcState;
-
-  const {
-    setProjectId,
-    setActiveTab,
-    setProjectName,
-    setItemsBySolution,
-    setScaleFactor,
-    setRiskFactor,
-    setMgmtRate,
-    setSavedAt,
-    setIsDirty,
-  } = setters;
-
-  const downloadJson = () => {
+  const downloadJson = useCallback(() => {
     try {
-      const payload = {
-        ...toExportPayload({
-          activeTab,
-          projectName,
-          itemsBySolution,
-          scaleFactor,
-          riskFactor,
-          mgmtRate,
-          savedAt,
-        }),
-        exportedAt: new Date().toISOString(),
-      };
-
-      downloadJsonFile({
-        projectName,
-        payload,
+      const payload = buildProjectExportPayload({
+        projectState,
+        calcState,
       });
 
-      showToast("JSON 파일 저장 완료", "emerald");
+      const jsonText = JSON.stringify(payload, null, 2);
+      const blob = new Blob([jsonText], {
+        type: "application/json;charset=utf-8",
+      });
+
+      downloadFile(blob, buildJsonFilename(projectState.projectName));
+      showToast("JSON 내보내기 완료", "emerald");
     } catch (error) {
       console.error(error);
-      showToast("JSON 저장 실패", "red");
+      showToast("JSON 내보내기 실패", "red");
     }
-  };
+  }, [projectState, calcState, showToast]);
 
-  const downloadExcel = () => {
+  const downloadExcel = useCallback(() => {
     try {
-      const xml = buildExcelXml({
-        projectName,
-        activeTab,
-        itemsBySolution,
-        solutionTotals,
-        grandBaseTotal,
-        scaledTotal,
-        riskAppliedTotal,
-        mgmtRate,
-        mgmtMd,
-        finalTotal,
-        scaleFactor,
-        riskFactor,
-        savedAt,
+      const rows = mapEstimatorToExcelRows({
+        projectState,
+        calcState,
       });
 
-      downloadExcelFile({
-        projectName,
-        xml,
-      });
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
 
-      showToast("엑셀 파일 저장 완료", "emerald");
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Estimate");
+      XLSX.writeFile(workbook, buildExcelFilename(projectState.projectName));
+
+      showToast("Excel 내보내기 완료", "emerald");
     } catch (error) {
       console.error(error);
-      showToast("엑셀 저장 실패", "red");
+      showToast("Excel 내보내기 실패", "red");
     }
-  };
+  }, [projectState, calcState, showToast]);
 
-  const importJson = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  const importJson = useCallback(async (file) => {
     try {
-      const text = await readJsonFile(file);
-      const parsed = JSON.parse(text);
+      const parsed = await readJsonFile(file);
 
-      if (!parsed.itemsBySolution || !parsed.projectName) {
-        throw new Error("형식이 올바르지 않은 파일입니다.");
+      const validation = validateImportData(parsed);
+      if (!validation.valid) {
+        showToast(validation.message, "red");
+        return;
       }
 
-      setProjectId(null);
-      setActiveTab(parsed.activeTab || "pbx");
-      setProjectName(parsed.projectName || "새 컨택센터 프로젝트");
-      setItemsBySolution(parsed.itemsBySolution || deepCloneItems());
-      setScaleFactor(Number(parsed.scaleFactor ?? 1.0));
-      setRiskFactor(Number(parsed.riskFactor ?? 1.0));
-      setMgmtRate(Number(parsed.mgmtRate ?? 10));
-      setSavedAt(parsed.savedAt || "");
-      setIsDirty(true);
+      const normalized = normalizeImportData(parsed);
 
-      showToast("JSON 불러오기 완료", "emerald");
+      setters.setProjectId("");
+      setters.setProjectName(normalized.projectName);
+      setters.setActiveTab(normalized.activeTab);
+      setters.setItemsBySolution(normalized.itemsBySolution);
+      setters.setScaleFactor(normalized.scaleFactor);
+      setters.setRiskFactor(normalized.riskFactor);
+      setters.setMgmtRate(normalized.mgmtRate);
+      setters.setSavedAt(normalized.savedAt);
+      setters.setIsDirty(true);
+
+      showToast("JSON 가져오기 완료", "emerald");
     } catch (error) {
       console.error(error);
-      showToast("JSON 불러오기 실패", "red");
-      alert("JSON 파일을 불러오지 못했습니다. 파일 형식을 확인해 주세요.");
-    } finally {
-      event.target.value = "";
+      showToast(error.message || "JSON 가져오기 실패", "red");
     }
-  };
+  }, [setters, showToast]);
 
   return {
     downloadJson,

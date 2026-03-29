@@ -90,3 +90,4 @@ export const riskOptions = [
 
 export const FILE_VERSION = "2.0";
 export const TABLE_NAME = "estimation_projects";
+export const VERSION_TABLE_NAME = "estimation_project_versions";
