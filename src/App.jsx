@@ -1,22 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React from "react";
 
-import HeaderBar from "./components/HeaderBar";
-import ProjectListPanel from "./components/ProjectListPanel";
-import DetailTable from "./components/DetailTable";
-import RightSidebar from "./components/RightSidebar";
-import Toast from "./components/Toast";
-import SolutionTabs from "./components/SolutionTabs";
-import SummaryView from "./components/SummaryView";
-import VersionHistoryModal from "./components/VersionHistoryModal";
+import HeaderBar from "./features/layout/components/HeaderBar";
+import ProjectSelectorBar from "./features/projects/components/ProjectSelectorBar";
+import DetailTable from "./features/estimator/components/DetailTable";
+import RightSidebar from "./features/layout/components/RightSidebar";
+import Toast from "./features/layout/components/Toast";
+import SolutionTabs from "./features/estimator/components/SolutionTabs";
+import SummaryView from "./features/estimator/components/SummaryView";
+import VersionHistoryModal from "./features/projects/components/VersionHistoryModal";
 
-import { useExportManager } from "./hooks/useExportManager";
-import { useEstimatorStore } from "./store/useEstimatorStore";
-import { useHeaderModel } from "./hooks/useHeaderModel";
-import { useProjectPanelModel } from "./hooks/useProjectPanelModel";
-import { useEstimatorViewModel } from "./hooks/useEstimatorViewModel";
 import { useToastState } from "./hooks/useToastState";
 import { useAutoSave } from "./hooks/useAutoSave";
-import { getAppVersion } from "./utils/appVersion";
+import { getAppVersion } from "./shared/lib/appVersion";
+import { useAppPageModel } from "./app/useAppPageModel";
 
 function GlobalToast() {
   const toast = useToastState();
@@ -25,191 +21,62 @@ function GlobalToast() {
 
 export default function ContactCenterEffortEstimator() {
   const appVersion = getAppVersion();
-  const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
+  const page = useAppPageModel();
 
   useAutoSave();
-
-  const projectId = useEstimatorStore((s) => s.projectId);
-  const activeTab = useEstimatorStore((s) => s.activeTab);
-  const projectName = useEstimatorStore((s) => s.projectName);
-  const itemsBySolution = useEstimatorStore((s) => s.itemsBySolution);
-  const scaleFactor = useEstimatorStore((s) => s.scaleFactor);
-  const riskFactor = useEstimatorStore((s) => s.riskFactor);
-  const mgmtRate = useEstimatorStore((s) => s.mgmtRate);
-  const savedAt = useEstimatorStore((s) => s.savedAt);
-
-  const versions = useEstimatorStore((s) => s.versions);
-  const isVersionsBusy = useEstimatorStore((s) => s.isVersionsBusy);
-  const refreshVersions = useEstimatorStore((s) => s.refreshVersions);
-  const restoreVersion = useEstimatorStore((s) => s.restoreVersion);
-
-  const setProjectId = useEstimatorStore((s) => s.setProjectId);
-  const setActiveTab = useEstimatorStore((s) => s.setActiveTab);
-  const setProjectNameWithDirty = useEstimatorStore(
-    (s) => s.setProjectNameWithDirty
-  );
-  const setItemsBySolution = useEstimatorStore((s) => s.setItemsBySolution);
-  const setScaleFactor = useEstimatorStore((s) => s.setScaleFactor);
-  const setRiskFactor = useEstimatorStore((s) => s.setRiskFactor);
-  const setMgmtRate = useEstimatorStore((s) => s.setMgmtRate);
-  const setSavedAt = useEstimatorStore((s) => s.setSavedAt);
-  const setIsDirty = useEstimatorStore((s) => s.setIsDirty);
-
-  const refreshProjects = useEstimatorStore((s) => s.refreshProjects);
-
-  useEffect(() => {
-    refreshProjects();
-  }, [refreshProjects]);
-
-  useEffect(() => {
-    if (isVersionModalOpen && projectId) {
-      refreshVersions();
-    }
-  }, [isVersionModalOpen, projectId, refreshVersions]);
-
-  const estimatorView = useEstimatorViewModel();
-  const projectPanel = useProjectPanelModel();
-
-  const projectState = useMemo(
-    () => ({
-      projectName,
-      activeTab,
-      itemsBySolution,
-      scaleFactor,
-      riskFactor,
-      mgmtRate,
-      savedAt,
-    }),
-    [
-      projectName,
-      activeTab,
-      itemsBySolution,
-      scaleFactor,
-      riskFactor,
-      mgmtRate,
-      savedAt,
-    ]
-  );
-
-  const calcState = useMemo(
-    () => ({
-      solutionTotals: estimatorView.solutionTotals,
-      grandBaseTotal: estimatorView.grandBaseTotal,
-      scaledTotal: estimatorView.scaledTotal,
-      riskAppliedTotal: estimatorView.riskAppliedTotal,
-      mgmtMd: estimatorView.mgmtMd,
-      finalTotal: estimatorView.finalTotal,
-    }),
-    [
-      estimatorView.solutionTotals,
-      estimatorView.grandBaseTotal,
-      estimatorView.scaledTotal,
-      estimatorView.riskAppliedTotal,
-      estimatorView.mgmtMd,
-      estimatorView.finalTotal,
-    ]
-  );
-
-  const setters = useMemo(
-    () => ({
-      setProjectId,
-      setActiveTab,
-      setProjectName: setProjectNameWithDirty,
-      setItemsBySolution,
-      setScaleFactor,
-      setRiskFactor,
-      setMgmtRate,
-      setSavedAt,
-      setIsDirty,
-    }),
-    [
-      setProjectId,
-      setActiveTab,
-      setProjectNameWithDirty,
-      setItemsBySolution,
-      setScaleFactor,
-      setRiskFactor,
-      setMgmtRate,
-      setSavedAt,
-      setIsDirty,
-    ]
-  );
-
-  const importExportActions = useExportManager({
-    projectState,
-    calcState,
-    setters,
-  });
-
-  const versionActions = useMemo(
-    () => ({
-      openVersionHistory: () => setIsVersionModalOpen(true),
-    }),
-    []
-  );
-
-  const { projectMeta, status, actions } = useHeaderModel(
-    importExportActions,
-    versionActions
-  );
-
-  async function handleRestoreVersion(version) {
-    await restoreVersion(version);
-    setIsVersionModalOpen(false);
-  }
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#eef4ff_0%,#f7f9fc_180px,#f5f7fb_100%)]">
       <div className="mx-auto max-w-[1360px] p-4">
         <div className="space-y-3">
           <HeaderBar
-            projectMeta={projectMeta}
-            status={status}
-            actions={actions}
+            projectMeta={page.projectMeta}
+            status={page.status}
+            actions={page.actions}
           />
 
-          <ProjectListPanel
-            projects={projectPanel.projects}
-            projectId={projectPanel.projectId}
-            loadProject={projectPanel.loadProject}
-            refreshProjects={projectPanel.refreshProjects}
-            dbReady={projectPanel.dbReady}
-            isBusy={projectPanel.isBusy}
+          <ProjectSelectorBar
+            projects={page.projectSelector.projects}
+            projectId={page.projectSelector.projectId}
+            loadProject={page.projectSelector.loadProject}
+            refreshProjects={page.projectSelector.refreshProjects}
+            dbReady={page.projectSelector.dbReady}
+            isBusy={page.projectSelector.isBusy}
           />
 
           <SolutionTabs
-            activeTab={estimatorView.activeTab}
-            setActiveTab={estimatorView.setActiveTab}
+            activeTab={page.estimatorView.activeTab}
+            setActiveTab={page.estimatorView.setActiveTab}
           />
         </div>
 
-        {estimatorView.activeTab === "summary" ? (
+        {page.estimatorView.activeTab === "summary" ? (
           <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_340px] lg:items-stretch">
             <div className="min-w-0">
               <SummaryView
-                solutionTotals={estimatorView.solutionTotals}
-                grandBaseTotal={estimatorView.grandBaseTotal}
+                solutionTotals={page.estimatorView.solutionTotals}
+                grandBaseTotal={page.estimatorView.grandBaseTotal}
               />
             </div>
 
             <div className="min-w-0 lg:h-full">
-              <RightSidebar {...estimatorView.sidebarModel} isSummary />
+              <RightSidebar {...page.estimatorView.sidebarModel} isSummary />
             </div>
           </div>
         ) : (
           <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_340px] lg:items-stretch">
             <div className="min-w-0 lg:h-full">
               <DetailTable
-                activeTab={estimatorView.activeTab}
-                currentItems={estimatorView.currentItems}
-                updateItem={estimatorView.detailActions.updateItem}
-                addItem={estimatorView.detailActions.addItem}
-                removeItem={estimatorView.detailActions.removeItem}
+                activeTab={page.estimatorView.activeTab}
+                currentItems={page.estimatorView.currentItems}
+                updateItem={page.estimatorView.detailActions.updateItem}
+                addItem={page.estimatorView.detailActions.addItem}
+                removeItem={page.estimatorView.detailActions.removeItem}
               />
             </div>
 
             <div className="min-w-0 lg:h-full">
-              <RightSidebar {...estimatorView.sidebarModel} />
+              <RightSidebar {...page.estimatorView.sidebarModel} />
             </div>
           </div>
         )}
@@ -221,11 +88,11 @@ export default function ContactCenterEffortEstimator() {
       </div>
 
       <VersionHistoryModal
-        isOpen={isVersionModalOpen}
-        onClose={() => setIsVersionModalOpen(false)}
-        versions={versions}
-        isLoading={isVersionsBusy}
-        onRestore={handleRestoreVersion}
+        isOpen={page.isVersionModalOpen}
+        onClose={() => page.setIsVersionModalOpen(false)}
+        versions={page.versions}
+        isLoading={page.isVersionsBusy}
+        onRestore={page.handleRestoreVersion}
       />
 
       <GlobalToast />

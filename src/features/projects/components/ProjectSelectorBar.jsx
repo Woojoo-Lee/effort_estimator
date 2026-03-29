@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
-import ActionButton from "./ui/ActionButton";
+import ActionButton from "../../../shared/ui/ActionButton";
 
-export default function ProjectListPanel({
+export default function ProjectSelectorBar({
   projects,
   projectId,
   loadProject,

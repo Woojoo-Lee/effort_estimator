@@ -1,6 +1,6 @@
 import React from "react";
-import { SOLUTIONS } from "../utils/constants";
-import { fmt } from "../utils/estimatorMath";
+import { SOLUTIONS } from "../../../shared/constants/constants";
+import { fmt } from "../../../shared/lib/estimatorMath";
 
 function Panel({ title, children, subtle = false }) {
   return (

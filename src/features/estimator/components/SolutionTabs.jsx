@@ -1,5 +1,5 @@
 import React from "react";
-import { SOLUTIONS } from "../utils/constants";
+import { SOLUTIONS } from "../../../shared/constants/constants";
 
 export default function SolutionTabs({ activeTab, setActiveTab }) {
   return (

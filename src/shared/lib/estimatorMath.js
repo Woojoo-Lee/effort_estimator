@@ -1,4 +1,4 @@
-import { DEFAULT_ITEMS } from "./constants";
+import { DEFAULT_ITEMS } from "../constants/constants";
 
 export function fmt(n) {
   return new Intl.NumberFormat("ko-KR", {

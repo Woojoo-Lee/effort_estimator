@@ -1,8 +1,8 @@
 import React from "react";
-import { scaleOptions, riskOptions } from "../utils/constants";
-import { fmt } from "../utils/estimatorMath";
-import SmallInput from "./ui/SmallInput";
-import SmallSelect from "./ui/SmallSelect";
+import { scaleOptions, riskOptions } from "../../../shared/constants/constants";
+import { fmt } from "../../../shared/lib/estimatorMath";
+import SmallInput from "../../../shared/ui/SmallInput";
+import SmallSelect from "../../../shared/ui/SmallSelect";
 
 function Panel({ title, children, subtle = false, className = "" }) {
   return (

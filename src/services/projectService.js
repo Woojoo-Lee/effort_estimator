@@ -1,4 +1,4 @@
-import { FILE_VERSION, TABLE_NAME } from "../utils/constants";
+import { FILE_VERSION, TABLE_NAME } from "../shared/constants/constants";
 import { supabase } from "./supabaseClient";
 
 const VERSION_TABLE_NAME = "estimation_project_versions";

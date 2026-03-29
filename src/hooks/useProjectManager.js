@@ -11,7 +11,7 @@ import { isSupabaseReady } from "../services/supabaseClient";
 import {
   deepCloneItems,
   emptyProjectState,
-} from "../utils/estimatorMath";
+} from "../shared/lib/estimatorMath";
 
 export function useProjectManager(showToast) {
   const initial = emptyProjectState();

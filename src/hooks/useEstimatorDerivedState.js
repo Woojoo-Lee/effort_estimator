@@ -7,7 +7,7 @@ import {
   calcRiskAppliedTotal,
   calcMgmtMd,
   calcFinalTotal,
-} from "../utils/estimatorMath";
+} from "../shared/lib/estimatorMath";
 
 export function useEstimatorDerivedState({
   itemsBySolution,

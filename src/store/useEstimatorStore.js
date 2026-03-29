@@ -14,7 +14,7 @@ import { isSupabaseReady } from "../services/supabaseClient";
 import {
   deepCloneItems,
   emptyProjectState,
-} from "../utils/estimatorMath";
+} from "../shared/lib/estimatorMath";
 
 const STORE_VERSION = 1;
 

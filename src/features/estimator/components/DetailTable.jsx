@@ -1,9 +1,9 @@
 import React from "react";
-import { SOLUTIONS, difficultyOptions, complexityOptions } from "../utils/constants";
-import { calcItemMd, fmt } from "../utils/estimatorMath";
-import ActionButton from "./ui/ActionButton";
-import SmallInput from "./ui/SmallInput";
-import SmallSelect from "./ui/SmallSelect";
+import { SOLUTIONS, difficultyOptions, complexityOptions } from "../../../shared/constants/constants";
+import { calcItemMd, fmt } from "../../../shared/lib/estimatorMath";
+import ActionButton from "../../../shared/ui/ActionButton";
+import SmallInput from "../../../shared/ui/SmallInput";
+import SmallSelect from "../../../shared/ui/SmallSelect";
 
 function Panel({ title, children, right }) {
   return (
