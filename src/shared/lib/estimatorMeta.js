@@ -117,14 +117,22 @@ export function getRiskOptions(codebooks) {
   return getNumericCodeOptions(codebooks, "RISK", riskOptions);
 }
 
-export function buildItemsBySolution(itemMeta) {
+export function buildItemsBySolution(itemMeta, solutionKeys = []) {
   const activeItems = (itemMeta || [])
     .filter((item) => item.is_active !== false)
     .sort((a, b) => Number(a.sort_order || a.id || 0) - Number(b.sort_order || b.id || 0));
+  const keys = solutionKeys.length > 0
+    ? solutionKeys
+    : [...new Set(activeItems.map((item) => item.solution_code).filter(Boolean))];
 
-  if (activeItems.length === 0) {
+  if (activeItems.length === 0 && keys.length === 0) {
     return clone(DEFAULT_ITEMS);
   }
+
+  const initialItemsBySolution = keys.reduce((result, key) => {
+    result[key] = [];
+    return result;
+  }, {});
 
   return activeItems.reduce((result, item) => {
     const solutionCode = item.solution_code;
@@ -143,7 +151,7 @@ export function buildItemsBySolution(itemMeta) {
     });
 
     return result;
-  }, {});
+  }, initialItemsBySolution);
 }
 
 export function getPolicyValue(policy, policyCode, fallback) {

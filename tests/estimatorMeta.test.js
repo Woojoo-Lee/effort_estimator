@@ -88,4 +88,32 @@ describe("estimatorMeta", () => {
       },
     ]);
   });
+
+  it("solutionKeys 기준으로 빈 솔루션 배열을 보장한다", () => {
+    const itemsBySolution = buildItemsBySolution(
+      [
+        {
+          solution_code: "pbx",
+          item_code: "PBX_LOGIN",
+          item_name: "로그인 연동",
+          default_base_md: "2.00",
+          default_difficulty: 1,
+          default_complexity: 2,
+          sort_order: 1,
+          is_active: true,
+        },
+      ],
+      ["pbx", "cti"]
+    );
+
+    expect(itemsBySolution.pbx).toHaveLength(1);
+    expect(itemsBySolution.cti).toEqual([]);
+  });
+
+  it("itemMeta가 비어 있어도 solutionKeys가 있으면 빈 배열을 반환한다", () => {
+    expect(buildItemsBySolution([], ["pbx", "cti"])).toEqual({
+      pbx: [],
+      cti: [],
+    });
+  });
 });

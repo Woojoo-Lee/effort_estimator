@@ -14,39 +14,29 @@ import {
 } from "../services/projectService";
 import { isSupabaseReady } from "../services/supabaseClient";
 
-import {
-  deepCloneItems,
-  emptyProjectState,
-} from "../shared/lib/estimatorMath";
-import {
-  buildItemsBySolution,
-  getPolicyValue,
-} from "../shared/lib/estimatorMeta";
+import { getPolicyValue } from "../shared/lib/estimatorMeta";
+import { buildDefaultProjectState } from "../shared/lib/projectDefaults";
 
 const STORE_VERSION = 1;
 
 // =========================================
 // Helpers
 // =========================================
-const createFreshProjectState = ({ itemMeta = [], policy = {} } = {}) => {
-  const initial = emptyProjectState();
+const createFreshProjectState = ({
+  itemMeta = [],
+  policy = {},
+  codebooks = [],
+} = {}) => {
+  const initial = buildDefaultProjectState({ itemMeta, policy, codebooks });
 
   return {
     projectId: initial.id,
-    activeTab: getPolicyValue(policy, "DEFAULT_ACTIVE_TAB", initial.activeTab),
+    activeTab: initial.activeTab,
     projectName: initial.projectName,
-    itemsBySolution: buildItemsBySolution(itemMeta),
-    scaleFactor: getPolicyValue(
-      policy,
-      "DEFAULT_SCALE_FACTOR",
-      initial.scaleFactor
-    ),
-    riskFactor: getPolicyValue(
-      policy,
-      "DEFAULT_RISK_FACTOR",
-      initial.riskFactor
-    ),
-    mgmtRate: getPolicyValue(policy, "DEFAULT_MGMT_RATE", initial.mgmtRate),
+    itemsBySolution: initial.itemsBySolution,
+    scaleFactor: initial.scaleFactor,
+    riskFactor: initial.riskFactor,
+    mgmtRate: initial.mgmtRate,
     savedAt: initial.savedAt,
     isDirty: false,
   };
@@ -154,6 +144,7 @@ export const useEstimatorStore = create(
             );
           }
 
+          const codebooks = codesResult.data || [];
           const itemMeta = itemsResult.data || [];
           const policy = {};
           (policyResult.data || []).forEach((row) => {
@@ -165,12 +156,12 @@ export const useEstimatorStore = create(
             !state.projectId && !state.savedAt && !state.isDirty;
 
           set({
-            codebooks: codesResult.data || [],
+            codebooks,
             itemMeta,
             policy,
             isMetaReady: true,
             ...(shouldApplyMetaDefaults
-              ? createFreshProjectState({ itemMeta, policy })
+              ? createFreshProjectState({ itemMeta, policy, codebooks })
               : {}),
           });
         },
@@ -288,6 +279,7 @@ export const useEstimatorStore = create(
           const next = createFreshProjectState({
             itemMeta: state.itemMeta,
             policy: state.policy,
+            codebooks: state.codebooks,
           });
 
           set({
@@ -463,6 +455,7 @@ export const useEstimatorStore = create(
           const defaults = createFreshProjectState({
             itemMeta: get().itemMeta,
             policy: get().policy,
+            codebooks: get().codebooks,
           });
 
           set({
@@ -528,6 +521,7 @@ export const useEstimatorStore = create(
           const defaults = createFreshProjectState({
             itemMeta: get().itemMeta,
             policy: get().policy,
+            codebooks: get().codebooks,
           });
 
           set({
