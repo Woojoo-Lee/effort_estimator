@@ -7,8 +7,8 @@ export default function SolutionTabs({ activeTab, setActiveTab }) {
   const tabs = getSolutionTabs(codebooks);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2">
-      <div className="grid grid-cols-7 gap-2">
+    <div className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-2">
         {tabs.map((tab) => (
           <button
             key={tab.key}

@@ -20,7 +20,7 @@ export default function EstimatorPage() {
 
   return (
     <>
-      <div className="mx-auto max-w-[1360px] p-4">
+      <div className="mx-auto w-full max-w-[1680px] p-4">
         <div className="space-y-3">
           <HeaderBar
             projectMeta={page.projectMeta}
@@ -44,7 +44,7 @@ export default function EstimatorPage() {
         </div>
 
         {page.estimatorView.activeTab === "summary" ? (
-          <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_340px] lg:items-stretch">
+          <div className="mt-3 grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_360px] xl:items-stretch">
             <div className="min-w-0">
               <SummaryView
                 solutionTotals={page.estimatorView.solutionTotals}
@@ -52,13 +52,13 @@ export default function EstimatorPage() {
               />
             </div>
 
-            <div className="min-w-0 lg:h-full">
+            <div className="min-w-0 xl:h-full">
               <RightSidebar {...page.estimatorView.sidebarModel} isSummary />
             </div>
           </div>
         ) : (
-          <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_340px] lg:items-stretch">
-            <div className="min-w-0 lg:h-full">
+          <div className="mt-3 grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_360px] xl:items-stretch">
+            <div className="min-w-0 xl:h-full">
               <DetailTable
                 activeTab={page.estimatorView.activeTab}
                 currentItems={page.estimatorView.currentItems}
@@ -68,7 +68,7 @@ export default function EstimatorPage() {
               />
             </div>
 
-            <div className="min-w-0 lg:h-full">
+            <div className="min-w-0 xl:h-full">
               <RightSidebar {...page.estimatorView.sidebarModel} />
             </div>
           </div>
