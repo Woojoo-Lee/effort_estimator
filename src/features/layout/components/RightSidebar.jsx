@@ -40,6 +40,9 @@ export default function RightSidebar({
 }) {
   return (
     <div className="flex h-full flex-col gap-4">
+      {/* =========================
+          환경 변수
+      ========================= */}
       <Panel title="환경 변수 설정" subtle className="shrink-0">
         <div className="space-y-4 text-sm">
           <div>
@@ -90,9 +93,12 @@ export default function RightSidebar({
             <div className="flex items-center gap-2">
               <SmallInput
                 type="number"
+                step="0.01"
                 value={mgmtRate}
                 onChange={(e) => {
-                  setMgmtRate(Number(e.target.value || 0));
+                  const num = parseFloat(e.target.value || 0);
+                  const fixed = Math.round(num * 100) / 100;
+                  setMgmtRate(fixed);
                   markDirty();
                 }}
               />
@@ -102,6 +108,9 @@ export default function RightSidebar({
         </div>
       </Panel>
 
+      {/* =========================
+          공수 요약
+      ========================= */}
       <Panel title="공수 산출 요약" subtle className="flex-1">
         <div className="flex h-full flex-col justify-between text-sm">
           <div className="space-y-2">
@@ -128,17 +137,25 @@ export default function RightSidebar({
             </div>
 
             <div className="flex justify-between">
-              <span className="text-slate-500">관리 ({mgmtRate}%)</span>
+              <span className="text-slate-500">
+                관리 ({mgmtRate}%)
+              </span>
               <strong>{fmt(mgmtMd)} M/M</strong>
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl bg-blue-50 p-4 text-center">
-            <div className="mb-1 text-xs font-bold text-blue-600">
+          {/* =========================
+              최종 공수
+          ========================= */}
+          <div className="mt-4 rounded-2xl bg-gradient-to-br from-blue-50 to-white p-5 text-center">
+            <div className="mb-2 text-xs font-bold text-blue-600">
               최종 공수
             </div>
-            <div className="text-3xl font-extrabold text-blue-600">
-              {fmt(finalTotal)} M/M
+            <div className="text-4xl font-extrabold text-blue-600">
+              {fmt(finalTotal)}
+              <span className="ml-1 text-lg font-semibold text-blue-400">
+                M/M
+              </span>
             </div>
           </div>
         </div>

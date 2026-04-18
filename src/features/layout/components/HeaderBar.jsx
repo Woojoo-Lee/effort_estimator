@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 function StatusBadge({ children, tone = "slate" }) {
   const toneClass = {
@@ -11,18 +11,14 @@ function StatusBadge({ children, tone = "slate" }) {
 
   return (
     <span
-      className={`rounded-full px-2.5 py-1 text-xs font-medium ${toneClass[tone]}`}
+      className={`animate-fadeIn rounded-full px-2.5 py-1 text-xs font-medium transition-all duration-300 ${toneClass[tone]}`}
     >
       {children}
     </span>
   );
 }
 
-function SecondaryButton({
-  children,
-  onClick,
-  disabled = false,
-}) {
+function SecondaryButton({ children, onClick, disabled = false }) {
   return (
     <button
       onClick={onClick}
@@ -56,11 +52,7 @@ function AccentButton({
   );
 }
 
-export default function HeaderBar({
-  projectMeta,
-  status,
-  actions,
-}) {
+export default function HeaderBar({ projectMeta, status, actions }) {
   const { projectId, projectName, savedAt } = projectMeta;
   const { dbReady, isBusy, saveStatus } = status;
 
@@ -73,6 +65,22 @@ export default function HeaderBar({
     showPrint,
     openVersionHistory,
   } = actions;
+
+  const [displayStatus, setDisplayStatus] = useState(saveStatus);
+
+  useEffect(() => {
+    if (saveStatus === "saved") {
+      setDisplayStatus("saved");
+
+      const timer = setTimeout(() => {
+        setDisplayStatus("idle");
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    }
+
+    setDisplayStatus(saveStatus);
+  }, [saveStatus]);
 
   return (
     <div className="flex flex-col gap-4 rounded-t-2xl border border-slate-200 border-b-0 bg-white p-5 shadow-sm">
@@ -90,10 +98,18 @@ export default function HeaderBar({
 
         <div className="flex flex-wrap items-center gap-2">
           {!dbReady && <StatusBadge tone="red">DB 미연결</StatusBadge>}
-          {saveStatus === "dirty" && <StatusBadge tone="amber">수정됨</StatusBadge>}
-          {saveStatus === "saving" && <StatusBadge tone="blue">저장 중...</StatusBadge>}
-          {saveStatus === "saved" && <StatusBadge tone="emerald">저장됨</StatusBadge>}
-          {saveStatus === "error" && <StatusBadge tone="red">저장 실패</StatusBadge>}
+          {displayStatus === "dirty" && (
+            <StatusBadge tone="amber">수정됨</StatusBadge>
+          )}
+          {displayStatus === "saving" && (
+            <StatusBadge tone="blue">저장 중...</StatusBadge>
+          )}
+          {displayStatus === "saved" && (
+            <StatusBadge tone="emerald">저장됨</StatusBadge>
+          )}
+          {displayStatus === "error" && (
+            <StatusBadge tone="red">저장 실패</StatusBadge>
+          )}
           {isBusy && <StatusBadge tone="slate">처리 중...</StatusBadge>}
         </div>
       </div>

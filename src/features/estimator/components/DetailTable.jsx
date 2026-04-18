@@ -17,6 +17,39 @@ function Panel({ title, children, right }) {
   );
 }
 
+function moveFocus(e, rowIndex, colIndex) {
+  if (e.key !== "Enter") return;
+
+  e.preventDefault();
+
+  const next = document.querySelector(
+    `[data-cell="${rowIndex + 1}-${colIndex}"]`
+  );
+
+  if (next) {
+      next.focus();
+    if (typeof next.select === "function") {
+      next.select();
+    }
+  }
+}
+
+function handleAddItem() {
+  addItem(activeTab);
+
+  setTimeout(() => {
+    const rows = document.querySelectorAll(`[data-row="${activeTab}"]`);
+    const lastRow = rows[rows.length - 1];
+
+    const firstInput = lastRow?.querySelector("input");
+
+    if (firstInput) {
+      firstInput.focus();
+      firstInput.select?.();
+    }
+  }, 0);
+}
+
 export default function DetailTable({
   activeTab,
   currentItems,
@@ -49,7 +82,7 @@ export default function DetailTable({
               <th className="w-[90px] py-3 pr-3 text-center">기본공수 (M/M)</th>
               <th className="w-[140px] py-3 pr-3 text-center">난이도</th>
               <th className="w-[140px] py-3 pr-3 text-center">복잡도</th>
-              <th className="w-[90px] py-3 pr-3 text-center">산정공수 (M/M)</th>
+              <th className="w-[90px] py-3 pr-3 text-right">산정공수 (M/M)</th>
               <th className="w-[220px] py-3 pr-3">비고</th>
               <th className="w-[60px] py-3 pr-4 text-center">삭제</th>
             </tr>
@@ -59,19 +92,23 @@ export default function DetailTable({
             {currentItems.map((item, index) => (
               <tr
                 key={`${activeTab}-${index}`}
+                data-row={activeTab}
                 className="border-b border-slate-100 align-top text-sm"
               >
                 <td className="py-2 pr-3 pl-4">
                   <SmallInput
+                    data-cell={`${index}-0`}
                     value={item.name}
                     onChange={(e) =>
                       updateItem(activeTab, index, "name", e.target.value)
                     }
+                    onKeyDown={(e) => moveFocus(e, index, 0)}
                   />
                 </td>
 
                 <td className="py-2 pr-3">
                   <SmallInput
+                    data-cell={`${index}-1`}
                     type="number"
                     step="0.01"
                     value={item.baseMd}
@@ -82,12 +119,14 @@ export default function DetailTable({
 
                       updateItem(activeTab, index, "baseMd", fixed);
                     }}
+                    onKeyDown={(e) => moveFocus(e, index, 1)}
                     className="text-center font-semibold"
                   />
                 </td>
 
                 <td className="py-2 pr-3">
                   <SmallSelect
+                    data-cell={`${index}-2`}
                     value={item.difficulty}
                     onChange={(e) =>
                       updateItem(
@@ -97,6 +136,7 @@ export default function DetailTable({
                         Number(e.target.value)
                       )
                     }
+                    onKeyDown={(e) => moveFocus(e, index, 2)}
                   >
                     {difficultyOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -108,6 +148,7 @@ export default function DetailTable({
 
                 <td className="py-2 pr-3">
                   <SmallSelect
+                    data-cell={`${index}-3`}
                     value={item.complexity}
                     onChange={(e) =>
                       updateItem(
@@ -117,6 +158,7 @@ export default function DetailTable({
                         Number(e.target.value)
                       )
                     }
+                    onKeyDown={(e) => moveFocus(e, index, 3)}
                   >
                     {complexityOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -126,7 +168,7 @@ export default function DetailTable({
                   </SmallSelect>
                 </td>
 
-                <td className="py-2 pr-3 text-center align-middle">
+                <td className="py-2 pr-3 text-right align-middle">
                   <div className="rounded-xl bg-blue-50 px-3 py-2 font-bold text-blue-600">
                     {fmt(calcItemMd(item))}
                   </div>
@@ -134,11 +176,13 @@ export default function DetailTable({
 
                 <td className="py-2 pr-3">
                   <SmallInput
+                    data-cell={`${index}-5`}
                     type="text"
                     value={item.note || ""}
                     onChange={(e) =>
                       updateItem(activeTab, index, "note", e.target.value)
                     }
+                    onKeyDown={(e) => moveFocus(e, index, 5)}
                     placeholder="비고 입력"
                   />
                 </td>

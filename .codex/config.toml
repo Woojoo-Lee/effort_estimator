@@ -1,0 +1,10 @@
+model = "gpt-5.4"
+
+[ide]
+approval_policy = "on-request"
+
+[sandbox]
+mode = "workspace-write"
+
+[project]
+name = "effort_estimator"
