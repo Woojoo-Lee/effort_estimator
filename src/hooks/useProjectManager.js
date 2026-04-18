@@ -14,7 +14,7 @@ import {
 } from "../shared/lib/estimatorMath";
 
 export function useProjectManager(showToast) {
-  const initial = emptyProjectState();
+  const initial = buildDefaultProjectState(policy, itemMeta);
 
   const [projectId, setProjectId] = useState(initial.id);
   const [activeTab, setActiveTab] = useState(initial.activeTab);

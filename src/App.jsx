@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 import HeaderBar from "./features/layout/components/HeaderBar";
 import ProjectSelectorBar from "./features/projects/components/ProjectSelectorBar";
@@ -13,6 +13,7 @@ import { useToastState } from "./hooks/useToastState";
 import { useAutoSave } from "./hooks/useAutoSave";
 import { getAppVersion } from "./shared/lib/appVersion";
 import { useAppPageModel } from "./app/useAppPageModel";
+import { useEstimatorStore } from "./store/useEstimatorStore";
 
 function GlobalToast() {
   const toast = useToastState();
@@ -22,8 +23,13 @@ function GlobalToast() {
 export default function ContactCenterEffortEstimator() {
   const appVersion = getAppVersion();
   const page = useAppPageModel();
+  const loadMeta = useEstimatorStore((s) => s.loadMeta);
 
   useAutoSave();
+
+  useEffect(() => {
+    loadMeta();
+  }, [loadMeta]);
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#eef4ff_0%,#f7f9fc_180px,#f5f7fb_100%)]">

@@ -134,3 +134,27 @@ export async function fetchLatestProjectVersionNo(projectId) {
 
   return { data, error };
 }
+
+export async function fetchCommonCodes() {
+  if (!supabase) {
+    return { data: [], error: null };
+  }
+
+  return supabase.from("common_code").select("*").eq("is_active", true);
+}
+
+export async function fetchEstimationItemMeta() {
+  if (!supabase) {
+    return { data: [], error: null };
+  }
+
+  return supabase.from("estimation_item_meta").select("*").eq("is_active", true);
+}
+
+export async function fetchEstimationPolicy() {
+  if (!supabase) {
+    return { data: [], error: null };
+  }
+
+  return supabase.from("estimation_policy").select("*").eq("is_active", true);
+}

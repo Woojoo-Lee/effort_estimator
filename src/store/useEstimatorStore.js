@@ -8,6 +8,9 @@ import {
   fetchProjectVersions,
   fetchLatestProjectVersionNo,
   saveProjectVersion,
+  fetchCommonCodes,
+  fetchEstimationItemMeta,
+  fetchEstimationPolicy,
 } from "../services/projectService";
 import { isSupabaseReady } from "../services/supabaseClient";
 
@@ -75,6 +78,10 @@ export const useEstimatorStore = create(
         isBusy: false,
         isVersionsBusy: false,
         dbReady: isSupabaseReady,
+        codebooks: [],
+        itemMeta: [],
+        policy: {},
+        isMetaReady: false,
 
         saveStatus: "idle",
         lastSaveError: "",
@@ -119,6 +126,32 @@ export const useEstimatorStore = create(
           set({
             toast: getDefaultToast(),
             _toastTimer: null,
+          });
+        },
+
+        loadMeta: async () => {
+          const [codesResult, itemsResult, policyResult] = await Promise.all([
+            fetchCommonCodes(),
+            fetchEstimationItemMeta(),
+            fetchEstimationPolicy(),
+          ]);
+
+          if (codesResult.error || itemsResult.error || policyResult.error) {
+            console.error(
+              codesResult.error || itemsResult.error || policyResult.error
+            );
+          }
+
+          const policy = {};
+          (policyResult.data || []).forEach((row) => {
+            policy[row.policy_code] = row.policy_value;
+          });
+
+          set({
+            codebooks: codesResult.data || [],
+            itemMeta: itemsResult.data || [],
+            policy,
+            isMetaReady: true,
           });
         },
 
