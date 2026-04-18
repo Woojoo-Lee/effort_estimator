@@ -151,6 +151,18 @@ export async function fetchEstimationItemMeta() {
   return supabase.from("estimation_item_meta").select("*").eq("is_active", true);
 }
 
+export async function fetchEstimationItemMetaRows() {
+  if (!supabase) {
+    return { data: [], error: null };
+  }
+
+  return await supabase
+    .from("estimation_item_meta")
+    .select("*")
+    .order("solution_code", { ascending: true })
+    .order("id", { ascending: true });
+}
+
 export async function fetchEstimationPolicy() {
   if (!supabase) {
     return { data: [], error: null };

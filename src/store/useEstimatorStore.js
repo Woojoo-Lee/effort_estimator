@@ -10,6 +10,7 @@ import {
   saveProjectVersion,
   fetchCommonCodes,
   fetchEstimationItemMeta,
+  fetchEstimationItemMetaRows,
   fetchEstimationPolicy,
   fetchCommonCodeRows,
   createCommonCodeRow,
@@ -92,6 +93,9 @@ export const useEstimatorStore = create(
         isCodebookRowsBusy: false,
         isCodebookSaving: false,
         lastCodebookRowsError: "",
+        itemMetaRows: [],
+        isItemMetaRowsBusy: false,
+        lastItemMetaRowsError: "",
 
         saveStatus: "idle",
         lastSaveError: "",
@@ -276,6 +280,32 @@ export const useEstimatorStore = create(
           set({ isCodebookSaving: false });
           get().showToast("코드 사용 여부를 변경했습니다.", "emerald");
           return true;
+        },
+
+        refreshItemMetaRows: async () => {
+          set({
+            isItemMetaRowsBusy: true,
+            lastItemMetaRowsError: "",
+          });
+
+          const { data, error } = await fetchEstimationItemMetaRows();
+
+          if (error) {
+            console.error(error);
+            set({
+              itemMetaRows: [],
+              isItemMetaRowsBusy: false,
+              lastItemMetaRowsError: "항목 메타 목록 조회에 실패했습니다.",
+            });
+            get().showToast("항목 메타 목록 조회에 실패했습니다.", "red");
+            return;
+          }
+
+          set({
+            itemMetaRows: data || [],
+            isItemMetaRowsBusy: false,
+            lastItemMetaRowsError: "",
+          });
         },
 
         // =========================================
