@@ -11,6 +11,10 @@ import {
   fetchCommonCodes,
   fetchEstimationItemMeta,
   fetchEstimationPolicy,
+  fetchCommonCodeRows,
+  createCommonCodeRow,
+  updateCommonCodeRow,
+  updateCommonCodeActive,
 } from "../services/projectService";
 import { isSupabaseReady } from "../services/supabaseClient";
 
@@ -84,6 +88,10 @@ export const useEstimatorStore = create(
         itemMeta: [],
         policy: {},
         isMetaReady: false,
+        codebookRows: [],
+        isCodebookRowsBusy: false,
+        isCodebookSaving: false,
+        lastCodebookRowsError: "",
 
         saveStatus: "idle",
         lastSaveError: "",
@@ -164,6 +172,110 @@ export const useEstimatorStore = create(
               ? createFreshProjectState({ itemMeta, policy, codebooks })
               : {}),
           });
+        },
+
+        refreshCodebookRows: async () => {
+          set({
+            isCodebookRowsBusy: true,
+            lastCodebookRowsError: "",
+          });
+
+          const { data, error } = await fetchCommonCodeRows();
+
+          if (error) {
+            console.error(error);
+            set({
+              codebookRows: [],
+              isCodebookRowsBusy: false,
+              lastCodebookRowsError: "코드북 목록 조회에 실패했습니다.",
+            });
+            get().showToast("코드북 목록 조회에 실패했습니다.", "red");
+            return;
+          }
+
+          set({
+            codebookRows: data || [],
+            isCodebookRowsBusy: false,
+            lastCodebookRowsError: "",
+          });
+        },
+
+        createCodebookRow: async (payload) => {
+          set({
+            isCodebookSaving: true,
+            lastCodebookRowsError: "",
+          });
+
+          const { error } = await createCommonCodeRow(payload);
+
+          if (error) {
+            console.error(error);
+            set({
+              isCodebookSaving: false,
+              lastCodebookRowsError: "코드 등록에 실패했습니다.",
+            });
+            get().showToast("코드 등록에 실패했습니다.", "red");
+            return false;
+          }
+
+          await get().refreshCodebookRows();
+          await get().loadMeta();
+
+          set({ isCodebookSaving: false });
+          get().showToast("코드 등록이 완료되었습니다.", "emerald");
+          return true;
+        },
+
+        updateCodebookRow: async (id, payload) => {
+          set({
+            isCodebookSaving: true,
+            lastCodebookRowsError: "",
+          });
+
+          const { error } = await updateCommonCodeRow(id, payload);
+
+          if (error) {
+            console.error(error);
+            set({
+              isCodebookSaving: false,
+              lastCodebookRowsError: "코드 수정에 실패했습니다.",
+            });
+            get().showToast("코드 수정에 실패했습니다.", "red");
+            return false;
+          }
+
+          await get().refreshCodebookRows();
+          await get().loadMeta();
+
+          set({ isCodebookSaving: false });
+          get().showToast("코드 수정이 완료되었습니다.", "emerald");
+          return true;
+        },
+
+        setCodebookRowActive: async (id, isActive) => {
+          set({
+            isCodebookSaving: true,
+            lastCodebookRowsError: "",
+          });
+
+          const { error } = await updateCommonCodeActive(id, isActive);
+
+          if (error) {
+            console.error(error);
+            set({
+              isCodebookSaving: false,
+              lastCodebookRowsError: "코드 사용 여부 변경에 실패했습니다.",
+            });
+            get().showToast("코드 사용 여부 변경에 실패했습니다.", "red");
+            return false;
+          }
+
+          await get().refreshCodebookRows();
+          await get().loadMeta();
+
+          set({ isCodebookSaving: false });
+          get().showToast("코드 사용 여부를 변경했습니다.", "emerald");
+          return true;
         },
 
         // =========================================

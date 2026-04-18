@@ -158,3 +158,45 @@ export async function fetchEstimationPolicy() {
 
   return supabase.from("estimation_policy").select("*").eq("is_active", true);
 }
+
+export async function fetchCommonCodeRows() {
+  if (!supabase) {
+    return { data: [], error: null };
+  }
+
+  return await supabase
+    .from("common_code")
+    .select("*")
+    .order("group_code", { ascending: true })
+    .order("sort_order", { ascending: true })
+    .order("code", { ascending: true });
+}
+
+export async function createCommonCodeRow(payload) {
+  if (!supabase) {
+    return { data: null, error: new Error("Supabase client not initialized.") };
+  }
+
+  return await supabase
+    .from("common_code")
+    .insert(payload)
+    .select("*")
+    .single();
+}
+
+export async function updateCommonCodeRow(id, payload) {
+  if (!supabase) {
+    return { data: null, error: new Error("Supabase client not initialized.") };
+  }
+
+  return await supabase
+    .from("common_code")
+    .update(payload)
+    .eq("id", id)
+    .select("*")
+    .single();
+}
+
+export async function updateCommonCodeActive(id, isActive) {
+  return updateCommonCodeRow(id, { is_active: isActive });
+}
