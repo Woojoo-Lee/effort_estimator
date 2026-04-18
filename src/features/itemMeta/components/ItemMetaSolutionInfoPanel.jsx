@@ -9,7 +9,7 @@ const TEXT = {
   totalCount: "\uC804\uCCB4 \uD56D\uBAA9 \uC218",
   activeCount: "\uC0AC\uC6A9 \uD56D\uBAA9 \uC218",
   inactiveCount: "\uBBF8\uC0AC\uC6A9 \uD56D\uBAA9 \uC218",
-  baseMdTotal: "\uAE30\uBCF8MD \uD569\uACC4",
+  baseMdTotal: "\uAE30\uBCF8 MD \uD569\uACC4",
   emptyValue: "-",
 };
 
@@ -33,7 +33,10 @@ export default function ItemMetaSolutionInfoPanel({ solutionSummary }) {
   const items = [
     {
       label: TEXT.solutionCode,
-      value: solutionSummary.solutionCode || solutionSummary.solution_code || TEXT.emptyValue,
+      value:
+        solutionSummary.solutionCode ||
+        solutionSummary.solution_code ||
+        TEXT.emptyValue,
     },
     {
       label: TEXT.totalCount,

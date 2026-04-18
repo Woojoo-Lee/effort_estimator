@@ -7,6 +7,11 @@ import CodebookSearchBar from "../components/CodebookSearchBar";
 import CodebookTable from "../components/CodebookTable";
 import { useEstimatorStore } from "../../../store/useEstimatorStore";
 
+const TEXT = {
+  formClosed:
+    "\uCF54\uB4DC\uB97C \uB4F1\uB85D\uD558\uAC70\uB098 \uBAA9\uB85D\uC5D0\uC11C \uC218\uC815\uD560 \uCF54\uB4DC\uB97C \uC120\uD0DD\uD558\uC138\uC694.",
+};
+
 function matchesSearch(row, searchText) {
   const keyword = searchText.trim().toLowerCase();
 
@@ -233,7 +238,7 @@ export default function CodebookPage() {
             />
           ) : (
             <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-500 shadow-sm">
-              코드를 등록하거나 목록에서 수정할 코드를 선택하세요.
+              {TEXT.formClosed}
             </div>
           )}
         </div>

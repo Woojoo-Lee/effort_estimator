@@ -1,5 +1,25 @@
 import React, { useEffect, useState } from "react";
 
+const TEXT = {
+  editTitle: "\uCF54\uB4DC \uC218\uC815",
+  createTitle: "\uCF54\uB4DC \uB4F1\uB85D",
+  description:
+    "\uACF5\uD1B5 \uCF54\uB4DC \uC815\uBCF4\uB97C \uC785\uB825\uD569\uB2C8\uB2E4.",
+  requiredMessage:
+    "\uADF8\uB8F9\uCF54\uB4DC, \uCF54\uB4DC, \uCF54\uB4DC\uBA85\uC740 \uD544\uC218\uC785\uB2C8\uB2E4.",
+  groupCode: "\uADF8\uB8F9\uCF54\uB4DC",
+  code: "\uCF54\uB4DC",
+  codeName: "\uCF54\uB4DC\uBA85",
+  codeValue: "\uCF54\uB4DC\uAC12",
+  sortOrder: "\uC815\uB82C\uC21C\uC11C",
+  active: "\uC0AC\uC6A9",
+  descriptionLabel: "\uC124\uBA85",
+  select: "\uC120\uD0DD",
+  cancel: "\uCDE8\uC18C",
+  save: "\uC800\uC7A5",
+  saving: "\uC800\uC7A5 \uC911...",
+};
+
 const GROUP_CODE_OPTIONS = [
   "SOLUTION",
   "DIFFICULTY",
@@ -74,7 +94,7 @@ export default function CodebookForm({
     event.preventDefault();
 
     if (!form.group_code.trim() || !form.code.trim() || !form.code_name.trim()) {
-      setErrorMessage("그룹코드, 코드, 코드명은 필수입니다.");
+      setErrorMessage(TEXT.requiredMessage);
       return;
     }
 
@@ -94,10 +114,10 @@ export default function CodebookForm({
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h2 className="text-base font-extrabold text-slate-900">
-            {isEditMode ? "코드 수정" : "코드 등록"}
+            {isEditMode ? TEXT.editTitle : TEXT.createTitle}
           </h2>
-          <p className="mt-1 text-xs text-slate-500">
-            공통 코드 정보를 입력합니다.
+          <p className="mt-1 text-xs font-semibold text-slate-500">
+            {TEXT.description}
           </p>
         </div>
       </div>
@@ -111,7 +131,7 @@ export default function CodebookForm({
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <label className="block">
           <span className="mb-1 block text-xs font-bold text-slate-600">
-            그룹코드 *
+            {TEXT.groupCode} *
           </span>
           <select
             value={form.group_code}
@@ -119,7 +139,7 @@ export default function CodebookForm({
             className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             disabled={isSaving}
           >
-            <option value="">선택</option>
+            <option value="">{TEXT.select}</option>
             {GROUP_CODE_OPTIONS.map((groupCode) => (
               <option key={groupCode} value={groupCode}>
                 {groupCode}
@@ -130,7 +150,7 @@ export default function CodebookForm({
 
         <label className="block">
           <span className="mb-1 block text-xs font-bold text-slate-600">
-            코드 *
+            {TEXT.code} *
           </span>
           <input
             value={form.code}
@@ -142,7 +162,7 @@ export default function CodebookForm({
 
         <label className="block">
           <span className="mb-1 block text-xs font-bold text-slate-600">
-            코드명 *
+            {TEXT.codeName} *
           </span>
           <input
             value={form.code_name}
@@ -154,7 +174,7 @@ export default function CodebookForm({
 
         <label className="block">
           <span className="mb-1 block text-xs font-bold text-slate-600">
-            코드값
+            {TEXT.codeValue}
           </span>
           <input
             value={form.code_value}
@@ -166,7 +186,7 @@ export default function CodebookForm({
 
         <label className="block">
           <span className="mb-1 block text-xs font-bold text-slate-600">
-            정렬순서
+            {TEXT.sortOrder}
           </span>
           <input
             type="number"
@@ -185,12 +205,14 @@ export default function CodebookForm({
             className="h-4 w-4 rounded border-slate-300 text-blue-600"
             disabled={isSaving}
           />
-          <span className="text-sm font-bold text-slate-700">사용</span>
+          <span className="text-sm font-bold text-slate-700">
+            {TEXT.active}
+          </span>
         </label>
 
         <label className="block md:col-span-2 lg:col-span-3">
           <span className="mb-1 block text-xs font-bold text-slate-600">
-            설명
+            {TEXT.descriptionLabel}
           </span>
           <textarea
             value={form.description}
@@ -208,14 +230,14 @@ export default function CodebookForm({
           className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
           disabled={isSaving}
         >
-          취소
+          {TEXT.cancel}
         </button>
         <button
           type="submit"
           className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
           disabled={isSaving}
         >
-          {isSaving ? "저장 중..." : "저장"}
+          {isSaving ? TEXT.saving : TEXT.save}
         </button>
       </div>
     </form>

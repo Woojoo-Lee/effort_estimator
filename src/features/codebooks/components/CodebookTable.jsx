@@ -1,5 +1,23 @@
 import React from "react";
 
+const TEXT = {
+  loading: "\uCF54\uB4DC\uBD81 \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uB294 \uC911\uC785\uB2C8\uB2E4.",
+  empty: "\uD45C\uC2DC\uD560 \uCF54\uB4DC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  groupCode: "\uADF8\uB8F9\uCF54\uB4DC",
+  code: "\uCF54\uB4DC",
+  codeName: "\uCF54\uB4DC\uBA85",
+  codeValue: "\uCF54\uB4DC\uAC12",
+  sortOrder: "\uC815\uB82C\uC21C\uC11C",
+  active: "\uC0AC\uC6A9 \uC5EC\uBD80",
+  description: "\uC124\uBA85",
+  actions: "\uAD00\uB9AC",
+  activeValue: "\uC0AC\uC6A9",
+  inactiveValue: "\uBBF8\uC0AC\uC6A9",
+  edit: "\uC218\uC815",
+  enable: "\uC0AC\uC6A9",
+  disable: "\uBBF8\uC0AC\uC6A9",
+};
+
 function ActiveBadge({ isActive }) {
   return (
     <span
@@ -9,7 +27,7 @@ function ActiveBadge({ isActive }) {
           : "bg-slate-100 text-slate-500"
       }`}
     >
-      {isActive ? "Active" : "Inactive"}
+      {isActive ? TEXT.activeValue : TEXT.inactiveValue}
     </span>
   );
 }
@@ -26,7 +44,7 @@ export default function CodebookTable({
   if (isBusy) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-500 shadow-sm">
-        Loading codebook rows...
+        {TEXT.loading}
       </div>
     );
   }
@@ -34,7 +52,7 @@ export default function CodebookTable({
   if (rows.length === 0) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-500 shadow-sm">
-        No codebook rows found.
+        {TEXT.empty}
       </div>
     );
   }
@@ -45,14 +63,14 @@ export default function CodebookTable({
         <table className="min-w-full border-collapse">
           <thead className="bg-slate-50">
             <tr className="border-b border-slate-200 text-left text-xs font-bold uppercase text-slate-500">
-              {showGroupCode && <th className="px-4 py-3">group_code</th>}
-              <th className="px-4 py-3">code</th>
-              <th className="px-4 py-3">code_name</th>
-              <th className="px-4 py-3">code_value</th>
-              <th className="px-4 py-3 text-right">sort_order</th>
-              <th className="px-4 py-3 text-center">is_active</th>
-              <th className="px-4 py-3">description</th>
-              <th className="px-4 py-3 text-center">actions</th>
+              {showGroupCode && <th className="px-4 py-3">{TEXT.groupCode}</th>}
+              <th className="px-4 py-3">{TEXT.code}</th>
+              <th className="px-4 py-3">{TEXT.codeName}</th>
+              <th className="px-4 py-3">{TEXT.codeValue}</th>
+              <th className="px-4 py-3 text-right">{TEXT.sortOrder}</th>
+              <th className="px-4 py-3 text-center">{TEXT.active}</th>
+              <th className="px-4 py-3">{TEXT.description}</th>
+              <th className="px-4 py-3 text-center">{TEXT.actions}</th>
             </tr>
           </thead>
           <tbody>
@@ -114,7 +132,7 @@ export default function CodebookTable({
                         className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                         disabled={isSaving}
                       >
-                        Edit
+                        {TEXT.edit}
                       </button>
                       <button
                         type="button"
@@ -132,7 +150,7 @@ export default function CodebookTable({
                         }`}
                         disabled={isSaving}
                       >
-                        {row.is_active ? "Disable" : "Enable"}
+                        {row.is_active ? TEXT.disable : TEXT.enable}
                       </button>
                     </div>
                   </td>

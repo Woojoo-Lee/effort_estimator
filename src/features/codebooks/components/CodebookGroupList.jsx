@@ -1,5 +1,13 @@
 import React from "react";
 
+const TEXT = {
+  loading: "\uADF8\uB8F9 \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uB294 \uC911\uC785\uB2C8\uB2E4.",
+  empty: "\uD45C\uC2DC\uD560 \uADF8\uB8F9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  title: "\uADF8\uB8F9 \uBAA9\uB85D",
+  active: "\uC0AC\uC6A9",
+  inactive: "\uBBF8\uC0AC\uC6A9",
+};
+
 export default function CodebookGroupList({
   groups = [],
   selectedGroupCode = "",
@@ -9,7 +17,7 @@ export default function CodebookGroupList({
   if (isBusy) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm font-semibold text-slate-500 shadow-sm">
-        그룹 목록을 불러오는 중입니다.
+        {TEXT.loading}
       </div>
     );
   }
@@ -17,7 +25,7 @@ export default function CodebookGroupList({
   if (groups.length === 0) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm font-semibold text-slate-500 shadow-sm">
-        표시할 그룹이 없습니다.
+        {TEXT.empty}
       </div>
     );
   }
@@ -25,7 +33,9 @@ export default function CodebookGroupList({
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-4 py-3">
-        <h2 className="text-sm font-extrabold text-slate-900">그룹 목록</h2>
+        <h2 className="text-sm font-extrabold text-slate-900">
+          {TEXT.title}
+        </h2>
       </div>
 
       <div className="divide-y divide-slate-100">
@@ -49,7 +59,8 @@ export default function CodebookGroupList({
                     {group.groupCode}
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
-                    사용 {group.activeCount} / 미사용 {group.inactiveCount}
+                    {TEXT.active} {group.activeCount} / {TEXT.inactive}{" "}
+                    {group.inactiveCount}
                   </div>
                 </div>
                 <div
