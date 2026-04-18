@@ -1,5 +1,6 @@
 import React from "react";
-import { SOLUTIONS } from "../../../shared/constants/constants";
+import { useEstimatorStore } from "../../../store/useEstimatorStore";
+import { getSolutionOptions } from "../../../shared/lib/estimatorMeta";
 import { fmt } from "../../../shared/lib/estimatorMath";
 
 function Panel({ title, children, subtle = false }) {
@@ -20,6 +21,9 @@ function Panel({ title, children, subtle = false }) {
 }
 
 export default function SummaryView({ solutionTotals, grandBaseTotal }) {
+  const codebooks = useEstimatorStore((s) => s.codebooks || []);
+  const solutions = getSolutionOptions(codebooks);
+
   return (
     <Panel title="솔루션별 공수 요약" subtle>
       <div className="overflow-x-auto rounded-2xl border border-slate-100">
@@ -32,7 +36,7 @@ export default function SummaryView({ solutionTotals, grandBaseTotal }) {
             </tr>
           </thead>
           <tbody>
-            {SOLUTIONS.filter((s) => s.key !== "summary").map((sol) => {
+            {solutions.map((sol) => {
               const total = solutionTotals[sol.key] || 0;
               const ratio = grandBaseTotal > 0 ? (total / grandBaseTotal) * 100 : 0;
 

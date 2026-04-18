@@ -1,20 +1,10 @@
 import React from "react";
 import { useEstimatorStore } from "../../../store/useEstimatorStore";
-import { SOLUTIONS } from "../../../shared/constants/constants";
+import { getSolutionTabs } from "../../../shared/lib/estimatorMeta";
 
 export default function SolutionTabs({ activeTab, setActiveTab }) {
   const codebooks = useEstimatorStore((s) => s.codebooks || []);
-
-  const metaTabs = codebooks
-    .filter((code) => code.group_code === "SOLUTION" && code.is_active)
-    .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))
-    .map((code) => ({
-      key: code.code,
-      label: code.code_name,
-      icon: null,
-    }));
-
-  const tabs = metaTabs.length > 0 ? metaTabs : SOLUTIONS;
+  const tabs = getSolutionTabs(codebooks);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2">

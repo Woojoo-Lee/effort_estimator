@@ -1,5 +1,9 @@
 import React from "react";
-import { scaleOptions, riskOptions } from "../../../shared/constants/constants";
+import { useEstimatorStore } from "../../../store/useEstimatorStore";
+import {
+  getRiskOptions,
+  getScaleOptions,
+} from "../../../shared/lib/estimatorMeta";
 import { fmt } from "../../../shared/lib/estimatorMath";
 import SmallInput from "../../../shared/ui/SmallInput";
 import SmallSelect from "../../../shared/ui/SmallSelect";
@@ -38,6 +42,10 @@ export default function RightSidebar({
   markDirty,
   isSummary = false,
 }) {
+  const codebooks = useEstimatorStore((s) => s.codebooks || []);
+  const scaleOptions = getScaleOptions(codebooks);
+  const riskOptions = getRiskOptions(codebooks);
+
   return (
     <div className="flex h-full flex-col gap-4">
       {/* =========================

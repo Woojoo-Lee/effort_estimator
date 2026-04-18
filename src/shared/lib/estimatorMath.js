@@ -35,7 +35,7 @@ export function calcSolutionTotal(items) {
 
 export function calcSolutionTotals(itemsBySolution) {
   const result = {};
-  Object.keys(DEFAULT_ITEMS).forEach((key) => {
+  Object.keys(itemsBySolution || DEFAULT_ITEMS).forEach((key) => {
     result[key] = calcSolutionTotal(itemsBySolution[key] || []);
   });
   return result;

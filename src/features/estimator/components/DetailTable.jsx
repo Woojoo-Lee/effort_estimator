@@ -1,5 +1,10 @@
 import React from "react";
-import { SOLUTIONS, difficultyOptions, complexityOptions } from "../../../shared/constants/constants";
+import { useEstimatorStore } from "../../../store/useEstimatorStore";
+import {
+  getComplexityOptions,
+  getDifficultyOptions,
+  getSolutionTabs,
+} from "../../../shared/lib/estimatorMeta";
 import { calcItemMd, fmt } from "../../../shared/lib/estimatorMath";
 import ActionButton from "../../../shared/ui/ActionButton";
 import SmallInput from "../../../shared/ui/SmallInput";
@@ -57,6 +62,11 @@ export default function DetailTable({
   addItem,
   removeItem,
 }) {
+  const codebooks = useEstimatorStore((s) => s.codebooks || []);
+  const solutions = getSolutionTabs(codebooks);
+  const difficultyOptions = getDifficultyOptions(codebooks);
+  const complexityOptions = getComplexityOptions(codebooks);
+
   return (
     <Panel
       title="상세 업무 목록"
@@ -69,7 +79,7 @@ export default function DetailTable({
       <div className="mb-3 shrink-0 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-500">
         현재 탭:{" "}
         <span className="font-semibold text-slate-700">
-          {SOLUTIONS.find((s) => s.key === activeTab)?.label}
+          {solutions.find((s) => s.key === activeTab)?.label}
         </span>{" "}
         · 입력값을 변경하면 우측 요약과 상단 공수가 즉시 반영됩니다.
       </div>

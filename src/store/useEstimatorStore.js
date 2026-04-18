@@ -18,23 +18,35 @@ import {
   deepCloneItems,
   emptyProjectState,
 } from "../shared/lib/estimatorMath";
+import {
+  buildItemsBySolution,
+  getPolicyValue,
+} from "../shared/lib/estimatorMeta";
 
 const STORE_VERSION = 1;
 
 // =========================================
 // Helpers
 // =========================================
-const createFreshProjectState = () => {
+const createFreshProjectState = ({ itemMeta = [], policy = {} } = {}) => {
   const initial = emptyProjectState();
 
   return {
     projectId: initial.id,
-    activeTab: initial.activeTab,
+    activeTab: getPolicyValue(policy, "DEFAULT_ACTIVE_TAB", initial.activeTab),
     projectName: initial.projectName,
-    itemsBySolution: initial.itemsBySolution,
-    scaleFactor: initial.scaleFactor,
-    riskFactor: initial.riskFactor,
-    mgmtRate: initial.mgmtRate,
+    itemsBySolution: buildItemsBySolution(itemMeta),
+    scaleFactor: getPolicyValue(
+      policy,
+      "DEFAULT_SCALE_FACTOR",
+      initial.scaleFactor
+    ),
+    riskFactor: getPolicyValue(
+      policy,
+      "DEFAULT_RISK_FACTOR",
+      initial.riskFactor
+    ),
+    mgmtRate: getPolicyValue(policy, "DEFAULT_MGMT_RATE", initial.mgmtRate),
     savedAt: initial.savedAt,
     isDirty: false,
   };
@@ -142,16 +154,24 @@ export const useEstimatorStore = create(
             );
           }
 
+          const itemMeta = itemsResult.data || [];
           const policy = {};
           (policyResult.data || []).forEach((row) => {
             policy[row.policy_code] = row.policy_value;
           });
 
+          const state = get();
+          const shouldApplyMetaDefaults =
+            !state.projectId && !state.savedAt && !state.isDirty;
+
           set({
             codebooks: codesResult.data || [],
-            itemMeta: itemsResult.data || [],
+            itemMeta,
             policy,
             isMetaReady: true,
+            ...(shouldApplyMetaDefaults
+              ? createFreshProjectState({ itemMeta, policy })
+              : {}),
           });
         },
 
@@ -222,29 +242,37 @@ export const useEstimatorStore = create(
           }),
 
         addItem: (solutionKey) =>
-          set((state) => ({
-            itemsBySolution: {
-              ...state.itemsBySolution,
-              [solutionKey]: [
-                ...state.itemsBySolution[solutionKey],
-                {
-                  name: "새 업무",
-                  baseMd: 1,
-                  difficulty: 1,
-                  complexity: 1,
-                  note: "",
-                },
-              ],
-            },
-            isDirty: true,
-            saveStatus: "dirty",
-          })),
+          set((state) => {
+            const items = state.itemsBySolution[solutionKey] || [];
+
+            return {
+              itemsBySolution: {
+                ...state.itemsBySolution,
+                [solutionKey]: [
+                  ...items,
+                  {
+                    name: getPolicyValue(
+                      state.policy,
+                      "DEFAULT_NEW_ITEM_NAME",
+                      "새 업무"
+                    ),
+                    baseMd: 1,
+                    difficulty: 1,
+                    complexity: 1,
+                    note: "",
+                  },
+                ],
+              },
+              isDirty: true,
+              saveStatus: "dirty",
+            };
+          }),
 
         removeItem: (solutionKey, index) =>
           set((state) => ({
             itemsBySolution: {
               ...state.itemsBySolution,
-              [solutionKey]: state.itemsBySolution[solutionKey].filter(
+              [solutionKey]: (state.itemsBySolution[solutionKey] || []).filter(
                 (_, i) => i !== index
               ),
             },
@@ -256,7 +284,11 @@ export const useEstimatorStore = create(
         // 8) Project lifecycle actions
         // =========================================
         createNewProject: () => {
-          const next = createFreshProjectState();
+          const state = get();
+          const next = createFreshProjectState({
+            itemMeta: state.itemMeta,
+            policy: state.policy,
+          });
 
           set({
             ...next,
@@ -428,16 +460,20 @@ export const useEstimatorStore = create(
           }
 
           const payload = data?.payload || {};
+          const defaults = createFreshProjectState({
+            itemMeta: get().itemMeta,
+            policy: get().policy,
+          });
 
           set({
             projectId: data.id,
             projectName:
               data.project_name || payload.projectName || "새 컨택센터 프로젝트",
-            activeTab: payload.activeTab || "pbx",
-            itemsBySolution: payload.itemsBySolution || deepCloneItems(),
-            scaleFactor: Number(payload.scaleFactor ?? 1.0),
-            riskFactor: Number(payload.riskFactor ?? 1.0),
-            mgmtRate: Number(payload.mgmtRate ?? 10),
+            activeTab: payload.activeTab || defaults.activeTab,
+            itemsBySolution: payload.itemsBySolution || defaults.itemsBySolution,
+            scaleFactor: Number(payload.scaleFactor ?? defaults.scaleFactor),
+            riskFactor: Number(payload.riskFactor ?? defaults.riskFactor),
+            mgmtRate: Number(payload.mgmtRate ?? defaults.mgmtRate),
             savedAt:
               payload.savedAt ||
               (data.updated_at
@@ -489,15 +525,19 @@ export const useEstimatorStore = create(
 
         restoreVersion: async (versionRow) => {
           const payload = versionRow?.payload || {};
+          const defaults = createFreshProjectState({
+            itemMeta: get().itemMeta,
+            policy: get().policy,
+          });
 
           set({
             projectId: versionRow.project_id,
             projectName: payload.projectName || "복구된 프로젝트",
-            activeTab: payload.activeTab || "pbx",
-            itemsBySolution: payload.itemsBySolution || deepCloneItems(),
-            scaleFactor: Number(payload.scaleFactor ?? 1),
-            riskFactor: Number(payload.riskFactor ?? 1),
-            mgmtRate: Number(payload.mgmtRate ?? 10),
+            activeTab: payload.activeTab || defaults.activeTab,
+            itemsBySolution: payload.itemsBySolution || defaults.itemsBySolution,
+            scaleFactor: Number(payload.scaleFactor ?? defaults.scaleFactor),
+            riskFactor: Number(payload.riskFactor ?? defaults.riskFactor),
+            mgmtRate: Number(payload.mgmtRate ?? defaults.mgmtRate),
             savedAt: payload.savedAt || "",
             isDirty: true,
             saveStatus: "dirty",
