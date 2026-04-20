@@ -12,6 +12,10 @@ function GlobalToast() {
   return <Toast message={toast.message} tone={toast.tone} />;
 }
 
+if (import.meta.env.DEV) {
+  window.__ESTIMATOR_STORE__ = useEstimatorStore;
+}
+
 export default function ContactCenterEffortEstimator() {
   const route = useHashRoute();
   const loadMeta = useEstimatorStore((state) => state.loadMeta);

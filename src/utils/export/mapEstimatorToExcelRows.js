@@ -1,10 +1,13 @@
+import { normalizeItemsBySolution } from "../../shared/lib/projectPayloadNormalizer";
+
 export function mapEstimatorToExcelRows({ projectState, calcState }) {
   const rows = [];
+  const itemsBySolution = normalizeItemsBySolution(projectState.itemsBySolution);
 
-  const solutionKeys = Object.keys(projectState.itemsBySolution || {});
+  const solutionKeys = Object.keys(itemsBySolution || {});
 
   solutionKeys.forEach((solutionKey) => {
-    const items = projectState.itemsBySolution[solutionKey] || [];
+    const items = itemsBySolution[solutionKey] || [];
 
     items.forEach((item, index) => {
       rows.push({

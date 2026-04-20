@@ -11,6 +11,9 @@ import {
   fetchCommonCodes,
   fetchEstimationItemMeta,
   fetchEstimationItemMetaRows,
+  fetchEstimationBaseEffortMeta,
+  fetchEstimationItemFieldMeta,
+  fetchEstimationEnvVarMeta,
   fetchEstimationPolicy,
   fetchCommonCodeRows,
   createCommonCodeRow,
@@ -21,6 +24,7 @@ import { isSupabaseReady } from "../services/supabaseClient";
 
 import { getPolicyValue } from "../shared/lib/estimatorMeta";
 import { buildDefaultProjectState } from "../shared/lib/projectDefaults";
+import { normalizeItemsBySolution } from "../shared/lib/projectPayloadNormalizer";
 
 const STORE_VERSION = 1;
 
@@ -55,7 +59,7 @@ const getDefaultToast = () => ({
 const buildProjectPayload = (state, savedAt = "") => ({
   activeTab: state.activeTab,
   projectName: state.projectName,
-  itemsBySolution: state.itemsBySolution,
+  itemsBySolution: normalizeItemsBySolution(state.itemsBySolution),
   scaleFactor: state.scaleFactor,
   riskFactor: state.riskFactor,
   mgmtRate: state.mgmtRate,
@@ -96,6 +100,11 @@ export const useEstimatorStore = create(
         itemMetaRows: [],
         isItemMetaRowsBusy: false,
         lastItemMetaRowsError: "",
+        baseEffortMetaRows: [],
+        itemFieldMetaRows: [],
+        envVarMetaRows: [],
+        isEstimatorMetaRowsBusy: false,
+        lastEstimatorMetaRowsError: "",
 
         saveStatus: "idle",
         lastSaveError: "",
@@ -308,6 +317,48 @@ export const useEstimatorStore = create(
           });
         },
 
+        refreshEstimatorMetaRows: async () => {
+          set({
+            isEstimatorMetaRowsBusy: true,
+            lastEstimatorMetaRowsError: "",
+          });
+
+          const [baseEffortResult, itemFieldResult, envVarResult] =
+            await Promise.all([
+              fetchEstimationBaseEffortMeta(),
+              fetchEstimationItemFieldMeta(),
+              fetchEstimationEnvVarMeta(),
+            ]);
+
+          const error =
+            baseEffortResult.error ||
+            itemFieldResult.error ||
+            envVarResult.error;
+
+          if (error) {
+            console.error(error);
+            set({
+              baseEffortMetaRows: [],
+              itemFieldMetaRows: [],
+              envVarMetaRows: [],
+              isEstimatorMetaRowsBusy: false,
+              lastEstimatorMetaRowsError: "산정 메타 조회에 실패했습니다.",
+            });
+            get().showToast("산정 메타 조회에 실패했습니다.", "red");
+            return false;
+          }
+
+          set({
+            baseEffortMetaRows: baseEffortResult.data || [],
+            itemFieldMetaRows: itemFieldResult.data || [],
+            envVarMetaRows: envVarResult.data || [],
+            isEstimatorMetaRowsBusy: false,
+            lastEstimatorMetaRowsError: "",
+          });
+
+          return true;
+        },
+
         // =========================================
         // 6) Basic setters
         // =========================================
@@ -377,13 +428,26 @@ export const useEstimatorStore = create(
         addItem: (solutionKey) =>
           set((state) => {
             const items = state.itemsBySolution[solutionKey] || [];
-
-            return {
-              itemsBySolution: {
-                ...state.itemsBySolution,
-                [solutionKey]: [
-                  ...items,
-                  {
+            const statsItemCode = "STATS_DASHBOARD";
+            const statsItemMeta = state.itemMeta.find(
+              (row) =>
+                row.solution_code === "stats" &&
+                row.item_code === statsItemCode &&
+                row.is_active !== false
+            );
+            const statsBaseMd = Number(statsItemMeta?.default_base_md ?? 1);
+            const newItem =
+              solutionKey === "stats"
+                ? {
+                    item_code: statsItemCode,
+                    name: statsItemMeta?.item_name || "새 통계 항목",
+                    quantity: 1,
+                    is_realtime: false,
+                    use_export: false,
+                    baseMd: Number.isFinite(statsBaseMd) ? statsBaseMd : 1,
+                    note: "",
+                  }
+                : {
                     name: getPolicyValue(
                       state.policy,
                       "DEFAULT_NEW_ITEM_NAME",
@@ -393,8 +457,12 @@ export const useEstimatorStore = create(
                     difficulty: 1,
                     complexity: 1,
                     note: "",
-                  },
-                ],
+                  };
+
+            return {
+              itemsBySolution: {
+                ...state.itemsBySolution,
+                [solutionKey]: [...items, newItem],
               },
               isDirty: true,
               saveStatus: "dirty",

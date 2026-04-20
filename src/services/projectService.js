@@ -163,6 +163,46 @@ export async function fetchEstimationItemMetaRows() {
     .order("id", { ascending: true });
 }
 
+export async function fetchEstimationBaseEffortMeta() {
+  if (!supabase) {
+    return { data: [], error: null };
+  }
+
+  return await supabase
+    .from("estimation_base_effort_meta")
+    .select("*")
+    .order("solution_code", { ascending: true })
+    .order("sort_order", { ascending: true })
+    .order("phase_code", { ascending: true });
+}
+
+export async function fetchEstimationItemFieldMeta() {
+  if (!supabase) {
+    return { data: [], error: null };
+  }
+
+  return await supabase
+    .from("estimation_item_field_meta")
+    .select("*")
+    .order("solution_code", { ascending: true })
+    .order("item_code", { ascending: true })
+    .order("sort_order", { ascending: true })
+    .order("field_key", { ascending: true });
+}
+
+export async function fetchEstimationEnvVarMeta() {
+  if (!supabase) {
+    return { data: [], error: null };
+  }
+
+  return await supabase
+    .from("estimation_env_var_meta")
+    .select("*")
+    .order("solution_code", { ascending: true })
+    .order("sort_order", { ascending: true })
+    .order("var_key", { ascending: true });
+}
+
 export async function fetchEstimationPolicy() {
   if (!supabase) {
     return { data: [], error: null };

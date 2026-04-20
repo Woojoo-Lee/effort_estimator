@@ -1,3 +1,5 @@
+import { normalizeItemsBySolution } from "../../shared/lib/projectPayloadNormalizer";
+
 export function buildProjectExportPayload({ projectState, calcState }) {
   return {
     meta: {
@@ -8,7 +10,7 @@ export function buildProjectExportPayload({ projectState, calcState }) {
     project: {
       projectName: projectState.projectName,
       activeTab: projectState.activeTab,
-      itemsBySolution: projectState.itemsBySolution,
+      itemsBySolution: normalizeItemsBySolution(projectState.itemsBySolution),
       scaleFactor: projectState.scaleFactor,
       riskFactor: projectState.riskFactor,
       mgmtRate: projectState.mgmtRate,

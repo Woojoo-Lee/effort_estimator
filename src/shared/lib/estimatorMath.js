@@ -33,6 +33,84 @@ export function calcSolutionTotal(items) {
   return Number(items.reduce((sum, item) => sum + calcItemMd(item), 0).toFixed(2));
 }
 
+export function calcBaseEffortTotal(baseEffortRows = []) {
+  return Number(
+    baseEffortRows
+      .filter((row) => row.is_active !== false)
+      .reduce((sum, row) => sum + Number(row.base_md || 0), 0)
+      .toFixed(2)
+  );
+}
+
+export function calcStatsAdditionalEffortTotal({
+  legacyItems = [],
+  itemFieldRows = [],
+}) {
+  const quantityField = itemFieldRows.find(
+    (row) => row.field_key === "quantity" && row.is_active !== false
+  );
+
+  if (!quantityField) {
+    return calcSolutionTotal(legacyItems);
+  }
+
+  const defaultQuantity = Number(quantityField.default_value ?? 1);
+  const fallbackQuantity = Number.isFinite(defaultQuantity)
+    ? defaultQuantity
+    : 1;
+
+  return Number(
+    legacyItems
+      .reduce((sum, item) => {
+        const quantity = Number(item.quantity ?? fallbackQuantity);
+        const safeQuantity = Number.isFinite(quantity) ? quantity : fallbackQuantity;
+
+        return sum + Number(item.baseMd || 0) * safeQuantity;
+      }, 0)
+      .toFixed(2)
+  );
+}
+
+export function calcStatsMetaTotal({
+  legacyItems = [],
+  baseEffortRows = [],
+  itemFieldRows = [],
+}) {
+  return Number(
+    (
+      calcBaseEffortTotal(baseEffortRows) +
+      calcStatsAdditionalEffortTotal({ legacyItems, itemFieldRows })
+    ).toFixed(2)
+  );
+}
+
+function getEnvVarNumber(envVarRows = [], varKey, fallbackValue) {
+  const row = envVarRows.find(
+    (item) =>
+      item.var_key === varKey &&
+      item.is_active !== false &&
+      (!item.solution_code || item.solution_code === "stats")
+  );
+  const value = Number(
+    row?.default_value ?? row?.var_value ?? row?.value ?? fallbackValue
+  );
+
+  return Number.isFinite(value) ? value : Number(fallbackValue);
+}
+
+export function calcStatsEnvFactors({
+  envVarRows = [],
+  scaleFactor,
+  riskFactor,
+  mgmtRate,
+}) {
+  return {
+    scaleFactor: getEnvVarNumber(envVarRows, "SCALE_FACTOR", scaleFactor),
+    riskFactor: getEnvVarNumber(envVarRows, "RISK_FACTOR", riskFactor),
+    mgmtRate: getEnvVarNumber(envVarRows, "MGMT_RATE", mgmtRate),
+  };
+}
+
 export function calcSolutionTotals(itemsBySolution) {
   const result = {};
   Object.keys(itemsBySolution || DEFAULT_ITEMS).forEach((key) => {

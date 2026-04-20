@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useEstimatorStore } from "../store/useEstimatorStore";
 import { useEstimatorDerivedState } from "./useEstimatorDerivedState";
 
@@ -8,6 +8,9 @@ export function useEstimatorViewModel() {
   const scaleFactor = useEstimatorStore((s) => s.scaleFactor);
   const riskFactor = useEstimatorStore((s) => s.riskFactor);
   const mgmtRate = useEstimatorStore((s) => s.mgmtRate);
+  const baseEffortMetaRows = useEstimatorStore((s) => s.baseEffortMetaRows);
+  const itemFieldMetaRows = useEstimatorStore((s) => s.itemFieldMetaRows);
+  const envVarMetaRows = useEstimatorStore((s) => s.envVarMetaRows);
 
   const setActiveTab = useEstimatorStore((s) => s.setActiveTab);
   const setScaleFactor = useEstimatorStore((s) => s.setScaleFactor);
@@ -26,7 +29,20 @@ export function useEstimatorViewModel() {
     scaleFactor,
     riskFactor,
     mgmtRate,
+    baseEffortMetaRows,
+    itemFieldMetaRows,
+    envVarMetaRows,
   });
+
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      window.__ESTIMATOR_DERIVED__ = {
+        solutionTotals: derived.solutionTotals,
+        grandBaseTotal: derived.grandBaseTotal,
+        finalTotal: derived.finalTotal,
+      };
+    }
+  }, [derived.solutionTotals, derived.grandBaseTotal, derived.finalTotal]);
 
   const detailActions = useMemo(
     () => ({
@@ -59,6 +75,7 @@ export function useEstimatorViewModel() {
       setRiskFactor,
       setMgmtRate,
       markDirty,
+      envVarMetaRows,
     }),
     [
       activeTab,
@@ -75,6 +92,7 @@ export function useEstimatorViewModel() {
       setRiskFactor,
       setMgmtRate,
       markDirty,
+      envVarMetaRows,
     ]
   );
 
@@ -90,5 +108,7 @@ export function useEstimatorViewModel() {
     finalTotal: derived.finalTotal,
     sidebarModel,
     detailActions,
+    baseEffortMetaRows,
+    itemFieldMetaRows,
   };
 }

@@ -53,6 +53,30 @@ function getNumericCodeOptions(codebooks, groupCode, fallbackOptions) {
   });
 }
 
+function buildDefaultItemFromMeta(item) {
+  return {
+    itemCode: item.item_code,
+    name: item.item_name,
+    baseMd: Number(item.default_base_md ?? 0),
+    difficulty: Number(DIFFICULTY_FACTORS[item.default_difficulty] ?? 1),
+    complexity: Number(COMPLEXITY_FACTORS[item.default_complexity] ?? 1),
+    note: item.default_note || "",
+  };
+}
+
+function buildStatsItemFromMeta(item) {
+  return {
+    item_code: item.item_code,
+    itemCode: item.item_code,
+    name: item.item_name,
+    quantity: 1,
+    is_realtime: false,
+    use_export: false,
+    baseMd: Number(item.default_base_md ?? 0),
+    note: item.default_note || "",
+  };
+}
+
 export function getSolutionTabs(codebooks) {
   const summaryTab = SOLUTIONS.find((solution) => solution.key === "summary");
   const solutionCodes = activeCodes(codebooks, "SOLUTION");
@@ -141,14 +165,11 @@ export function buildItemsBySolution(itemMeta, solutionKeys = []) {
       result[solutionCode] = [];
     }
 
-    result[solutionCode].push({
-      itemCode: item.item_code,
-      name: item.item_name,
-      baseMd: Number(item.default_base_md ?? 0),
-      difficulty: Number(DIFFICULTY_FACTORS[item.default_difficulty] ?? 1),
-      complexity: Number(COMPLEXITY_FACTORS[item.default_complexity] ?? 1),
-      note: item.default_note || "",
-    });
+    result[solutionCode].push(
+      solutionCode === "stats"
+        ? buildStatsItemFromMeta(item)
+        : buildDefaultItemFromMeta(item)
+    );
 
     return result;
   }, initialItemsBySolution);

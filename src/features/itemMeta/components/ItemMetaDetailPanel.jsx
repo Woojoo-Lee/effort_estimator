@@ -9,8 +9,6 @@ const TEXT = {
   itemCode: "\uD56D\uBAA9\uCF54\uB4DC",
   itemName: "\uD56D\uBAA9\uBA85",
   baseMd: "\uAE30\uBCF8 MD",
-  difficulty: "\uB09C\uC774\uB3C4",
-  complexity: "\uBCF5\uC7A1\uB3C4",
   active: "\uC0AC\uC6A9 \uC5EC\uBD80",
   note: "\uC124\uBA85",
   activeValue: "\uC0AC\uC6A9",
@@ -56,14 +54,6 @@ export default function ItemMetaDetailPanel({ item }) {
     {
       label: TEXT.baseMd,
       value: formatNumber(item.default_base_md),
-    },
-    {
-      label: TEXT.difficulty,
-      value: formatNumber(item.default_difficulty),
-    },
-    {
-      label: TEXT.complexity,
-      value: formatNumber(item.default_complexity),
     },
     {
       label: TEXT.active,

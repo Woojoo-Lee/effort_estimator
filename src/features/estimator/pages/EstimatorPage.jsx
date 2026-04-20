@@ -65,6 +65,8 @@ export default function EstimatorPage() {
                 updateItem={page.estimatorView.detailActions.updateItem}
                 addItem={page.estimatorView.detailActions.addItem}
                 removeItem={page.estimatorView.detailActions.removeItem}
+                baseEffortMetaRows={page.estimatorView.baseEffortMetaRows}
+                itemFieldMetaRows={page.estimatorView.itemFieldMetaRows}
               />
             </div>
 

@@ -6,8 +6,6 @@ const TEXT = {
   itemCode: "\uD56D\uBAA9\uCF54\uB4DC",
   itemName: "\uD56D\uBAA9\uBA85",
   baseMd: "\uAE30\uBCF8 MD",
-  difficulty: "\uB09C\uC774\uB3C4",
-  complexity: "\uBCF5\uC7A1\uB3C4",
   active: "\uC0AC\uC6A9 \uC5EC\uBD80",
   activeValue: "\uC0AC\uC6A9",
   inactiveValue: "\uBBF8\uC0AC\uC6A9",
@@ -57,8 +55,6 @@ export default function ItemMetaTable({
               <th className="px-4 py-3">{TEXT.itemCode}</th>
               <th className="px-4 py-3">{TEXT.itemName}</th>
               <th className="px-4 py-3 text-right">{TEXT.baseMd}</th>
-              <th className="px-4 py-3 text-right">{TEXT.difficulty}</th>
-              <th className="px-4 py-3 text-right">{TEXT.complexity}</th>
               <th className="px-4 py-3">{TEXT.active}</th>
             </tr>
           </thead>
@@ -82,12 +78,6 @@ export default function ItemMetaTable({
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-600">
                     {formatNumber(row.default_base_md)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-600">
-                    {formatNumber(row.default_difficulty)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-600">
-                    {formatNumber(row.default_complexity)}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
                     <span
