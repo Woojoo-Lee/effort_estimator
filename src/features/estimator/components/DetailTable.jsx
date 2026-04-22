@@ -26,6 +26,20 @@ const TEXT = {
   emptyValue: "-",
 };
 
+const PHASE_LABELS = {
+  ANALYSIS: "분석",
+  DESIGN: "설계",
+  DEV: "구현",
+  BUILD: "구현",
+  TEST: "테스트",
+  STABILIZE: "안정화",
+  STABILIZATION: "안정화",
+};
+
+function getPhaseLabel(phaseCode) {
+  return PHASE_LABELS[phaseCode] || phaseCode || TEXT.emptyValue;
+}
+
 function Panel({ title, children, right }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
@@ -99,7 +113,7 @@ function BaseEffortSection({ rows }) {
                   className="border-b border-slate-100 last:border-b-0"
                 >
                   <td className="px-4 py-3 font-bold text-slate-800">
-                    {row.phase_code || TEXT.emptyValue}
+                    {getPhaseLabel(row.phase_code)}
                   </td>
                   <td className="px-4 py-3 text-right font-bold text-blue-600">
                     {fmt(row.base_md)}
@@ -182,40 +196,45 @@ function DynamicFieldSection({ rows, items, activeTab, updateItem }) {
       </div>
 
       <div className="space-y-3">
-        {items.map((item, index) => (
-          <div
-            key={`${activeTab}-dynamic-${index}`}
-            className="rounded-2xl border border-slate-100 bg-slate-50 p-3"
-          >
-            <div className="mb-3 truncate text-sm font-extrabold text-slate-800">
-              {item.name || `${activeTab} #${index + 1}`}
-            </div>
+        {items.map((item, index) => {
+          const itemCode = item.item_code || item.itemCode;
+          const itemFields = rows.filter((field) => field.item_code === itemCode);
 
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {rows.map((field) => (
-                <div key={`${index}-${field.item_code}-${field.field_key}`}>
-                  <div className="mb-1 flex items-center justify-between gap-2">
-                    <span className="truncate text-xs font-bold text-slate-500">
-                      {field.field_name || field.field_key}
-                    </span>
-                    {field.is_required && (
-                      <span className="shrink-0 rounded-lg bg-blue-50 px-2 py-1 text-xs font-bold text-blue-600">
-                        {TEXT.required}
+          return (
+            <div
+              key={`${activeTab}-dynamic-${index}`}
+              className="rounded-2xl border border-slate-100 bg-slate-50 p-3"
+            >
+              <div className="mb-3 truncate text-sm font-extrabold text-slate-800">
+                {item.name || `${activeTab} #${index + 1}`}
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {itemFields.map((field) => (
+                  <div key={`${index}-${field.item_code}-${field.field_key}`}>
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <span className="truncate text-xs font-bold text-slate-500">
+                        {field.field_name || field.field_key}
                       </span>
-                    )}
+                      {field.is_required && (
+                        <span className="shrink-0 rounded-lg bg-blue-50 px-2 py-1 text-xs font-bold text-blue-600">
+                          {TEXT.required}
+                        </span>
+                      )}
+                    </div>
+                    <DynamicFieldInput
+                      field={field}
+                      item={item}
+                      onChange={(nextValue) =>
+                        updateItem(activeTab, index, field.field_key, nextValue)
+                      }
+                    />
                   </div>
-                  <DynamicFieldInput
-                    field={field}
-                    item={item}
-                    onChange={(nextValue) =>
-                      updateItem(activeTab, index, field.field_key, nextValue)
-                    }
-                  />
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -280,13 +299,8 @@ export default function DetailTable({
         />
       )}
 
-      {isStatsTab && (
-        <h4 className="mb-2 shrink-0 text-sm font-extrabold text-slate-900">
-          {TEXT.statsItemListTitle}
-        </h4>
-      )}
-
-      <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-slate-100">
+      {!isStatsTab && (
+        <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-slate-100">
         <table className="table-fixed min-w-full border-collapse bg-white">
           <thead className="sticky top-0 z-10 bg-slate-50">
             <tr className="border-b border-slate-200 text-left text-sm text-slate-500">
@@ -451,7 +465,8 @@ export default function DetailTable({
             ))}
           </tbody>
         </table>
-      </div>
+        </div>
+      )}
     </Panel>
   );
 }

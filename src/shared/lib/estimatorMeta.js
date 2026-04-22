@@ -77,6 +77,18 @@ function buildStatsItemFromMeta(item) {
   };
 }
 
+function mergeStatsItemsWithDefaults(statsItems = []) {
+  const defaultStatsItems = clone(DEFAULT_ITEMS.stats || []);
+  const statsItemsByCode = new Map(
+    statsItems.map((item) => [item.item_code || item.itemCode, item])
+  );
+
+  return defaultStatsItems.map((defaultItem) => {
+    const itemCode = defaultItem.item_code || defaultItem.itemCode;
+    return statsItemsByCode.get(itemCode) || defaultItem;
+  });
+}
+
 export function getSolutionTabs(codebooks) {
   const summaryTab = SOLUTIONS.find((solution) => solution.key === "summary");
   const solutionCodes = activeCodes(codebooks, "SOLUTION");
@@ -158,7 +170,7 @@ export function buildItemsBySolution(itemMeta, solutionKeys = []) {
     return result;
   }, {});
 
-  return activeItems.reduce((result, item) => {
+  const itemsBySolution = activeItems.reduce((result, item) => {
     const solutionCode = item.solution_code;
 
     if (!result[solutionCode]) {
@@ -173,6 +185,12 @@ export function buildItemsBySolution(itemMeta, solutionKeys = []) {
 
     return result;
   }, initialItemsBySolution);
+
+  if ("stats" in itemsBySolution) {
+    itemsBySolution.stats = mergeStatsItemsWithDefaults(itemsBySolution.stats);
+  }
+
+  return itemsBySolution;
 }
 
 export function getPolicyValue(policy, policyCode, fallback) {

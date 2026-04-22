@@ -66,4 +66,25 @@ describe("projectDefaults", () => {
 
     expect(state.itemsBySolution.pbx.length).toBeGreaterThan(0);
   });
+  it("stats fallback keeps four default items when meta is partial", () => {
+    const state = buildDefaultProjectState({
+      itemMeta: [
+        {
+          solution_code: "stats",
+          item_code: "STATS_DASHBOARD",
+          item_name: "Dashboard",
+          default_base_md: "4.00",
+          sort_order: 1,
+          is_active: true,
+        },
+      ],
+    });
+
+    expect(state.itemsBySolution.stats.map((item) => item.item_code)).toEqual([
+      "STATS_DASHBOARD",
+      "STATS_HISTORY",
+      "STATS_REPORT",
+      "STATS_BATCH",
+    ]);
+  });
 });

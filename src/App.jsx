@@ -19,10 +19,14 @@ if (import.meta.env.DEV) {
 export default function ContactCenterEffortEstimator() {
   const route = useHashRoute();
   const loadMeta = useEstimatorStore((state) => state.loadMeta);
+  const refreshEstimatorMetaRows = useEstimatorStore(
+    (state) => state.refreshEstimatorMetaRows
+  );
 
   useEffect(() => {
     loadMeta();
-  }, [loadMeta]);
+    refreshEstimatorMetaRows();
+  }, [loadMeta, refreshEstimatorMetaRows]);
 
   return (
     <>
