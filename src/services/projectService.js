@@ -77,6 +77,14 @@ export async function saveProject({
     .single();
 }
 
+export async function deleteProjectById(projectId) {
+  if (!supabase) {
+    return { data: null, error: new Error("Supabase client not initialized.") };
+  }
+
+  return await supabase.from(TABLE_NAME).delete().eq("id", projectId);
+}
+
 export async function saveProjectVersion({
   projectId,
   versionNo,
@@ -201,6 +209,20 @@ export async function fetchEstimationEnvVarMeta() {
     .order("solution_code", { ascending: true })
     .order("sort_order", { ascending: true })
     .order("var_key", { ascending: true });
+}
+
+export async function fetchEstimationCalculationMeta() {
+  if (!supabase) {
+    return { data: [], error: null };
+  }
+
+  return await supabase
+    .from("estimation_calculation_meta")
+    .select("*")
+    .order("solution_code", { ascending: true })
+    .order("item_code", { ascending: true })
+    .order("sort_order", { ascending: true })
+    .order("method", { ascending: true });
 }
 
 export async function fetchEstimationPolicy() {

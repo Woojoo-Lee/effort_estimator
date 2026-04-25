@@ -5,6 +5,7 @@ import {
   fetchProjects,
   fetchProjectById,
   saveProject,
+  deleteProjectById,
   fetchProjectVersions,
   fetchLatestProjectVersionNo,
   saveProjectVersion,
@@ -14,6 +15,7 @@ import {
   fetchEstimationBaseEffortMeta,
   fetchEstimationItemFieldMeta,
   fetchEstimationEnvVarMeta,
+  fetchEstimationCalculationMeta,
   fetchEstimationPolicy,
   fetchCommonCodeRows,
   createCommonCodeRow,
@@ -81,6 +83,11 @@ export const useEstimatorStore = create(
         // 2) Project list / version state
         // =========================================
         projects: [],
+        selectedProjectId: null,
+        isProjectsBusy: false,
+        isProjectActionBusy: false,
+        lastProjectsError: "",
+        draftProjectName: "",
         versions: [],
 
         // =========================================
@@ -103,6 +110,7 @@ export const useEstimatorStore = create(
         baseEffortMetaRows: [],
         itemFieldMetaRows: [],
         envVarMetaRows: [],
+        calculationMetaRows: [],
         isEstimatorMetaRowsBusy: false,
         lastEstimatorMetaRowsError: "",
 
@@ -323,17 +331,23 @@ export const useEstimatorStore = create(
             lastEstimatorMetaRowsError: "",
           });
 
-          const [baseEffortResult, itemFieldResult, envVarResult] =
-            await Promise.all([
-              fetchEstimationBaseEffortMeta(),
-              fetchEstimationItemFieldMeta(),
-              fetchEstimationEnvVarMeta(),
-            ]);
+          const [
+            baseEffortResult,
+            itemFieldResult,
+            envVarResult,
+            calculationResult,
+          ] = await Promise.all([
+            fetchEstimationBaseEffortMeta(),
+            fetchEstimationItemFieldMeta(),
+            fetchEstimationEnvVarMeta(),
+            fetchEstimationCalculationMeta(),
+          ]);
 
           const error =
             baseEffortResult.error ||
             itemFieldResult.error ||
-            envVarResult.error;
+            envVarResult.error ||
+            calculationResult.error;
 
           if (error) {
             console.error(error);
@@ -341,6 +355,7 @@ export const useEstimatorStore = create(
               baseEffortMetaRows: [],
               itemFieldMetaRows: [],
               envVarMetaRows: [],
+              calculationMetaRows: [],
               isEstimatorMetaRowsBusy: false,
               lastEstimatorMetaRowsError: "산정 메타 조회에 실패했습니다.",
             });
@@ -352,6 +367,7 @@ export const useEstimatorStore = create(
             baseEffortMetaRows: baseEffortResult.data || [],
             itemFieldMetaRows: itemFieldResult.data || [],
             envVarMetaRows: envVarResult.data || [],
+            calculationMetaRows: calculationResult.data || [],
             isEstimatorMetaRowsBusy: false,
             lastEstimatorMetaRowsError: "",
           });
@@ -367,6 +383,8 @@ export const useEstimatorStore = create(
         setProjectId: (projectId) => set({ projectId }),
         setActiveTab: (activeTab) => set({ activeTab }),
         setProjectName: (projectName) => set({ projectName }),
+        setDraftProjectName: (draftProjectName) => set({ draftProjectName }),
+        clearProjectsError: () => set({ lastProjectsError: "" }),
 
         setItemsBySolution: (itemsBySolution) =>
           set({
@@ -494,6 +512,7 @@ export const useEstimatorStore = create(
 
           set({
             ...next,
+            selectedProjectId: null,
             versions: [],
             toast: getDefaultToast(),
             saveStatus: "idle",
@@ -514,21 +533,114 @@ export const useEstimatorStore = create(
             return;
           }
 
-          set({ isBusy: true });
+          set({
+            isBusy: true,
+            isProjectsBusy: true,
+            lastProjectsError: "",
+          });
 
           const { data, error } = await fetchProjects();
+          const projectsErrorMessage = "프로젝트 목록 조회에 실패했습니다.";
 
           if (error) {
             console.error(error);
+            set({ lastProjectsError: projectsErrorMessage });
             showToast("프로젝트 목록 조회 실패", "red");
           } else {
             set({
               projects: data || [],
               dbReady: true,
+              lastProjectsError: "",
             });
           }
 
-          set({ isBusy: false });
+          set({ isBusy: false, isProjectsBusy: false });
+        },
+
+        createProjectFromDraft: async () => {
+          const state = get();
+          const projectName = state.draftProjectName.trim();
+
+          if (!projectName) {
+            set({ lastProjectsError: "프로젝트명을 입력하세요." });
+            state.showToast("프로젝트명을 입력하세요.", "red");
+            return false;
+          }
+
+          if (!state.dbReady) {
+            set({
+              lastProjectsError: "Supabase 환경변수가 설정되지 않았습니다.",
+              saveStatus: "error",
+            });
+            state.showToast("Supabase 환경변수가 설정되지 않았습니다.", "red");
+            return false;
+          }
+
+          const label = new Date().toLocaleString("ko-KR", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          const freshProject = createFreshProjectState({
+            itemMeta: state.itemMeta,
+            policy: state.policy,
+            codebooks: state.codebooks,
+          });
+          const nextProject = {
+            ...freshProject,
+            activeTab: "pbx",
+            projectName,
+          };
+          const payload = buildProjectPayload(nextProject, label);
+
+          set({
+            isBusy: true,
+            isProjectActionBusy: true,
+            saveStatus: "saving",
+            lastProjectsError: "",
+            lastSaveError: "",
+          });
+
+          const { data, error } = await saveProject({
+            projectId: null,
+            projectName,
+            payload,
+          });
+
+          if (error || !data?.id) {
+            console.error(error);
+            set({
+              isBusy: false,
+              isProjectActionBusy: false,
+              saveStatus: "error",
+              lastProjectsError: "프로젝트 생성에 실패했습니다.",
+              lastSaveError: "DB 저장 실패",
+            });
+            state.showToast("프로젝트 생성에 실패했습니다.", "red");
+            return false;
+          }
+
+          set({
+            ...nextProject,
+            projectId: data.id,
+            selectedProjectId: data.id,
+            savedAt: label,
+            isDirty: false,
+            isBusy: false,
+            isProjectActionBusy: false,
+            saveStatus: "saved",
+            lastProjectsError: "",
+            lastSaveError: "",
+            draftProjectName: "",
+            versions: [],
+          });
+
+          await get().refreshProjects();
+          get().showToast("프로젝트를 생성했습니다.", "emerald");
+          window.location.hash = "/estimator";
+          return true;
         },
 
         handleSaveProject: async ({ silent = false } = {}) => {
@@ -613,6 +725,7 @@ export const useEstimatorStore = create(
 
           set({
             projectId: data.id,
+            selectedProjectId: data.id,
             savedAt: label,
             isDirty: false,
             isBusy: false,
@@ -643,7 +756,7 @@ export const useEstimatorStore = create(
               lastSaveError: "Supabase 환경변수가 설정되지 않았습니다.",
             });
             showToast("Supabase 환경변수가 설정되지 않았습니다.", "red");
-            return;
+            return false;
           }
 
           set({ isBusy: true });
@@ -658,7 +771,7 @@ export const useEstimatorStore = create(
               saveStatus: "error",
               lastSaveError: "프로젝트 불러오기 실패",
             });
-            return;
+            return false;
           }
 
           const payload = data?.payload || {};
@@ -670,6 +783,7 @@ export const useEstimatorStore = create(
 
           set({
             projectId: data.id,
+            selectedProjectId: data.id,
             projectName:
               data.project_name || payload.projectName || "새 컨택센터 프로젝트",
             activeTab: payload.activeTab || defaults.activeTab,
@@ -690,6 +804,92 @@ export const useEstimatorStore = create(
 
           showToast("프로젝트 불러오기 완료", "emerald");
           await get().refreshVersions();
+          return true;
+        },
+
+        selectProject: async (projectId) => {
+          set({
+            isProjectActionBusy: true,
+            lastProjectsError: "",
+          });
+
+          const didLoad = await get().loadProject(projectId);
+
+          set({ isProjectActionBusy: false });
+
+          if (!didLoad) {
+            set({ lastProjectsError: "프로젝트 선택에 실패했습니다." });
+            return false;
+          }
+
+          window.location.hash = "/estimator";
+          return true;
+        },
+
+        deleteProject: async (projectId) => {
+          const state = get();
+
+          if (!state.dbReady) {
+            set({
+              lastProjectsError: "Supabase 환경변수가 설정되지 않았습니다.",
+              saveStatus: "error",
+            });
+            state.showToast("Supabase 환경변수가 설정되지 않았습니다.", "red");
+            return false;
+          }
+
+          set({
+            isBusy: true,
+            isProjectActionBusy: true,
+            lastProjectsError: "",
+          });
+
+          const { error } = await deleteProjectById(projectId);
+
+          if (error) {
+            console.error(error);
+            set({
+              isBusy: false,
+              isProjectActionBusy: false,
+              lastProjectsError: "프로젝트 삭제에 실패했습니다.",
+            });
+            state.showToast("프로젝트 삭제에 실패했습니다.", "red");
+            return false;
+          }
+
+          const nextState = {};
+
+          if (String(state.projectId || "") === String(projectId)) {
+            Object.assign(
+              nextState,
+              createFreshProjectState({
+                itemMeta: state.itemMeta,
+                policy: state.policy,
+                codebooks: state.codebooks,
+              }),
+              {
+                selectedProjectId: null,
+                versions: [],
+                saveStatus: "idle",
+                lastSaveError: "",
+              }
+            );
+          }
+
+          set((current) => ({
+            ...nextState,
+            projects: current.projects.filter(
+              (project) => String(project.id) !== String(projectId)
+            ),
+            isBusy: false,
+            isProjectActionBusy: false,
+            lastProjectsError: "",
+          }));
+
+          await get().refreshProjects();
+          state.showToast("프로젝트를 삭제했습니다.", "emerald");
+          window.location.hash = "/projects";
+          return true;
         },
 
         // =========================================
