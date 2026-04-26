@@ -36,6 +36,18 @@ const PHASE_LABELS = {
   STABILIZATION: "안정화",
 };
 
+const META_CALCULATION_SOLUTIONS = [
+  "pbx",
+  "cti",
+  "ivr",
+  "oamp",
+  "cms",
+  "sbc",
+  "voicebot",
+];
+
+const CATEGORY_FALLBACK = "\uAE30\uD0C0";
+
 function getPhaseLabel(phaseCode) {
   return PHASE_LABELS[phaseCode] || phaseCode || TEXT.emptyValue;
 }
@@ -240,6 +252,62 @@ function DynamicFieldSection({ rows, items, activeTab, updateItem }) {
   );
 }
 
+function getItemCode(item) {
+  return item.item_code || item.itemCode;
+}
+
+function calcBaseTotalMd(rows = []) {
+  return rows.reduce((sum, row) => sum + Number(row.base_md || 0), 0);
+}
+
+function buildCalculationMetaByItemCode(rows = []) {
+  return new Map(rows.map((row) => [row.item_code, row]));
+}
+
+function parseJsonObject(value) {
+  if (!value || typeof value !== "string") return {};
+
+  try {
+    const parsed = JSON.parse(value);
+
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function getItemCategoryMeta(item) {
+  const noteMeta = parseJsonObject(
+    item.default_note ?? item.defaultNote ?? item.note
+  );
+
+  return {
+    category_l1: item.category_l1 ?? noteMeta.category_l1 ?? CATEGORY_FALLBACK,
+    category_l2: item.category_l2 ?? noteMeta.category_l2 ?? "",
+    category_l3: item.category_l3 ?? noteMeta.category_l3 ?? "",
+  };
+}
+
+function getItemNoteValue(item) {
+  return Object.keys(parseJsonObject(item.note)).length > 0
+    ? ""
+    : item.note || "";
+}
+
+function calcMetaRowMd(baseTotalMd, calculationMeta, item) {
+  const quantityFieldKey = calculationMeta?.quantity_field_key || "quantity";
+  const quantity = Number(
+    item[quantityFieldKey] ?? calculationMeta?.default_quantity ?? 1
+  );
+  const safeQuantity = Number.isFinite(quantity) ? quantity : 1;
+  const calculationBaseMd =
+    baseTotalMd + Number(calculationMeta?.base_overhead_md || 0);
+
+  return calculationBaseMd * Number(calculationMeta?.weight || 0) * safeQuantity;
+}
+
 export default function DetailTable({
   activeTab,
   currentItems,
@@ -250,6 +318,7 @@ export default function DetailTable({
   itemFieldMetaRows = [],
 }) {
   const codebooks = useEstimatorStore((s) => s.codebooks || []);
+  const calculationMetaRows = useEstimatorStore((s) => s.calculationMetaRows || []);
   const solutions = getSolutionTabs(codebooks);
   const difficultyOptions = getDifficultyOptions(codebooks);
   const complexityOptions = getComplexityOptions(codebooks);
@@ -259,11 +328,61 @@ export default function DetailTable({
   const activeItemFieldRows = itemFieldMetaRows.filter(
     (row) => row.solution_code === activeTab && row.is_active !== false
   );
+  const activeCalculationMetaRows = calculationMetaRows.filter(
+    (row) => row.solution_code === activeTab && row.is_active !== false
+  );
+  const calculationMetaByItemCode = buildCalculationMetaByItemCode(
+    activeCalculationMetaRows
+  );
+  const baseTotalMd = calcBaseTotalMd(activeBaseEffortRows);
   const isStatsTab = activeTab === "stats";
+  const isMetaCalculationTab = META_CALCULATION_SOLUTIONS.includes(activeTab);
+  const visibleItems = currentItems
+    .map((item, index) => ({ item, index }))
+    .filter(
+      ({ item }) =>
+        !isMetaCalculationTab ||
+        calculationMetaByItemCode.has(getItemCode(item))
+    )
+    .sort((a, b) => {
+      if (!isMetaCalculationTab) return 0;
+
+      const aCategory = getItemCategoryMeta(a.item);
+      const bCategory = getItemCategoryMeta(b.item);
+      const categoryCompare = String(aCategory.category_l1).localeCompare(
+        String(bCategory.category_l1),
+        "ko"
+      );
+      const subCategoryCompare = String(aCategory.category_l2).localeCompare(
+        String(bCategory.category_l2),
+        "ko"
+      );
+
+      return (
+        categoryCompare ||
+        subCategoryCompare ||
+        Number(a.item.sort_order || a.index) - Number(b.item.sort_order || b.index)
+      );
+    })
+    .map((entry, visibleIndex, rows) => {
+      const categoryMeta = getItemCategoryMeta(entry.item);
+      const previousCategory =
+        visibleIndex > 0
+          ? getItemCategoryMeta(rows[visibleIndex - 1].item).category_l1
+          : null;
+
+      return {
+        ...entry,
+        categoryMeta,
+        showGroupHeader:
+          isMetaCalculationTab &&
+          categoryMeta.category_l1 !== previousCategory,
+      };
+    });
   const shouldShowDynamicFields =
     isStatsTab && activeItemFieldRows.length > 0;
-  const shouldShowLegacyDifficultyColumns = !isStatsTab;
-  const shouldShowLegacyCalcColumn = !isStatsTab;
+  const shouldShowLegacyDifficultyColumns = !isStatsTab && !isMetaCalculationTab;
+  const shouldShowLegacyCalcColumn = !isStatsTab && !isMetaCalculationTab;
 
   return (
     <Panel
@@ -305,7 +424,12 @@ export default function DetailTable({
           <thead className="sticky top-0 z-10 bg-slate-50">
             <tr className="border-b border-slate-200 text-left text-sm text-slate-500">
               <th className="w-[240px] py-3 pr-3 pl-4">업무 기능</th>
-              <th className="w-[90px] py-3 pr-3 text-center">기본공수 (M/M)</th>
+              <th className="w-[90px] py-3 pr-3 text-center">
+                {isMetaCalculationTab ? "가중치" : "기본공수 (M/M)"}
+              </th>
+              {isMetaCalculationTab && (
+                <th className="w-[90px] py-3 pr-3 text-center">수량</th>
+              )}
               {isStatsTab && (
                 <th className="w-[90px] py-3 pr-3 text-center">수량</th>
               )}
@@ -315,7 +439,7 @@ export default function DetailTable({
                   <th className="w-[140px] py-3 pr-3 text-center">복잡도</th>
                 </>
               )}
-              {shouldShowLegacyCalcColumn && (
+              {(shouldShowLegacyCalcColumn || isMetaCalculationTab) && (
                 <th className="w-[90px] py-3 pr-3 text-right">
                   산정공수 (M/M)
                 </th>
@@ -326,40 +450,114 @@ export default function DetailTable({
           </thead>
 
           <tbody>
-            {currentItems.map((item, index) => (
+            {visibleItems.map(({ item, index, categoryMeta, showGroupHeader }) => {
+              const itemCode = getItemCode(item);
+              const calculationMeta = calculationMetaByItemCode.get(itemCode);
+              const quantityFieldKey =
+                calculationMeta?.quantity_field_key || "quantity";
+              const metaRowMd = calcMetaRowMd(
+                baseTotalMd,
+                calculationMeta,
+                item
+              );
+              const categoryText = [categoryMeta.category_l2, categoryMeta.category_l3]
+                .filter(Boolean)
+                .join(" / ");
+
+              return (
+              <React.Fragment key={`${activeTab}-${index}`}>
+              {showGroupHeader && (
+                <tr className="border-b border-slate-100 bg-slate-50/80">
+                  <td
+                    colSpan={6}
+                    className="px-4 py-2 text-xs font-extrabold text-slate-600"
+                  >
+                    {categoryMeta.category_l1 || CATEGORY_FALLBACK}
+                  </td>
+                </tr>
+              )}
               <tr
-                key={`${activeTab}-${index}`}
                 data-row={activeTab}
                 className="border-b border-slate-100 align-top text-sm"
               >
                 <td className="py-2 pr-3 pl-4">
-                  <SmallInput
-                    data-cell={`${index}-0`}
-                    value={item.name}
-                    onChange={(e) =>
-                      updateItem(activeTab, index, "name", e.target.value)
-                    }
-                    onKeyDown={(e) => moveFocus(e, index, 0)}
-                  />
+                  {isMetaCalculationTab ? (
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                      <div className="truncate font-bold text-slate-800">
+                        {item.name}
+                      </div>
+                      {categoryText && (
+                        <div className="mt-1 truncate text-xs font-semibold text-slate-400">
+                          {categoryText}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <SmallInput
+                      data-cell={`${index}-0`}
+                      value={item.name}
+                      onChange={(e) =>
+                        updateItem(activeTab, index, "name", e.target.value)
+                      }
+                      onKeyDown={(e) => moveFocus(e, index, 0)}
+                    />
+                  )}
                 </td>
 
-                <td className="py-2 pr-3">
-                  <SmallInput
-                    data-cell={`${index}-1`}
-                    type="number"
-                    step="0.01"
-                    value={item.baseMd}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      const num = parseFloat(raw || 0);
-                      const fixed = Math.round(num * 100) / 100;
+                {isMetaCalculationTab ? (
+                  <>
+                    <td className="py-2 pr-3 text-center align-middle">
+                      <div className="rounded-xl bg-slate-50 px-3 py-2 font-bold text-slate-700">
+                        {fmt(calculationMeta?.weight)}
+                      </div>
+                    </td>
 
-                      updateItem(activeTab, index, "baseMd", fixed);
-                    }}
-                    onKeyDown={(e) => moveFocus(e, index, 1)}
-                    className="text-center font-semibold"
-                  />
-                </td>
+                    <td className="py-2 pr-3">
+                      <SmallInput
+                        data-cell={`${index}-1`}
+                        type="number"
+                        step="1"
+                        value={item[quantityFieldKey] ?? 0}
+                        onChange={(e) => {
+                          const nextQuantity = Number(e.target.value || 0);
+
+                          updateItem(
+                            activeTab,
+                            index,
+                            quantityFieldKey,
+                            Number.isFinite(nextQuantity) ? nextQuantity : 0
+                          );
+                        }}
+                        onKeyDown={(e) => moveFocus(e, index, 1)}
+                        className="text-center font-semibold"
+                      />
+                    </td>
+
+                    <td className="py-2 pr-3 text-right align-middle">
+                      <div className="rounded-xl bg-blue-50 px-3 py-2 font-bold text-blue-600">
+                        {fmt(metaRowMd)}
+                      </div>
+                    </td>
+                  </>
+                ) : (
+                  <td className="py-2 pr-3">
+                    <SmallInput
+                      data-cell={`${index}-1`}
+                      type="number"
+                      step="0.01"
+                      value={item.baseMd}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const num = parseFloat(raw || 0);
+                        const fixed = Math.round(num * 100) / 100;
+
+                        updateItem(activeTab, index, "baseMd", fixed);
+                      }}
+                      onKeyDown={(e) => moveFocus(e, index, 1)}
+                      className="text-center font-semibold"
+                    />
+                  </td>
+                )}
 
                 {isStatsTab && (
                   <td className="py-2 pr-3">
@@ -444,7 +642,9 @@ export default function DetailTable({
                   <SmallInput
                     data-cell={`${index}-5`}
                     type="text"
-                    value={item.note || ""}
+                    value={
+                      isMetaCalculationTab ? getItemNoteValue(item) : item.note || ""
+                    }
                     onChange={(e) =>
                       updateItem(activeTab, index, "note", e.target.value)
                     }
@@ -462,7 +662,9 @@ export default function DetailTable({
                   </button>
                 </td>
               </tr>
-            ))}
+              </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
         </div>

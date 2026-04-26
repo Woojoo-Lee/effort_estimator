@@ -84,6 +84,120 @@ export function calcStatsMetaTotal({
   );
 }
 
+function findItemFieldMeta({
+  solutionCode,
+  itemCode,
+  fieldKey,
+  itemFieldMetaRows = [],
+}) {
+  return itemFieldMetaRows.find(
+    (row) =>
+      row.solution_code === solutionCode &&
+      row.item_code === itemCode &&
+      row.field_key === fieldKey &&
+      row.is_active !== false
+  );
+}
+
+function getMetaQuantity({
+  item = {},
+  calculationMeta = {},
+  itemFieldMetaRows = [],
+  solutionCode,
+}) {
+  const quantityFieldKey = calculationMeta.quantity_field_key || "quantity";
+  const itemFieldMeta = findItemFieldMeta({
+    solutionCode,
+    itemCode: calculationMeta.item_code,
+    fieldKey: quantityFieldKey,
+    itemFieldMetaRows,
+  });
+  const quantity = Number(
+    item[quantityFieldKey] ??
+      calculationMeta.default_quantity ??
+      itemFieldMeta?.default_value ??
+      1
+  );
+
+  return Number.isFinite(quantity) ? quantity : 1;
+}
+
+function calcMetaItemMd({
+  item = {},
+  calculationMeta = {},
+  calculationBaseMd,
+  quantity,
+}) {
+  if (calculationMeta.method === "BASE_TOTAL_WEIGHT") {
+    return (
+      calculationBaseMd *
+      Number(calculationMeta.weight || 0) *
+      quantity
+    );
+  }
+
+  if (calculationMeta.method === "LEGACY_BASE_MD") {
+    return Number(item.baseMd || 0) * quantity;
+  }
+
+  return calcItemMd(item);
+}
+
+export function calcMetaSolutionTotal({
+  solutionCode,
+  items = [],
+  baseEffortMetaRows = [],
+  itemFieldMetaRows = [],
+  calculationMetaRows = [],
+}) {
+  const solutionCalculationMetaRows = calculationMetaRows.filter(
+    (row) => row.solution_code === solutionCode && row.is_active !== false
+  );
+
+  if (solutionCalculationMetaRows.length === 0) {
+    return calcSolutionTotal(items);
+  }
+
+  const baseTotalMd = calcBaseEffortTotal(
+    baseEffortMetaRows.filter((row) => row.solution_code === solutionCode)
+  );
+  const overheadMd = solutionCalculationMetaRows.reduce((max, row) => {
+    const overhead = Number(row.base_overhead_md || 0);
+
+    return Number.isFinite(overhead) ? Math.max(max, overhead) : max;
+  }, 0);
+  const calculationMetaByItemCode = new Map(
+    solutionCalculationMetaRows.map((row) => [row.item_code, row])
+  );
+  const additionalTotal = items.reduce((sum, item) => {
+    const itemCode = item.item_code || item.itemCode;
+    const calculationMeta = calculationMetaByItemCode.get(itemCode);
+
+    if (!calculationMeta) {
+      return sum + calcItemMd(item);
+    }
+
+    const quantity = getMetaQuantity({
+      item,
+      calculationMeta,
+      itemFieldMetaRows,
+      solutionCode,
+    });
+
+    return (
+      sum +
+      calcMetaItemMd({
+        item,
+        calculationMeta,
+        calculationBaseMd: baseTotalMd + overheadMd,
+        quantity,
+      })
+    );
+  }, 0);
+
+  return Number((baseTotalMd + overheadMd + additionalTotal).toFixed(2));
+}
+
 function getEnvVarNumber(envVarRows = [], varKey, fallbackValue) {
   const row = envVarRows.find(
     (item) =>

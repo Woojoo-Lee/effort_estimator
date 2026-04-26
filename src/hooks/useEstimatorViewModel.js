@@ -10,6 +10,7 @@ export function useEstimatorViewModel() {
   const mgmtRate = useEstimatorStore((s) => s.mgmtRate);
   const baseEffortMetaRows = useEstimatorStore((s) => s.baseEffortMetaRows);
   const itemFieldMetaRows = useEstimatorStore((s) => s.itemFieldMetaRows);
+  const calculationMetaRows = useEstimatorStore((s) => s.calculationMetaRows);
   const envVarMetaRows = useEstimatorStore((s) => s.envVarMetaRows);
 
   const setActiveTab = useEstimatorStore((s) => s.setActiveTab);
@@ -31,6 +32,7 @@ export function useEstimatorViewModel() {
     mgmtRate,
     baseEffortMetaRows,
     itemFieldMetaRows,
+    calculationMetaRows,
     envVarMetaRows,
   });
 
@@ -39,10 +41,18 @@ export function useEstimatorViewModel() {
       window.__ESTIMATOR_DERIVED__ = {
         solutionTotals: derived.solutionTotals,
         grandBaseTotal: derived.grandBaseTotal,
+        sidebarBaseTotal: derived.sidebarBaseTotal,
         finalTotal: derived.finalTotal,
+        sidebarFinalTotal: derived.sidebarFinalTotal,
       };
     }
-  }, [derived.solutionTotals, derived.grandBaseTotal, derived.finalTotal]);
+  }, [
+    derived.solutionTotals,
+    derived.grandBaseTotal,
+    derived.sidebarBaseTotal,
+    derived.finalTotal,
+    derived.sidebarFinalTotal,
+  ]);
 
   const detailActions = useMemo(
     () => ({
@@ -64,11 +74,16 @@ export function useEstimatorViewModel() {
       activeTab,
       solutionTotals: derived.solutionTotals,
       grandBaseTotal: derived.grandBaseTotal,
+      sidebarBaseTotal: derived.sidebarBaseTotal,
       scaledTotal: derived.scaledTotal,
       riskAppliedTotal: derived.riskAppliedTotal,
+      sidebarScaledTotal: derived.sidebarScaledTotal,
+      sidebarRiskAppliedTotal: derived.sidebarRiskAppliedTotal,
       mgmtRate,
       mgmtMd: derived.mgmtMd,
+      sidebarMgmtMd: derived.sidebarMgmtMd,
       finalTotal: derived.finalTotal,
+      sidebarFinalTotal: derived.sidebarFinalTotal,
       scaleFactor,
       setScaleFactor,
       riskFactor,
@@ -81,11 +96,16 @@ export function useEstimatorViewModel() {
       activeTab,
       derived.solutionTotals,
       derived.grandBaseTotal,
+      derived.sidebarBaseTotal,
       derived.scaledTotal,
       derived.riskAppliedTotal,
+      derived.sidebarScaledTotal,
+      derived.sidebarRiskAppliedTotal,
       mgmtRate,
       derived.mgmtMd,
+      derived.sidebarMgmtMd,
       derived.finalTotal,
+      derived.sidebarFinalTotal,
       scaleFactor,
       setScaleFactor,
       riskFactor,

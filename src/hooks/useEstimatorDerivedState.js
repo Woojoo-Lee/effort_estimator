@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import {
   calcSolutionTotals,
+  calcMetaSolutionTotal,
   calcStatsMetaTotal,
   calcStatsEnvFactors,
   calcGrandBaseTotal,
@@ -19,10 +20,50 @@ export function useEstimatorDerivedState({
   mgmtRate,
   baseEffortMetaRows = [],
   itemFieldMetaRows = [],
+  calculationMetaRows = [],
   envVarMetaRows = [],
 }) {
   const solutionTotals = useMemo(() => {
     const legacyTotals = calcSolutionTotals(itemsBySolution);
+    const metaSolutionCodes = [
+      ...new Set(
+        calculationMetaRows
+          .filter(
+            (row) =>
+              row.solution_code &&
+              row.solution_code !== "stats" &&
+              row.is_active !== false
+          )
+          .map((row) => row.solution_code)
+      ),
+    ];
+    const metaTotals = metaSolutionCodes.reduce((totals, solutionCode) => {
+      const itemCodes = new Set(
+        calculationMetaRows
+          .filter(
+            (row) =>
+              row.solution_code === solutionCode && row.is_active !== false
+          )
+          .map((row) => row.item_code)
+      );
+
+      return {
+        ...totals,
+        [solutionCode]: calcMetaSolutionTotal({
+          solutionCode,
+          items: (itemsBySolution?.[solutionCode] || []).filter((item) =>
+            itemCodes.has(item.item_code || item.itemCode)
+          ),
+          baseEffortMetaRows,
+          itemFieldMetaRows,
+          calculationMetaRows,
+        }),
+      };
+    }, {});
+    const nextTotals = {
+      ...legacyTotals,
+      ...metaTotals,
+    };
     const statsBaseEffortRows = baseEffortMetaRows.filter(
       (row) => row.solution_code === "stats" && row.is_active !== false
     );
@@ -32,18 +73,23 @@ export function useEstimatorDerivedState({
     const canUseStatsMetaCalculation = statsBaseEffortRows.length > 0;
 
     if (!canUseStatsMetaCalculation) {
-      return legacyTotals;
+      return nextTotals;
     }
 
     return {
-      ...legacyTotals,
+      ...nextTotals,
       stats: calcStatsMetaTotal({
         legacyItems: itemsBySolution?.stats || [],
         baseEffortRows: statsBaseEffortRows,
         itemFieldRows: statsItemFieldRows,
       }),
     };
-  }, [itemsBySolution, baseEffortMetaRows, itemFieldMetaRows]);
+  }, [
+    itemsBySolution,
+    baseEffortMetaRows,
+    itemFieldMetaRows,
+    calculationMetaRows,
+  ]);
 
   const grandBaseTotal = useMemo(() => {
     return calcGrandBaseTotal(solutionTotals);
@@ -78,6 +124,30 @@ export function useEstimatorDerivedState({
     return calcFinalTotal(riskAppliedTotal, mgmtMd);
   }, [riskAppliedTotal, mgmtMd]);
 
+  const sidebarBaseTotal = useMemo(() => {
+    if (activeTab === "summary") {
+      return grandBaseTotal;
+    }
+
+    return Number(solutionTotals?.[activeTab] || 0);
+  }, [activeTab, grandBaseTotal, solutionTotals]);
+
+  const sidebarScaledTotal = useMemo(() => {
+    return calcScaledTotal(sidebarBaseTotal, effectiveFactors.scaleFactor);
+  }, [sidebarBaseTotal, effectiveFactors.scaleFactor]);
+
+  const sidebarRiskAppliedTotal = useMemo(() => {
+    return calcRiskAppliedTotal(sidebarScaledTotal, effectiveFactors.riskFactor);
+  }, [sidebarScaledTotal, effectiveFactors.riskFactor]);
+
+  const sidebarMgmtMd = useMemo(() => {
+    return calcMgmtMd(sidebarRiskAppliedTotal, effectiveFactors.mgmtRate);
+  }, [sidebarRiskAppliedTotal, effectiveFactors.mgmtRate]);
+
+  const sidebarFinalTotal = useMemo(() => {
+    return calcFinalTotal(sidebarRiskAppliedTotal, sidebarMgmtMd);
+  }, [sidebarRiskAppliedTotal, sidebarMgmtMd]);
+
   const currentItems = useMemo(() => {
     return itemsBySolution?.[activeTab] || [];
   }, [itemsBySolution, activeTab]);
@@ -89,6 +159,11 @@ export function useEstimatorDerivedState({
     riskAppliedTotal,
     mgmtMd,
     finalTotal,
+    sidebarBaseTotal,
+    sidebarScaledTotal,
+    sidebarRiskAppliedTotal,
+    sidebarMgmtMd,
+    sidebarFinalTotal,
     currentItems,
   };
 }

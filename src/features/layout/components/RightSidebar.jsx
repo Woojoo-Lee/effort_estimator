@@ -9,9 +9,8 @@ import SmallInput from "../../../shared/ui/SmallInput";
 import SmallSelect from "../../../shared/ui/SmallSelect";
 
 const TEXT = {
-  envVarMetaTitle: "\uD658\uACBD\uBCC0\uC218 \uBA54\uD0C0",
-  noEnvVarMeta:
-    "\uD658\uACBD\uBCC0\uC218 \uBA54\uD0C0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  envVarMetaTitle: "환경변수 메타",
+  noEnvVarMeta: "환경변수 메타가 없습니다.",
   emptyValue: "-",
 };
 
@@ -34,13 +33,13 @@ function Panel({ title, children, subtle = false, className = "" }) {
 
 export default function RightSidebar({
   activeTab,
-  solutionTotals,
   grandBaseTotal,
-  scaledTotal,
-  riskAppliedTotal,
+  sidebarBaseTotal,
+  sidebarScaledTotal,
+  sidebarRiskAppliedTotal,
   mgmtRate,
-  mgmtMd,
-  finalTotal,
+  sidebarMgmtMd,
+  sidebarFinalTotal,
   scaleFactor,
   setScaleFactor,
   riskFactor,
@@ -56,12 +55,14 @@ export default function RightSidebar({
   const activeEnvVarMetaRows = envVarMetaRows.filter(
     (row) => row.solution_code === activeTab && row.is_active !== false
   );
+  const baseTotal = Number(sidebarBaseTotal ?? grandBaseTotal ?? 0);
+  const scaledTotal = Number(sidebarScaledTotal ?? 0);
+  const riskAppliedTotal = Number(sidebarRiskAppliedTotal ?? 0);
+  const mgmtMd = Number(sidebarMgmtMd ?? 0);
+  const finalTotal = Number(sidebarFinalTotal ?? 0);
 
   return (
     <div className="flex h-full flex-col gap-4">
-      {/* =========================
-          환경 변수
-      ========================= */}
       <Panel title="환경 변수 설정" subtle className="shrink-0">
         <div className="space-y-4 text-sm">
           <div>
@@ -159,23 +160,25 @@ export default function RightSidebar({
         )}
       </Panel>
 
-      {/* =========================
-          공수 요약
-      ========================= */}
       <Panel title="공수 산출 요약" subtle className="flex-1">
         <div className="flex h-full flex-col justify-between text-sm">
           <div className="space-y-2">
-            {!isSummary && (
-              <div className="flex justify-between">
-                <span className="text-slate-500">현재 탭</span>
-                <strong>{fmt(solutionTotals[activeTab] || 0)} M/M</strong>
-              </div>
-            )}
+            <div className="flex justify-between">
+              <span className="text-slate-500">현재 탭</span>
+              <strong>{isSummary ? "전체 요약" : activeTab}</strong>
+            </div>
 
             <div className="flex justify-between">
-              <span className="text-slate-500">전체</span>
-              <strong>{fmt(grandBaseTotal)} M/M</strong>
+              <span className="text-slate-500">기준 공수</span>
+              <strong>{fmt(baseTotal)} M/M</strong>
             </div>
+
+            {isSummary && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">전체 프로젝트 합계</span>
+                <strong>{fmt(grandBaseTotal)} M/M</strong>
+              </div>
+            )}
 
             <div className="flex justify-between">
               <span className="text-slate-500">규모 반영</span>
@@ -188,20 +191,13 @@ export default function RightSidebar({
             </div>
 
             <div className="flex justify-between">
-              <span className="text-slate-500">
-                관리 ({mgmtRate}%)
-              </span>
+              <span className="text-slate-500">관리 ({mgmtRate}%)</span>
               <strong>{fmt(mgmtMd)} M/M</strong>
             </div>
           </div>
 
-          {/* =========================
-              최종 공수
-          ========================= */}
           <div className="mt-4 rounded-2xl bg-gradient-to-br from-blue-50 to-white p-5 text-center">
-            <div className="mb-2 text-xs font-bold text-blue-600">
-              최종 공수
-            </div>
+            <div className="mb-2 text-xs font-bold text-blue-600">최종 공수</div>
             <div className="text-4xl font-extrabold text-blue-600">
               {fmt(finalTotal)}
               <span className="ml-1 text-lg font-semibold text-blue-400">
