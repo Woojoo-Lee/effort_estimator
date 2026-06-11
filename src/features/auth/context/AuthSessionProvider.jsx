@@ -1,0 +1,263 @@
+import React, {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  AUTH_LOGIN_MODES,
+  resolveAuthLoginMode,
+} from "../lib/authLoginMode";
+import { authSessionRepository } from "../services/authSessionRepository";
+
+function normalizeAuthUser(user) {
+  if (!user) {
+    return null;
+  }
+
+  return {
+    ...user,
+    user_id: user.user_id || user.id || null,
+    email: user.email || null,
+  };
+}
+
+function readSessionPayload(result) {
+  const data = result?.data || result || {};
+  const session = data.session || null;
+  const user = normalizeAuthUser(data.user || session?.user || null);
+
+  return {
+    session,
+    user,
+  };
+}
+
+function buildState({
+  policy,
+  loading = false,
+  error = null,
+  session = null,
+  user = null,
+}) {
+  const normalizedUser = normalizeAuthUser(user);
+
+  return {
+    loginMode: policy.mode,
+    mode: policy.mode,
+    requireLogin: policy.requireLogin,
+    loading,
+    error,
+    session,
+    user: normalizedUser,
+    isAuthenticated: Boolean(session || normalizedUser),
+  };
+}
+
+function cleanupAuthSubscription(subscriptionResult) {
+  if (typeof subscriptionResult === "function") {
+    subscriptionResult();
+    return;
+  }
+
+  const subscription =
+    subscriptionResult?.data?.subscription || subscriptionResult?.subscription;
+
+  if (typeof subscription?.unsubscribe === "function") {
+    subscription.unsubscribe();
+  }
+}
+
+export function createAuthSessionFallback() {
+  const policy = {
+    mode: AUTH_LOGIN_MODES.DISABLED,
+    requireLogin: false,
+  };
+
+  return {
+    ...buildState({ policy }),
+    refresh: async () => ({ data: null, error: null }),
+    signIn: async () => ({ data: null, error: null }),
+    signOut: async () => ({ data: null, error: null }),
+  };
+}
+
+export const AuthSessionContext = createContext(createAuthSessionFallback());
+
+export function AuthSessionProvider({
+  children,
+  env = import.meta.env,
+  repository = authSessionRepository,
+}) {
+  const policy = useMemo(() => resolveAuthLoginMode(env), [env]);
+  const [state, setState] = useState(() =>
+    buildState({ policy, loading: policy.requireLogin })
+  );
+
+  const refresh = useCallback(async () => {
+    if (!policy.requireLogin) {
+      const nextState = buildState({ policy });
+      setState(nextState);
+      return { data: nextState, error: null };
+    }
+
+    setState((current) => ({
+      ...current,
+      loginMode: policy.mode,
+      mode: policy.mode,
+      requireLogin: policy.requireLogin,
+      loading: true,
+      error: null,
+    }));
+
+    try {
+      const result = await repository.getAuthSession();
+
+      if (result?.error) {
+        throw result.error;
+      }
+
+      const payload = readSessionPayload(result);
+      const nextState = buildState({
+        policy,
+        session: payload.session,
+        user: payload.user,
+      });
+
+      setState(nextState);
+
+      return { data: nextState, error: null };
+    } catch (error) {
+      const nextState = buildState({ policy, error });
+      setState(nextState);
+
+      return { data: null, error };
+    }
+  }, [policy, repository]);
+
+  const signIn = useCallback(
+    async ({ email, password }) => {
+      if (!policy.requireLogin) {
+        return { data: null, error: null };
+      }
+
+      setState((current) => ({
+        ...current,
+        loading: true,
+        error: null,
+      }));
+
+      try {
+        const result = await repository.signInWithPassword({ email, password });
+
+        if (result?.error) {
+          throw result.error;
+        }
+
+        const payload = readSessionPayload(result);
+        const nextState = buildState({
+          policy,
+          session: payload.session,
+          user: payload.user,
+        });
+
+        setState(nextState);
+
+        return { data: result?.data || null, error: null };
+      } catch (error) {
+        setState((current) => ({
+          ...current,
+          loading: false,
+          error,
+        }));
+        throw error;
+      }
+    },
+    [policy, repository]
+  );
+
+  const signOut = useCallback(async () => {
+    if (!policy.requireLogin) {
+      return { data: null, error: null };
+    }
+
+    setState((current) => ({
+      ...current,
+      loading: true,
+      error: null,
+    }));
+
+    try {
+      const result = await repository.signOut();
+
+      if (result?.error) {
+        throw result.error;
+      }
+
+      const nextState = buildState({ policy });
+      setState(nextState);
+
+      return { data: result?.data || null, error: null };
+    } catch (error) {
+      setState((current) => ({
+        ...current,
+        loading: false,
+        error,
+      }));
+      throw error;
+    }
+  }, [policy, repository]);
+
+  useEffect(() => {
+    let active = true;
+    let subscriptionResult = null;
+
+    if (!policy.requireLogin) {
+      setState(buildState({ policy }));
+      return undefined;
+    }
+
+    refresh();
+
+    try {
+      subscriptionResult = repository.onAuthStateChange(({ session, user }) => {
+        if (!active) {
+          return;
+        }
+
+        setState(
+          buildState({
+            policy,
+            session,
+            user: user || session?.user || null,
+          })
+        );
+      });
+    } catch (error) {
+      setState(buildState({ policy, error }));
+    }
+
+    return () => {
+      active = false;
+      cleanupAuthSubscription(subscriptionResult);
+    };
+  }, [policy, refresh, repository]);
+
+  const value = useMemo(
+    () => ({
+      ...state,
+      refresh,
+      signIn,
+      signOut,
+    }),
+    [refresh, signIn, signOut, state]
+  );
+
+  return (
+    <AuthSessionContext.Provider value={value}>
+      {children}
+    </AuthSessionContext.Provider>
+  );
+}

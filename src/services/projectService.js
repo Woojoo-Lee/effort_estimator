@@ -1,7 +1,5 @@
-import { FILE_VERSION, TABLE_NAME } from "../shared/constants/constants";
-import { supabase } from "./supabaseClient";
-
-const VERSION_TABLE_NAME = "estimation_project_versions";
+import { FILE_VERSION } from "../shared/constants/constants";
+import { getProjectAdapter } from "./adapters/projectAdapterFactory";
 
 export function toPayload({
   activeTab,
@@ -24,27 +22,12 @@ export function toPayload({
   };
 }
 
-export async function fetchProjects() {
-  if (!supabase) {
-    return { data: null, error: new Error("Supabase client not initialized.") };
-  }
-
-  return await supabase
-    .from(TABLE_NAME)
-    .select("id, project_name, updated_at")
-    .order("updated_at", { ascending: false });
+export async function fetchProjects(options) {
+  return getProjectAdapter().fetchProjects(options);
 }
 
 export async function fetchProjectById(id) {
-  if (!supabase) {
-    return { data: null, error: new Error("Supabase client not initialized.") };
-  }
-
-  return await supabase
-    .from(TABLE_NAME)
-    .select("id, project_name, payload, updated_at")
-    .eq("id", id)
-    .single();
+  return getProjectAdapter().fetchProjectById(id);
 }
 
 export async function saveProject({
@@ -52,37 +35,15 @@ export async function saveProject({
   projectName,
   payload,
 }) {
-  if (!supabase) {
-    return { data: null, error: new Error("Supabase client not initialized.") };
-  }
-
-  const rowData = {
-    project_name: projectName,
-    payload,
-  };
-
-  if (projectId) {
-    return await supabase
-      .from(TABLE_NAME)
-      .update(rowData)
-      .eq("id", projectId)
-      .select("id, updated_at")
-      .single();
-  }
-
-  return await supabase
-    .from(TABLE_NAME)
-    .insert(rowData)
-    .select("id, updated_at")
-    .single();
+  return getProjectAdapter().saveProject({ projectId, projectName, payload });
 }
 
 export async function deleteProjectById(projectId) {
-  if (!supabase) {
-    return { data: null, error: new Error("Supabase client not initialized.") };
-  }
+  return getProjectAdapter().deleteProjectById(projectId);
+}
 
-  return await supabase.from(TABLE_NAME).delete().eq("id", projectId);
+export async function restoreProjectById(projectId, options) {
+  return getProjectAdapter().restoreProjectById(projectId, options);
 }
 
 export async function saveProjectVersion({
@@ -92,185 +53,67 @@ export async function saveProjectVersion({
   projectName,
   payload,
 }) {
-  if (!supabase) {
-    return { data: null, error: new Error("Supabase client not initialized.") };
-  }
-
-  const { data, error } = await supabase
-    .from(VERSION_TABLE_NAME)
-    .insert([
-      {
-        project_id: projectId,
-        version_no: versionNo,
-        saved_type: savedType,
-        project_name: projectName,
-        payload,
-      },
-    ])
-    .select()
-    .single();
-
-  return { data, error };
+  return getProjectAdapter().saveProjectVersion({
+    projectId,
+    versionNo,
+    savedType,
+    projectName,
+    payload,
+  });
 }
 
 export async function fetchProjectVersions(projectId) {
-  if (!supabase) {
-    return { data: null, error: new Error("Supabase client not initialized.") };
-  }
-
-  const { data, error } = await supabase
-    .from(VERSION_TABLE_NAME)
-    .select("*")
-    .eq("project_id", projectId)
-    .order("version_no", { ascending: false });
-
-  return { data, error };
+  return getProjectAdapter().fetchProjectVersions(projectId);
 }
 
 export async function fetchLatestProjectVersionNo(projectId) {
-  if (!supabase) {
-    return { data: null, error: new Error("Supabase client not initialized.") };
-  }
-
-  const { data, error } = await supabase
-    .from(VERSION_TABLE_NAME)
-    .select("version_no")
-    .eq("project_id", projectId)
-    .order("version_no", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  return { data, error };
+  return getProjectAdapter().fetchLatestProjectVersionNo(projectId);
 }
 
 export async function fetchCommonCodes() {
-  if (!supabase) {
-    return { data: [], error: null };
-  }
-
-  return supabase.from("common_code").select("*").eq("is_active", true);
+  return getProjectAdapter().fetchCommonCodes();
 }
 
 export async function fetchEstimationItemMeta() {
-  if (!supabase) {
-    return { data: [], error: null };
-  }
-
-  return supabase.from("estimation_item_meta").select("*").eq("is_active", true);
+  return getProjectAdapter().fetchEstimationItemMeta();
 }
 
 export async function fetchEstimationItemMetaRows() {
-  if (!supabase) {
-    return { data: [], error: null };
-  }
-
-  return await supabase
-    .from("estimation_item_meta")
-    .select("*")
-    .order("solution_code", { ascending: true })
-    .order("id", { ascending: true });
+  return getProjectAdapter().fetchEstimationItemMetaRows();
 }
 
 export async function fetchEstimationBaseEffortMeta() {
-  if (!supabase) {
-    return { data: [], error: null };
-  }
-
-  return await supabase
-    .from("estimation_base_effort_meta")
-    .select("*")
-    .order("solution_code", { ascending: true })
-    .order("sort_order", { ascending: true })
-    .order("phase_code", { ascending: true });
+  return getProjectAdapter().fetchEstimationBaseEffortMeta();
 }
 
 export async function fetchEstimationItemFieldMeta() {
-  if (!supabase) {
-    return { data: [], error: null };
-  }
-
-  return await supabase
-    .from("estimation_item_field_meta")
-    .select("*")
-    .order("solution_code", { ascending: true })
-    .order("item_code", { ascending: true })
-    .order("sort_order", { ascending: true })
-    .order("field_key", { ascending: true });
+  return getProjectAdapter().fetchEstimationItemFieldMeta();
 }
 
 export async function fetchEstimationEnvVarMeta() {
-  if (!supabase) {
-    return { data: [], error: null };
-  }
-
-  return await supabase
-    .from("estimation_env_var_meta")
-    .select("*")
-    .order("solution_code", { ascending: true })
-    .order("sort_order", { ascending: true })
-    .order("var_key", { ascending: true });
+  return getProjectAdapter().fetchEstimationEnvVarMeta();
 }
 
 export async function fetchEstimationCalculationMeta() {
-  if (!supabase) {
-    return { data: [], error: null };
-  }
-
-  return await supabase
-    .from("estimation_calculation_meta")
-    .select("*")
-    .order("solution_code", { ascending: true })
-    .order("item_code", { ascending: true })
-    .order("sort_order", { ascending: true })
-    .order("method", { ascending: true });
+  return getProjectAdapter().fetchEstimationCalculationMeta();
 }
 
 export async function fetchEstimationPolicy() {
-  if (!supabase) {
-    return { data: [], error: null };
-  }
-
-  return supabase.from("estimation_policy").select("*").eq("is_active", true);
+  return getProjectAdapter().fetchEstimationPolicy();
 }
 
 export async function fetchCommonCodeRows() {
-  if (!supabase) {
-    return { data: [], error: null };
-  }
-
-  return await supabase
-    .from("common_code")
-    .select("*")
-    .order("group_code", { ascending: true })
-    .order("sort_order", { ascending: true })
-    .order("code", { ascending: true });
+  return getProjectAdapter().fetchCommonCodeRows();
 }
 
 export async function createCommonCodeRow(payload) {
-  if (!supabase) {
-    return { data: null, error: new Error("Supabase client not initialized.") };
-  }
-
-  return await supabase
-    .from("common_code")
-    .insert(payload)
-    .select("*")
-    .single();
+  return getProjectAdapter().createCommonCodeRow(payload);
 }
 
 export async function updateCommonCodeRow(id, payload) {
-  if (!supabase) {
-    return { data: null, error: new Error("Supabase client not initialized.") };
-  }
-
-  return await supabase
-    .from("common_code")
-    .update(payload)
-    .eq("id", id)
-    .select("*")
-    .single();
+  return getProjectAdapter().updateCommonCodeRow(id, payload);
 }
 
 export async function updateCommonCodeActive(id, isActive) {
-  return updateCommonCodeRow(id, { is_active: isActive });
+  return getProjectAdapter().updateCommonCodeActive(id, isActive);
 }

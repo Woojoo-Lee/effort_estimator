@@ -1,7 +1,13 @@
 import React from "react";
-import { APP_ROUTES } from "../../../app/routes";
+import { getAppRoutes } from "../../../app/routes";
+import { filterRoutesByAuthz, useAuthPermission } from "../../auth";
 
 export default function AppSidebar({ activeRoute }) {
+  const { authz } = useAuthPermission();
+  const routes = filterRoutesByAuthz(getAppRoutes(), authz, {
+    env: import.meta.env,
+  });
+
   return (
     <aside className="flex min-h-screen w-[220px] shrink-0 flex-col border-r border-slate-200 bg-white">
       <div className="border-b border-slate-100 px-5 py-5">
@@ -12,7 +18,7 @@ export default function AppSidebar({ activeRoute }) {
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {APP_ROUTES.map((route) => {
+        {routes.map((route) => {
           const isActive = activeRoute === route.path;
 
           return (

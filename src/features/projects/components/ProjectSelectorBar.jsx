@@ -44,6 +44,10 @@ function getProjectLabel(project) {
   return `${name} (${TEXT.projectId}: ${project.id}, ${TEXT.updatedAt}: ${updatedAt})`;
 }
 
+function isArchivedProject(project) {
+  return project?.status === "archived" || Boolean(project?.archived_at);
+}
+
 export default function ProjectSelectorBar({
   projects,
   projectId,
@@ -53,6 +57,10 @@ export default function ProjectSelectorBar({
   isBusy,
 }) {
   const [selectedId, setSelectedId] = useState(projectId ? String(projectId) : "");
+  const selectableProjects = useMemo(
+    () => projects.filter((project) => !isArchivedProject(project)),
+    [projects]
+  );
 
   useEffect(() => {
     setSelectedId(projectId ? String(projectId) : "");
@@ -99,14 +107,16 @@ export default function ProjectSelectorBar({
             <select
               value={selectedId}
               onChange={handleSelectProject}
-              disabled={!dbReady || isBusy || projects.length === 0}
+              disabled={!dbReady || isBusy || selectableProjects.length === 0}
               className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <option value="">
-                {projects.length > 0 ? TEXT.selectPlaceholder : TEXT.emptyProjects}
+                {selectableProjects.length > 0
+                  ? TEXT.selectPlaceholder
+                  : TEXT.emptyProjects}
               </option>
 
-              {projects.map((project) => (
+              {selectableProjects.map((project) => (
                 <option key={project.id} value={project.id}>
                   {getProjectLabel(project)}
                 </option>
@@ -125,7 +135,7 @@ export default function ProjectSelectorBar({
       </div>
 
       <div className="mt-2 text-xs font-semibold text-slate-400">
-        {TEXT.totalCount} {projects.length}
+        {TEXT.totalCount} {selectableProjects.length}
         {TEXT.countUnit}
       </div>
     </div>

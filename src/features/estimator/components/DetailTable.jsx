@@ -147,7 +147,7 @@ function getDynamicFieldValue(item, field) {
   return item[field.field_key] ?? field.default_value ?? "";
 }
 
-function DynamicFieldInput({ field, item, onChange }) {
+function DynamicFieldInput({ field, item, onChange, readOnly = false }) {
   const value = getDynamicFieldValue(item, field);
 
   if (field.field_type === "boolean") {
@@ -159,6 +159,7 @@ function DynamicFieldInput({ field, item, onChange }) {
         <input
           type="checkbox"
           checked={checked}
+          disabled={readOnly}
           onChange={(event) => onChange(event.target.checked)}
           className="h-4 w-4 rounded border-slate-300"
         />
@@ -171,8 +172,9 @@ function DynamicFieldInput({ field, item, onChange }) {
     return (
       <textarea
         value={value}
+        disabled={readOnly}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-[72px] w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600"
+        className="min-h-[72px] w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
       />
     );
   }
@@ -181,6 +183,7 @@ function DynamicFieldInput({ field, item, onChange }) {
     <SmallInput
       type={field.field_type === "number" ? "number" : "text"}
       value={value}
+      disabled={readOnly}
       onChange={(event) => {
         if (field.field_type === "number") {
           const num = Number(event.target.value || 0);
@@ -195,7 +198,13 @@ function DynamicFieldInput({ field, item, onChange }) {
   );
 }
 
-function DynamicFieldSection({ rows, items, activeTab, updateItem }) {
+function DynamicFieldSection({
+  rows,
+  items,
+  activeTab,
+  updateItem,
+  readOnly = false,
+}) {
   return (
     <section className="mb-4 shrink-0">
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -237,6 +246,7 @@ function DynamicFieldSection({ rows, items, activeTab, updateItem }) {
                     <DynamicFieldInput
                       field={field}
                       item={item}
+                      readOnly={readOnly}
                       onChange={(nextValue) =>
                         updateItem(activeTab, index, field.field_key, nextValue)
                       }
@@ -316,6 +326,7 @@ export default function DetailTable({
   removeItem,
   baseEffortMetaRows = [],
   itemFieldMetaRows = [],
+  readOnly = false,
 }) {
   const codebooks = useEstimatorStore((s) => s.codebooks || []);
   const calculationMetaRows = useEstimatorStore((s) => s.calculationMetaRows || []);
@@ -388,7 +399,12 @@ export default function DetailTable({
     <Panel
       title="상세 업무 목록"
       right={
-        <ActionButton primary onClick={() => addItem(activeTab)}>
+        <ActionButton
+          primary
+          onClick={() => addItem(activeTab)}
+          disabled={readOnly}
+          title={readOnly ? "권한이 없어 사용할 수 없습니다." : undefined}
+        >
           ＋ 항목 추가
         </ActionButton>
       }
@@ -415,6 +431,7 @@ export default function DetailTable({
           items={currentItems}
           activeTab={activeTab}
           updateItem={updateItem}
+          readOnly={readOnly}
         />
       )}
 
@@ -496,6 +513,7 @@ export default function DetailTable({
                     <SmallInput
                       data-cell={`${index}-0`}
                       value={item.name}
+                      disabled={readOnly}
                       onChange={(e) =>
                         updateItem(activeTab, index, "name", e.target.value)
                       }
@@ -518,6 +536,7 @@ export default function DetailTable({
                         type="number"
                         step="1"
                         value={item[quantityFieldKey] ?? 0}
+                        disabled={readOnly}
                         onChange={(e) => {
                           const nextQuantity = Number(e.target.value || 0);
 
@@ -546,6 +565,7 @@ export default function DetailTable({
                       type="number"
                       step="0.01"
                       value={item.baseMd}
+                      disabled={readOnly}
                       onChange={(e) => {
                         const raw = e.target.value;
                         const num = parseFloat(raw || 0);
@@ -566,6 +586,7 @@ export default function DetailTable({
                       type="number"
                       step="1"
                       value={item.quantity ?? 1}
+                      disabled={readOnly}
                       onChange={(e) => {
                         const quantity = Number(e.target.value || 0);
 
@@ -588,6 +609,7 @@ export default function DetailTable({
                       <SmallSelect
                         data-cell={`${index}-2`}
                         value={item.difficulty}
+                        disabled={readOnly}
                         onChange={(e) =>
                           updateItem(
                             activeTab,
@@ -610,6 +632,7 @@ export default function DetailTable({
                       <SmallSelect
                         data-cell={`${index}-3`}
                         value={item.complexity}
+                        disabled={readOnly}
                         onChange={(e) =>
                           updateItem(
                             activeTab,
@@ -645,6 +668,7 @@ export default function DetailTable({
                     value={
                       isMetaCalculationTab ? getItemNoteValue(item) : item.note || ""
                     }
+                    disabled={readOnly}
                     onChange={(e) =>
                       updateItem(activeTab, index, "note", e.target.value)
                     }
@@ -656,7 +680,9 @@ export default function DetailTable({
                 <td className="py-2 pr-4 text-center">
                   <button
                     onClick={() => removeItem(activeTab, index)}
-                    className="rounded-lg px-2 py-2 text-slate-400 transition hover:bg-slate-100 hover:text-red-500"
+                    disabled={readOnly}
+                    title={readOnly ? "권한이 없어 사용할 수 없습니다." : undefined}
+                    className="rounded-lg px-2 py-2 text-slate-400 transition hover:bg-slate-100 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     🗑️
                   </button>

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 
+import { useAuthSession } from "../../auth";
+
 function StatusBadge({ children, tone = "slate" }) {
   const toneClass = {
     slate: "bg-slate-100 text-slate-600",
@@ -18,11 +20,12 @@ function StatusBadge({ children, tone = "slate" }) {
   );
 }
 
-function SecondaryButton({ children, onClick, disabled = false }) {
+function SecondaryButton({ children, onClick, disabled = false, title }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
+      title={title}
       className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {children}
@@ -35,6 +38,7 @@ function AccentButton({
   onClick,
   disabled = false,
   tone = "blue",
+  title,
 }) {
   const toneClass = {
     blue: "bg-blue-600 hover:bg-blue-700",
@@ -45,6 +49,7 @@ function AccentButton({
     <button
       onClick={onClick}
       disabled={disabled}
+      title={title}
       className={`h-10 rounded-lg px-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${toneClass[tone]}`}
     >
       {children}
@@ -53,8 +58,18 @@ function AccentButton({
 }
 
 export default function HeaderBar({ projectMeta, status, actions }) {
+  const authSession = useAuthSession();
   const { projectId, projectName, savedAt } = projectMeta;
-  const { dbReady, isBusy, saveStatus } = status;
+  const { dbReady, isBusy, saveStatus, actionPermissions = {} } = status;
+  const canWriteProject = actionPermissions.canWriteProject !== false;
+  const canExport = actionPermissions.canExport !== false;
+  const canPrint = actionPermissions.canPrint !== false;
+  const isProjectReadOnly = actionPermissions.isProjectReadOnly === true;
+  const canModifyCurrentProject = canWriteProject && !isProjectReadOnly;
+  const permissionDeniedTitle = "권한이 없어 사용할 수 없습니다.";
+  const readOnlyTitle = actionPermissions.isArchivedProject
+    ? "보관된 프로젝트는 수정할 수 없습니다."
+    : permissionDeniedTitle;
 
   const {
     setProjectName,
@@ -97,6 +112,22 @@ export default function HeaderBar({ projectMeta, status, actions }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {authSession.requireLogin ? (
+            <>
+              <span
+                data-testid="current-auth-user"
+                className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600"
+              >
+                {authSession.user?.email || "Signed in"}
+              </span>
+              <SecondaryButton
+                onClick={authSession.signOut}
+                disabled={authSession.loading}
+              >
+                Logout
+              </SecondaryButton>
+            </>
+          ) : null}
           {!dbReady && <StatusBadge tone="red">DB 미연결</StatusBadge>}
           {displayStatus === "dirty" && (
             <StatusBadge tone="amber">수정됨</StatusBadge>
@@ -123,13 +154,19 @@ export default function HeaderBar({ projectMeta, status, actions }) {
           type="text"
           value={projectName}
           onChange={(e) => setProjectName(e.target.value)}
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+          disabled={isProjectReadOnly}
+          title={isProjectReadOnly ? readOnlyTitle : undefined}
+          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
           placeholder="프로젝트명을 입력하세요"
         />
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-1">
-        <SecondaryButton onClick={createNewProject}>
+        <SecondaryButton
+          onClick={createNewProject}
+          disabled={!canWriteProject}
+          title={!canWriteProject ? permissionDeniedTitle : undefined}
+        >
           신규
         </SecondaryButton>
 
@@ -143,21 +180,34 @@ export default function HeaderBar({ projectMeta, status, actions }) {
 
         <AccentButton
           onClick={handleSaveProject}
-          disabled={!dbReady || isBusy}
+          disabled={!dbReady || isBusy || !canModifyCurrentProject}
+          title={!canModifyCurrentProject ? readOnlyTitle : undefined}
           tone="blue"
         >
           저장
         </AccentButton>
 
-        <SecondaryButton onClick={downloadExcel}>
+        <SecondaryButton
+          onClick={downloadExcel}
+          disabled={!canExport}
+          title={!canExport ? permissionDeniedTitle : undefined}
+        >
           Excel 다운로드
         </SecondaryButton>
 
-        <SecondaryButton onClick={resetAll}>
+        <SecondaryButton
+          onClick={resetAll}
+          disabled={!canModifyCurrentProject}
+          title={!canModifyCurrentProject ? readOnlyTitle : undefined}
+        >
           초기화
         </SecondaryButton>
 
-        <SecondaryButton onClick={showPrint}>
+        <SecondaryButton
+          onClick={showPrint}
+          disabled={!canPrint}
+          title={!canPrint ? permissionDeniedTitle : undefined}
+        >
           인쇄
         </SecondaryButton>
       </div>

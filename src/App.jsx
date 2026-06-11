@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 
 import AppRouter from "./app/AppRouter";
 import { useHashRoute } from "./app/useHashRoute";
+import { AuthPermissionProvider, AuthSessionProvider } from "./features/auth";
 import MainLayout from "./features/layout/components/MainLayout";
 import Toast from "./features/layout/components/Toast";
 import { useToastState } from "./hooks/useToastState";
@@ -29,11 +30,13 @@ export default function ContactCenterEffortEstimator() {
   }, [loadMeta, refreshEstimatorMetaRows]);
 
   return (
-    <>
-      <MainLayout activeRoute={route}>
-        <AppRouter route={route} />
-      </MainLayout>
-      <GlobalToast />
-    </>
+    <AuthSessionProvider>
+      <AuthPermissionProvider>
+        <MainLayout activeRoute={route}>
+          <AppRouter route={route} />
+        </MainLayout>
+        <GlobalToast />
+      </AuthPermissionProvider>
+    </AuthSessionProvider>
   );
 }

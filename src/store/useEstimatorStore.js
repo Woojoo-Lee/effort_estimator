@@ -22,11 +22,24 @@ import {
   updateCommonCodeRow,
   updateCommonCodeActive,
 } from "../services/projectService";
+import {
+  fetchStandardEffortInput,
+  fetchStandardEffortMeta,
+  updateProjectActualEffort,
+  upsertProjectItemSelections,
+  upsertProjectSolutionSelections,
+} from "../services/standardEffortRepository";
 import { isSupabaseReady } from "../services/supabaseClient";
 
 import { getPolicyValue } from "../shared/lib/estimatorMeta";
 import { buildDefaultProjectState } from "../shared/lib/projectDefaults";
 import { normalizeItemsBySolution } from "../shared/lib/projectPayloadNormalizer";
+import { calculateStandardEffort } from "../shared/lib/standardEffortMath";
+import {
+  buildStandardEffortInput,
+  normalizeProjectItemSelection,
+  normalizeProjectSolutionSelection,
+} from "../shared/lib/standardEffortMapper";
 
 const STORE_VERSION = 1;
 
@@ -67,6 +80,60 @@ const buildProjectPayload = (state, savedAt = "") => ({
   mgmtRate: state.mgmtRate,
   savedAt,
 });
+
+const getEmptyStandardEffortMeta = () => ({
+  solutions: [],
+  solutionVariants: [],
+  baseEffortRows: [],
+  itemRows: [],
+  coefficientRows: [],
+});
+
+function getStandardEffortProjectId(state, projectId) {
+  return projectId || state.standardEffortLoadedProjectId || state.projectId;
+}
+
+function buildStandardInputFromState(state, overrides = {}) {
+  return buildStandardEffortInput({
+    projectId: getStandardEffortProjectId(state, overrides.projectId),
+    meta: overrides.meta || state.standardEffortMeta,
+    selections: {
+      projectSolutionSelections:
+        overrides.projectSolutionSelections ||
+        state.standardProjectSolutionSelections,
+      projectItemSelections:
+        overrides.projectItemSelections || state.standardProjectItemSelections,
+    },
+  });
+}
+
+function calculateStandardResultsFromState(state, overrides = {}) {
+  return calculateStandardEffort(buildStandardInputFromState(state, overrides));
+}
+
+function getErrorMessage(error, fallback) {
+  return error?.message || fallback;
+}
+
+function mergeByKey(existingRows = [], nextRows = [], getKey) {
+  const rowByKey = new Map(existingRows.map((row) => [getKey(row), row]));
+
+  nextRows.forEach((row) => {
+    rowByKey.set(getKey(row), row);
+  });
+
+  return [...rowByKey.values()];
+}
+
+function getProjectScopedSolutionSelectionKey(row = {}, projectId) {
+  return `${row.project_id ?? projectId ?? ""}:${row.solution_variant_id}`;
+}
+
+function getProjectScopedItemSelectionKey(row = {}, projectId) {
+  return `${row.project_id ?? projectId ?? ""}:${row.solution_variant_id}:${
+    row.item_id
+  }`;
+}
 
 export const useEstimatorStore = create(
   persist(
@@ -113,6 +180,13 @@ export const useEstimatorStore = create(
         calculationMetaRows: [],
         isEstimatorMetaRowsBusy: false,
         lastEstimatorMetaRowsError: "",
+        standardEffortMeta: getEmptyStandardEffortMeta(),
+        standardProjectSolutionSelections: [],
+        standardProjectItemSelections: [],
+        standardEffortResults: [],
+        standardEffortLoading: false,
+        standardEffortError: null,
+        standardEffortLoadedProjectId: null,
 
         saveStatus: "idle",
         lastSaveError: "",
@@ -373,6 +447,332 @@ export const useEstimatorStore = create(
           });
 
           return true;
+        },
+
+        loadStandardEffortMeta: async () => {
+          set({
+            standardEffortLoading: true,
+            standardEffortError: null,
+          });
+
+          try {
+            const meta = await fetchStandardEffortMeta();
+            const state = get();
+            const standardEffortResults = state.standardEffortLoadedProjectId
+              ? calculateStandardResultsFromState(state, { meta })
+              : state.standardEffortResults;
+
+            set({
+              standardEffortMeta: meta,
+              standardEffortResults,
+              standardEffortLoading: false,
+              standardEffortError: null,
+            });
+
+            return meta;
+          } catch (error) {
+            console.error(error);
+            set({
+              standardEffortLoading: false,
+              standardEffortError: getErrorMessage(
+                error,
+                "표준공수 메타 조회에 실패했습니다."
+              ),
+            });
+
+            return null;
+          }
+        },
+
+        loadProjectStandardEffort: async (projectId) => {
+          if (!projectId) {
+            set({
+              standardEffortError: "projectId가 없습니다.",
+              standardEffortResults: [],
+              standardEffortLoadedProjectId: null,
+            });
+            return false;
+          }
+
+          set({
+            standardEffortLoading: true,
+            standardEffortError: null,
+          });
+
+          try {
+            const input = await fetchStandardEffortInput(projectId);
+            const state = get();
+            const standardEffortMeta = {
+              ...state.standardEffortMeta,
+              solutionVariants: input.solutionVariants,
+              baseEffortRows: input.baseEffortRows,
+              itemRows: input.itemRows,
+              coefficientRows: input.coefficientRows,
+            };
+            const standardEffortResults = calculateStandardEffort(input);
+
+            set({
+              standardEffortMeta,
+              standardProjectSolutionSelections:
+                input.projectSolutionSelections,
+              standardProjectItemSelections: input.projectItemSelections,
+              standardEffortResults,
+              standardEffortLoadedProjectId: projectId,
+              standardEffortLoading: false,
+              standardEffortError: null,
+            });
+
+            return true;
+          } catch (error) {
+            console.error(error);
+            set({
+              standardEffortLoading: false,
+              standardEffortError: getErrorMessage(
+                error,
+                "프로젝트 표준공수 조회에 실패했습니다."
+              ),
+            });
+
+            return false;
+          }
+        },
+
+        refreshProjectStandardEffort: async (projectId) => {
+          return get().loadProjectStandardEffort(projectId);
+        },
+
+        recalculateStandardEffort: (projectId) => {
+          const state = get();
+          const standardEffortResults = calculateStandardResultsFromState(
+            state,
+            { projectId }
+          );
+
+          set({
+            standardEffortResults,
+            standardEffortLoadedProjectId: getStandardEffortProjectId(
+              state,
+              projectId
+            ),
+          });
+
+          return standardEffortResults;
+        },
+
+        setStandardProjectSolutionSelections: (selections = []) => {
+          const state = get();
+          const projectId = getStandardEffortProjectId(state);
+          const nextSelections = selections.map((selection) =>
+            normalizeProjectSolutionSelection({
+              ...selection,
+              project_id: selection.project_id ?? projectId,
+            })
+          );
+          const standardEffortResults = calculateStandardResultsFromState(
+            state,
+            {
+              projectId,
+              projectSolutionSelections: nextSelections,
+            }
+          );
+
+          set({
+            standardProjectSolutionSelections: nextSelections,
+            standardEffortResults,
+            standardEffortLoadedProjectId: projectId,
+          });
+        },
+
+        setStandardProjectItemSelections: (selections = []) => {
+          const state = get();
+          const projectId = getStandardEffortProjectId(state);
+          const nextSelections = selections.map((selection) =>
+            normalizeProjectItemSelection({
+              ...selection,
+              project_id: selection.project_id ?? projectId,
+            })
+          );
+          const standardEffortResults = calculateStandardResultsFromState(
+            state,
+            {
+              projectId,
+              projectItemSelections: nextSelections,
+            }
+          );
+
+          set({
+            standardProjectItemSelections: nextSelections,
+            standardEffortResults,
+            standardEffortLoadedProjectId: projectId,
+          });
+        },
+
+        saveStandardProjectSolutionSelections: async (
+          projectId,
+          selections = []
+        ) => {
+          if (!projectId) {
+            set({ standardEffortError: "projectId가 없습니다." });
+            return false;
+          }
+
+          set({
+            standardEffortLoading: true,
+            standardEffortError: null,
+          });
+
+          try {
+            const savedSelections =
+              await upsertProjectSolutionSelections(projectId, selections);
+            const state = get();
+            const nextSelections = mergeByKey(
+              state.standardProjectSolutionSelections,
+              savedSelections,
+              (row) => getProjectScopedSolutionSelectionKey(row, projectId)
+            );
+            const standardEffortResults = calculateStandardResultsFromState(
+              state,
+              {
+                projectId,
+                projectSolutionSelections: nextSelections,
+              }
+            );
+
+            set({
+              standardProjectSolutionSelections: nextSelections,
+              standardEffortResults,
+              standardEffortLoadedProjectId: projectId,
+              standardEffortLoading: false,
+              standardEffortError: null,
+            });
+
+            return true;
+          } catch (error) {
+            console.error(error);
+            set({
+              standardEffortLoading: false,
+              standardEffortError: getErrorMessage(
+                error,
+                "프로젝트 표준공수 솔루션 저장에 실패했습니다."
+              ),
+            });
+
+            return false;
+          }
+        },
+
+        saveStandardProjectItemSelections: async (
+          projectId,
+          selections = []
+        ) => {
+          if (!projectId) {
+            set({ standardEffortError: "projectId가 없습니다." });
+            return false;
+          }
+
+          set({
+            standardEffortLoading: true,
+            standardEffortError: null,
+          });
+
+          try {
+            const savedSelections = await upsertProjectItemSelections(
+              projectId,
+              selections
+            );
+            const state = get();
+            const nextSelections = mergeByKey(
+              state.standardProjectItemSelections,
+              savedSelections,
+              (row) => getProjectScopedItemSelectionKey(row, projectId)
+            );
+            const standardEffortResults = calculateStandardResultsFromState(
+              state,
+              {
+                projectId,
+                projectItemSelections: nextSelections,
+              }
+            );
+
+            set({
+              standardProjectItemSelections: nextSelections,
+              standardEffortResults,
+              standardEffortLoadedProjectId: projectId,
+              standardEffortLoading: false,
+              standardEffortError: null,
+            });
+
+            return true;
+          } catch (error) {
+            console.error(error);
+            set({
+              standardEffortLoading: false,
+              standardEffortError: getErrorMessage(
+                error,
+                "프로젝트 표준공수 항목 저장에 실패했습니다."
+              ),
+            });
+
+            return false;
+          }
+        },
+
+        updateStandardActualEffort: async (
+          projectId,
+          solutionVariantId,
+          actualEffortMm
+        ) => {
+          if (!projectId || !solutionVariantId) {
+            set({ standardEffortError: "projectId 또는 solutionVariantId가 없습니다." });
+            return false;
+          }
+
+          set({
+            standardEffortLoading: true,
+            standardEffortError: null,
+          });
+
+          try {
+            const savedSelection = await updateProjectActualEffort(
+              projectId,
+              solutionVariantId,
+              actualEffortMm
+            );
+            const state = get();
+            const nextSelections = mergeByKey(
+              state.standardProjectSolutionSelections,
+              [savedSelection],
+              (row) => getProjectScopedSolutionSelectionKey(row, projectId)
+            );
+            const standardEffortResults = calculateStandardResultsFromState(
+              state,
+              {
+                projectId,
+                projectSolutionSelections: nextSelections,
+              }
+            );
+
+            set({
+              standardProjectSolutionSelections: nextSelections,
+              standardEffortResults,
+              standardEffortLoadedProjectId: projectId,
+              standardEffortLoading: false,
+              standardEffortError: null,
+            });
+
+            return true;
+          } catch (error) {
+            console.error(error);
+            set({
+              standardEffortLoading: false,
+              standardEffortError: getErrorMessage(
+                error,
+                "실투입공수 저장에 실패했습니다."
+              ),
+            });
+
+            return false;
+          }
         },
 
         // =========================================

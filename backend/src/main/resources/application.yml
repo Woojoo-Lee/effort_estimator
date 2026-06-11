@@ -1,0 +1,33 @@
+server:
+  servlet:
+    context-path: /
+
+spring:
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
+app:
+  name: effort-api
+  api-base-path: /api
+  db:
+    enabled: ${APP_DB_ENABLED:false}
+    url: ${DB_URL:}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    validation-query: SELECT 1
+  security:
+    mode: ${APP_SECURITY_MODE:dev}
+    dev:
+      user-id: ${DEV_USER_ID:00000000-0000-0000-0000-000000000001}
+      email: ${DEV_USER_EMAIL:dev@example.com}
+      display-name: ${DEV_USER_DISPLAY_NAME:Dev User}
+      department-id: ${DEV_DEPARTMENT_ID:}
+      role-codes: ${DEV_ROLE_CODES:viewer}
+      permission-codes: ${DEV_PERMISSION_CODES:route.estimator.read,project.read.own,export.read}
+
+logging:
+  pattern:
+    level: "%5p [%X{request_id}]"

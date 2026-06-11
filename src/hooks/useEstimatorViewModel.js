@@ -2,6 +2,47 @@ import { useEffect, useMemo } from "react";
 import { useEstimatorStore } from "../store/useEstimatorStore";
 import { useEstimatorDerivedState } from "./useEstimatorDerivedState";
 
+function toNumberOrZero(value) {
+  if (value === null || value === undefined || value === "") {
+    return 0;
+  }
+
+  const num = Number(value);
+
+  return Number.isFinite(num) ? num : 0;
+}
+
+function normalizeNumber(value) {
+  return Number(toNumberOrZero(value).toFixed(10));
+}
+
+function addNumber(sum, value) {
+  return normalizeNumber(sum + toNumberOrZero(value));
+}
+
+function buildStandardEffortTotals(results = []) {
+  return {
+    base_total_mm: results.reduce(
+      (sum, row) => addNumber(sum, row.base_total_mm),
+      0
+    ),
+    coefficient_total: results.reduce(
+      (sum, row) => addNumber(sum, row.coefficient_total),
+      0
+    ),
+    standard_effort_mm: results.reduce(
+      (sum, row) => addNumber(sum, row.standard_effort_mm),
+      0
+    ),
+    actual_effort_mm: results.reduce(
+      (sum, row) => addNumber(sum, row.actual_effort_mm),
+      0
+    ),
+    gap_mm: results.reduce((sum, row) => addNumber(sum, row.gap_mm), 0),
+    solution_count: results.length,
+  };
+}
+
 export function useEstimatorViewModel() {
   const activeTab = useEstimatorStore((s) => s.activeTab);
   const itemsBySolution = useEstimatorStore((s) => s.itemsBySolution);
@@ -12,6 +53,23 @@ export function useEstimatorViewModel() {
   const itemFieldMetaRows = useEstimatorStore((s) => s.itemFieldMetaRows);
   const calculationMetaRows = useEstimatorStore((s) => s.calculationMetaRows);
   const envVarMetaRows = useEstimatorStore((s) => s.envVarMetaRows);
+  const standardEffortMeta = useEstimatorStore((s) => s.standardEffortMeta);
+  const standardProjectSolutionSelections = useEstimatorStore(
+    (s) => s.standardProjectSolutionSelections
+  );
+  const standardProjectItemSelections = useEstimatorStore(
+    (s) => s.standardProjectItemSelections
+  );
+  const standardEffortResults = useEstimatorStore(
+    (s) => s.standardEffortResults
+  );
+  const standardEffortLoading = useEstimatorStore(
+    (s) => s.standardEffortLoading
+  );
+  const standardEffortError = useEstimatorStore((s) => s.standardEffortError);
+  const standardEffortLoadedProjectId = useEstimatorStore(
+    (s) => s.standardEffortLoadedProjectId
+  );
 
   const setActiveTab = useEstimatorStore((s) => s.setActiveTab);
   const setScaleFactor = useEstimatorStore((s) => s.setScaleFactor);
@@ -23,6 +81,33 @@ export function useEstimatorViewModel() {
   const addItem = useEstimatorStore((s) => s.addItem);
   const removeItem = useEstimatorStore((s) => s.removeItem);
   const showToast = useEstimatorStore((s) => s.showToast);
+  const loadStandardEffortMeta = useEstimatorStore(
+    (s) => s.loadStandardEffortMeta
+  );
+  const loadProjectStandardEffort = useEstimatorStore(
+    (s) => s.loadProjectStandardEffort
+  );
+  const refreshProjectStandardEffort = useEstimatorStore(
+    (s) => s.refreshProjectStandardEffort
+  );
+  const recalculateStandardEffort = useEstimatorStore(
+    (s) => s.recalculateStandardEffort
+  );
+  const setStandardProjectSolutionSelections = useEstimatorStore(
+    (s) => s.setStandardProjectSolutionSelections
+  );
+  const setStandardProjectItemSelections = useEstimatorStore(
+    (s) => s.setStandardProjectItemSelections
+  );
+  const saveStandardProjectSolutionSelections = useEstimatorStore(
+    (s) => s.saveStandardProjectSolutionSelections
+  );
+  const saveStandardProjectItemSelections = useEstimatorStore(
+    (s) => s.saveStandardProjectItemSelections
+  );
+  const updateStandardActualEffort = useEstimatorStore(
+    (s) => s.updateStandardActualEffort
+  );
 
   const derived = useEstimatorDerivedState({
     itemsBySolution,
@@ -35,6 +120,59 @@ export function useEstimatorViewModel() {
     calculationMetaRows,
     envVarMetaRows,
   });
+
+  const standardEffortTotals = useMemo(
+    () => buildStandardEffortTotals(standardEffortResults || []),
+    [standardEffortResults]
+  );
+
+  const standardEffort = useMemo(
+    () => ({
+      meta: standardEffortMeta,
+      projectSolutionSelections: standardProjectSolutionSelections,
+      projectItemSelections: standardProjectItemSelections,
+      results: standardEffortResults,
+      loading: standardEffortLoading,
+      error: standardEffortError,
+      loadedProjectId: standardEffortLoadedProjectId,
+      totals: standardEffortTotals,
+    }),
+    [
+      standardEffortMeta,
+      standardProjectSolutionSelections,
+      standardProjectItemSelections,
+      standardEffortResults,
+      standardEffortLoading,
+      standardEffortError,
+      standardEffortLoadedProjectId,
+      standardEffortTotals,
+    ]
+  );
+
+  const standardEffortActions = useMemo(
+    () => ({
+      loadStandardEffortMeta,
+      loadProjectStandardEffort,
+      refreshProjectStandardEffort,
+      recalculateStandardEffort,
+      setStandardProjectSolutionSelections,
+      setStandardProjectItemSelections,
+      saveStandardProjectSolutionSelections,
+      saveStandardProjectItemSelections,
+      updateStandardActualEffort,
+    }),
+    [
+      loadStandardEffortMeta,
+      loadProjectStandardEffort,
+      refreshProjectStandardEffort,
+      recalculateStandardEffort,
+      setStandardProjectSolutionSelections,
+      setStandardProjectItemSelections,
+      saveStandardProjectSolutionSelections,
+      saveStandardProjectItemSelections,
+      updateStandardActualEffort,
+    ]
+  );
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -130,5 +268,7 @@ export function useEstimatorViewModel() {
     detailActions,
     baseEffortMetaRows,
     itemFieldMetaRows,
+    standardEffort,
+    standardEffortActions,
   };
 }

@@ -5,9 +5,19 @@ import { useEstimatorStore } from "../store/useEstimatorStore";
 import { useHeaderModel } from "../hooks/useHeaderModel";
 import { useProjectSelectorModel } from "../hooks/useProjectSelectorModel";
 import { useEstimatorViewModel } from "../hooks/useEstimatorViewModel";
+import {
+  isAuthPermissionEnabled,
+  PERMISSIONS,
+  useAuthPermission,
+} from "../features/auth";
+
+function isArchivedProject(project) {
+  return project?.status === "archived" || Boolean(project?.archived_at);
+}
 
 export function useAppPageModel() {
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
+  const { authz } = useAuthPermission();
 
   const projectId = useEstimatorStore((s) => s.projectId);
   const activeTab = useEstimatorStore((s) => s.activeTab);
@@ -49,9 +59,22 @@ export function useAppPageModel() {
 
   const estimatorView = useEstimatorViewModel();
   const projectSelector = useProjectSelectorModel();
+  const currentProject = useMemo(() => {
+    if (!projectId) {
+      return null;
+    }
+
+    return (
+      projectSelector.projects.find(
+        (project) => String(project.id) === String(projectId)
+      ) || null
+    );
+  }, [projectId, projectSelector.projects]);
+  const isCurrentProjectArchived = isArchivedProject(currentProject);
 
   const projectState = useMemo(
     () => ({
+      projectId,
       projectName,
       activeTab,
       itemsBySolution,
@@ -61,6 +84,7 @@ export function useAppPageModel() {
       savedAt,
     }),
     [
+      projectId,
       projectName,
       activeTab,
       itemsBySolution,
@@ -132,6 +156,38 @@ export function useAppPageModel() {
     importExportActions,
     versionActions
   );
+  const authPermissionEnabled = isAuthPermissionEnabled(import.meta.env);
+  const canWriteProject =
+    !authPermissionEnabled ||
+    authz.hasAnyPermission([
+      PERMISSIONS.PROJECT_WRITE_OWN,
+      PERMISSIONS.PROJECT_WRITE_ASSIGNED,
+      PERMISSIONS.PROJECT_WRITE_ALL,
+    ]);
+  const canExport =
+    !authPermissionEnabled ||
+    authz.hasAnyPermission([
+      PERMISSIONS.EXPORT_READ,
+      PERMISSIONS.EXPORT_STANDARD_EFFORT,
+    ]);
+  const actionPermissions = useMemo(
+    () => ({
+      canWriteProject,
+      canExport,
+      canPrint: canExport,
+      isArchivedProject: isCurrentProjectArchived,
+      isProjectReadOnly:
+        (authPermissionEnabled && !canWriteProject) || isCurrentProjectArchived,
+    }),
+    [authPermissionEnabled, canExport, canWriteProject, isCurrentProjectArchived]
+  );
+  const headerStatus = useMemo(
+    () => ({
+      ...status,
+      actionPermissions,
+    }),
+    [actionPermissions, status]
+  );
 
   async function handleRestoreVersion(version) {
     await restoreVersion(version);
@@ -145,9 +201,11 @@ export function useAppPageModel() {
     isVersionsBusy,
     handleRestoreVersion,
     projectMeta,
-    status,
+    status: headerStatus,
     actions,
     estimatorView,
     projectSelector,
+    currentProject,
+    isCurrentProjectArchived,
   };
 }

@@ -48,6 +48,7 @@ export default function RightSidebar({
   markDirty,
   envVarMetaRows = [],
   isSummary = false,
+  readOnly = false,
 }) {
   const codebooks = useEstimatorStore((s) => s.codebooks || []);
   const scaleOptions = getScaleOptions(codebooks);
@@ -72,6 +73,7 @@ export default function RightSidebar({
             </div>
             <SmallSelect
               value={scaleFactor}
+              disabled={readOnly}
               onChange={(e) => {
                 setScaleFactor(Number(e.target.value));
                 markDirty();
@@ -92,6 +94,7 @@ export default function RightSidebar({
             </div>
             <SmallSelect
               value={riskFactor}
+              disabled={readOnly}
               onChange={(e) => {
                 setRiskFactor(Number(e.target.value));
                 markDirty();
@@ -115,6 +118,7 @@ export default function RightSidebar({
                 type="number"
                 step="0.01"
                 value={mgmtRate}
+                disabled={readOnly}
                 onChange={(e) => {
                   const num = parseFloat(e.target.value || 0);
                   const fixed = Math.round(num * 100) / 100;
