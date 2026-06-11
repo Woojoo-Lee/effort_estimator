@@ -47,6 +47,10 @@ See [Auth, Permission, And Audit Actor Minimum Scope](./auth-permission-audit-mi
 for the June minimum login, `admin` / `sales` / `viewer` permission, and audit
 actor scope.
 
+See [Release Checkpoint And Local Preview Smoke](./release-checkpoint-local-preview.md)
+for the current Supabase-mode frontend release checkpoint, local preview smoke,
+env matrix, and known deployment limitations.
+
 ## Frontend Login Rollout
 
 `VITE_AUTH_LOGIN_MODE` controls the minimum frontend login/session skeleton.

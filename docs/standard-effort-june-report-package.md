@@ -51,6 +51,7 @@ Reference documents:
 
 - [Supabase Mode Interim Smoke Result](./supabase-mode-interim-smoke-result.md)
 - [Standard Effort June Sign-Off](./standard-effort-june-signoff.md)
+- [Release Checkpoint And Local Preview Smoke](./release-checkpoint-local-preview.md)
 - [Supabase Standard Effort Export Design](./supabase-standard-effort-export-design.md)
 - [Standard Effort API Smoke Result](./standard-effort-api-smoke-result.md)
 
