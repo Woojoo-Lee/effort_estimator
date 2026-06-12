@@ -163,11 +163,21 @@ set. Role and permission application is still deferred to Phase 11-C/D.
 - Add `admin` / `sales` / `viewer` permission resolver.
 - Apply route, menu, and button guards.
 
+Status: role and permission mapping plus pure resolver utilities are
+implemented. Route, menu, button, and read-only application is handled in
+Phase 11-D.
+
 ### Phase 11-D
 
 - Make Standard Effort meta admin editable only by `admin`.
 - Make `actual_effort_mm` read-only for `sales`.
 - Make the app globally read-only for `viewer`.
+
+Status: implemented as frontend UX guards for the Supabase-mode June path.
+The Standard Effort meta route/sidebar entry is role-filtered, sales can keep
+solution/item selection workflows while `actual_effort_mm` is read-only, and
+viewer write actions are disabled. These guards are not a production security
+boundary; backend/API permission enforcement remains a later operating target.
 
 ### Phase 11-E
 

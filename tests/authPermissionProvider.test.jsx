@@ -83,4 +83,39 @@ describe("AuthPermissionProvider", () => {
     );
     expect(screen.getByTestId("dev-only").textContent).toBe("true");
   });
+
+  it("derives development permissions from admin sales viewer roles", async () => {
+    fetchPermissionSnapshotByEmail.mockResolvedValue({
+      user: null,
+      roles: [],
+      permissions: [],
+      roleCodes: [],
+      permissionCodes: [],
+    });
+
+    render(
+      <AuthPermissionProvider
+        env={{
+          VITE_AUTH_PERMISSION_MODE: "dev",
+          VITE_DEV_AUTH_EMAIL: "sales@example.com",
+          VITE_DEV_AUTH_ROLE_CODES: ROLES.SALES,
+        }}
+      >
+        <Reader />
+      </AuthPermissionProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("authenticated").textContent).toBe("true");
+    });
+    const permissionText = screen.getByTestId("permissions").textContent;
+
+    expect(permissionText).toContain(PERMISSIONS.STANDARD_EFFORT_ITEM_WRITE);
+    expect(permissionText).not.toContain(
+      PERMISSIONS.STANDARD_EFFORT_ACTUAL_EFFORT_WRITE
+    );
+    expect(permissionText).not.toContain(
+      PERMISSIONS.ROUTE_STANDARD_EFFORT_META_READ
+    );
+  });
 });

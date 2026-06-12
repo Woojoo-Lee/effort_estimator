@@ -210,6 +210,36 @@ describe("StandardEffortPanel", () => {
     expect(screen.getByLabelText("PBX 실투입공수").disabled).toBe(true);
   });
 
+  it("keeps solution and item controls writable while actual effort is read-only", () => {
+    const onToggleItem = vi.fn();
+
+    render(
+      <StandardEffortPanel
+        solutionVariants={solutionVariants}
+        itemRows={itemRows}
+        projectSolutionSelections={projectSolutionSelections}
+        projectItemSelections={projectItemSelections}
+        results={results}
+        onToggleItem={onToggleItem}
+        readOnly={false}
+        actualEffortReadOnly
+      />
+    );
+
+    expect(screen.getAllByRole("checkbox")[0].disabled).toBe(false);
+
+    const checkTable = screen.getByRole("region", {
+      name: "표준공수 기능항목 선택",
+    });
+    const itemCheckbox = within(checkTable).getByLabelText("WFM 보안 선택");
+    expect(itemCheckbox.disabled).toBe(false);
+
+    fireEvent.click(itemCheckbox);
+    expect(onToggleItem).toHaveBeenCalledWith("wfm", "item-c", true);
+
+    expect(screen.getByLabelText("PBX 실투입공수").disabled).toBe(true);
+  });
+
   it("renders selected variant columns, group headers, summary totals, and calls immediate checkbox handlers", () => {
     const onToggleItem = vi.fn();
     const onChangeActualEffort = vi.fn();

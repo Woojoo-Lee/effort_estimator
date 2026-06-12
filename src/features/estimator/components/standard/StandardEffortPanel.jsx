@@ -113,6 +113,7 @@ export default function StandardEffortPanel({
   onToggleItem,
   onChangeActualEffort,
   readOnly = false,
+  actualEffortReadOnly = readOnly,
 }) {
   const sortedVariants = useMemo(
     () => sortByDisplayOrder(solutionVariants),
@@ -128,6 +129,8 @@ export default function StandardEffortPanel({
   const hasSolutionVariants = sortedVariants.length > 0;
   const controlsDisabled =
     readOnly || loading || saveStatus.status === "saving";
+  const actualEffortControlsDisabled =
+    actualEffortReadOnly || loading || saveStatus.status === "saving";
   const isRefreshDisabled =
     refreshDisabled || loading || refreshStatus.status === "refreshing";
 
@@ -211,7 +214,7 @@ export default function StandardEffortPanel({
             results={results}
             totals={totals}
             onChangeActualEffort={onChangeActualEffort}
-            readOnly={controlsDisabled}
+            readOnly={actualEffortControlsDisabled}
           />
         </>
       ) : null}

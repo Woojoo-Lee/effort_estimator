@@ -8,9 +8,18 @@ export default function ProjectForm({
   setDraftProjectName,
   createProjectFromDraft,
   disabled = false,
+  canCreateProject = true,
+  createDisabledReason = "프로젝트 생성 권한이 없습니다.",
 }) {
+  const isCreateDisabled = disabled || !canCreateProject;
+
   async function handleSubmit(event) {
     event.preventDefault();
+
+    if (isCreateDisabled || !draftProjectName.trim()) {
+      return;
+    }
+
     await createProjectFromDraft();
   }
 
@@ -26,7 +35,8 @@ export default function ProjectForm({
           value={draftProjectName}
           onChange={(event) => setDraftProjectName(event.target.value)}
           placeholder="새 프로젝트명을 입력하세요"
-          disabled={disabled}
+          disabled={isCreateDisabled}
+          title={!canCreateProject ? createDisabledReason : undefined}
           className="font-semibold text-slate-800"
         />
       </label>
@@ -34,7 +44,8 @@ export default function ProjectForm({
       <ActionButton
         primary
         type="submit"
-        disabled={disabled || !draftProjectName.trim()}
+        disabled={isCreateDisabled || !draftProjectName.trim()}
+        title={!canCreateProject ? createDisabledReason : undefined}
         className="h-10 shrink-0"
       >
         {disabled ? "생성 중..." : "프로젝트 생성"}

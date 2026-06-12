@@ -97,6 +97,8 @@ describe("auth permission utils", () => {
     const snapshot = buildAuthzSnapshot({
       user: { user_id: "user-1", active: true, status: "active" },
       roles: [
+        { role_code: ROLES.ADMIN },
+        { role_code: ROLES.SALES },
         { role_code: ROLES.SYSTEM_ADMIN },
         { role_code: ROLES.META_ADMIN },
         { role_code: ROLES.ESTIMATOR },
@@ -106,9 +108,29 @@ describe("auth permission utils", () => {
     });
 
     expect(snapshot.isSystemAdmin).toBe(true);
+    expect(snapshot.isAdmin).toBe(true);
+    expect(snapshot.isSales).toBe(true);
     expect(snapshot.isMetaAdmin).toBe(true);
     expect(snapshot.isEstimator).toBe(true);
     expect(snapshot.isViewer).toBe(true);
     expect(snapshot.hasPermission(PERMISSIONS.ROUTE_ESTIMATOR_READ)).toBe(true);
+  });
+
+  it("adds role-derived permissions without granting unknown roles", () => {
+    const snapshot = buildAuthzSnapshot({
+      user: { user_id: "user-1", active: true, status: "active" },
+      roles: [ROLES.SALES, "unknown_role"],
+      permissions: [],
+    });
+
+    expect(snapshot.hasPermission(PERMISSIONS.STANDARD_EFFORT_ITEM_WRITE)).toBe(
+      true
+    );
+    expect(
+      snapshot.hasPermission(PERMISSIONS.STANDARD_EFFORT_ACTUAL_EFFORT_WRITE)
+    ).toBe(false);
+    expect(snapshot.hasPermission(PERMISSIONS.ROUTE_STANDARD_EFFORT_META_READ)).toBe(
+      false
+    );
   });
 });

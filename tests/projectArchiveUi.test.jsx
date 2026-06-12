@@ -226,6 +226,54 @@ describe("project archive UI", () => {
     ).toBe(true);
   });
 
+  it("allows sales project creation but disables archive/delete actions", async () => {
+    vi.stubEnv("VITE_DATA_BACKEND", "api");
+    vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "dev");
+    storeMock.state = createStoreState({
+      draftProjectName: "Sales Project",
+    });
+
+    renderProjectPageWithAuth({
+      VITE_AUTH_PERMISSION_MODE: "dev",
+      VITE_DEV_AUTH_ROLE_CODES: ROLES.SALES,
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "프로젝트 생성" }).disabled
+      ).toBe(false)
+    );
+
+    const activeRow = screen.getByText("Active Project").closest("tr");
+    expect(
+      within(activeRow).getByRole("button", { name: "보관" }).disabled
+    ).toBe(true);
+  });
+
+  it("keeps viewer project creation and archive/delete actions disabled", async () => {
+    vi.stubEnv("VITE_DATA_BACKEND", "api");
+    vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "dev");
+    storeMock.state = createStoreState({
+      draftProjectName: "Viewer Project",
+    });
+
+    renderProjectPageWithAuth({
+      VITE_AUTH_PERMISSION_MODE: "dev",
+      VITE_DEV_AUTH_ROLE_CODES: ROLES.VIEWER,
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "프로젝트 생성" }).disabled
+      ).toBe(true)
+    );
+
+    const activeRow = screen.getByText("Active Project").closest("tr");
+    expect(
+      within(activeRow).getByRole("button", { name: "보관" }).disabled
+    ).toBe(true);
+  });
+
   it("restores an archived project and refreshes archived and active lists", async () => {
     vi.stubEnv("VITE_DATA_BACKEND", "api");
     const refreshProjects = vi.fn();

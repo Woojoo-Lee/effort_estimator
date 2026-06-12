@@ -1,4 +1,5 @@
 import { ROLES } from "./permissionCodes";
+import { buildPermissionSnapshot } from "./authPermissionPolicy";
 
 function isActiveRow(row) {
   return row == null || row.active !== false;
@@ -78,7 +79,11 @@ export function hasAnyRole(roleCodes, roleCodesToCheck) {
 
 export function buildAuthzSnapshot({ user, roles, permissions } = {}) {
   const roleCodes = normalizeRoleCodes(roles);
-  const permissionCodes = normalizePermissionCodes(permissions);
+  const permissionSnapshot = buildPermissionSnapshot({
+    roleCodes,
+    permissionCodes: normalizePermissionCodes(permissions),
+  });
+  const permissionCodes = permissionSnapshot.permissionCodes;
   const permissionSet = buildPermissionSet(permissionCodes);
   const activeUser =
     user && user.active !== false && !["inactive", "suspended"].includes(user.status);
@@ -90,6 +95,8 @@ export function buildAuthzSnapshot({ user, roles, permissions } = {}) {
     permissionSet,
     isAuthenticated: Boolean(activeUser),
     isSystemAdmin: hasRole(roleCodes, ROLES.SYSTEM_ADMIN),
+    isAdmin: hasRole(roleCodes, ROLES.ADMIN),
+    isSales: hasRole(roleCodes, ROLES.SALES),
     isMetaAdmin: hasRole(roleCodes, ROLES.META_ADMIN),
     isEstimator: hasRole(roleCodes, ROLES.ESTIMATOR),
     isViewer: hasRole(roleCodes, ROLES.VIEWER),

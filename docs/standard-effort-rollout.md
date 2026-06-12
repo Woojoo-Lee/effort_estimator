@@ -64,6 +64,12 @@ For the June minimum path, keep `disabled` unless the manually managed Supabase
 Auth users are ready. Role and permission enforcement is handled separately in
 the next phases.
 
+The `admin` / `sales` / `viewer` role permission resolver is available as a
+pure auth utility. UI route/menu/button/read-only enforcement is applied for
+the Supabase-mode June path: `admin` can access Standard Effort meta, `sales`
+can save solution/item selections but cannot edit `actual_effort_mm`, and
+`viewer` remains read-only.
+
 ## Frontend Audit Rollout
 
 `VITE_FRONTEND_AUDIT_MODE` controls whether frontend safe audit rows are

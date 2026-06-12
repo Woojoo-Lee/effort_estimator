@@ -61,6 +61,7 @@ export default function StandardEffortSection({
   standardEffort,
   standardEffortActions,
   readOnly = false,
+  actualEffortReadOnly = readOnly,
   auditActor,
 }) {
   const saveStatusTimerRef = useRef(null);
@@ -266,6 +267,10 @@ export default function StandardEffortSection({
 
   const handleToggleSolution = useCallback(
     async (solutionVariantId, enabled) => {
+      if (readOnly) {
+        return false;
+      }
+
       if (!projectId || !saveStandardProjectSolutionSelections) {
         setTransientSaveStatus({
           status: "failed",
@@ -328,6 +333,7 @@ export default function StandardEffortSection({
       recordAudit,
       projectId,
       projectSolutionSelections,
+      readOnly,
       runSave,
       saveStandardProjectSolutionSelections,
       setTransientSaveStatus,
@@ -336,6 +342,10 @@ export default function StandardEffortSection({
 
   const handleToggleItem = useCallback(
     async (solutionVariantId, itemId, checked) => {
+      if (readOnly) {
+        return false;
+      }
+
       if (!projectId || !saveStandardProjectItemSelections) {
         setTransientSaveStatus({
           status: "failed",
@@ -394,6 +404,7 @@ export default function StandardEffortSection({
       recordAudit,
       projectId,
       projectItemSelections,
+      readOnly,
       runSave,
       saveStandardProjectItemSelections,
       setTransientSaveStatus,
@@ -402,6 +413,10 @@ export default function StandardEffortSection({
 
   const handleChangeActualEffort = useCallback(
     async (solutionVariantId, value) => {
+      if (actualEffortReadOnly) {
+        return false;
+      }
+
       if (!projectId || !updateStandardActualEffort) {
         const error = new Error("projectId 또는 solutionVariantId가 없습니다.");
         setTransientSaveStatus({
@@ -455,6 +470,7 @@ export default function StandardEffortSection({
       return saved;
     },
     [
+      actualEffortReadOnly,
       projectId,
       projectSolutionSelections,
       recordAudit,
@@ -489,6 +505,7 @@ export default function StandardEffortSection({
         onToggleItem={handleToggleItem}
         onChangeActualEffort={handleChangeActualEffort}
         readOnly={readOnly}
+        actualEffortReadOnly={actualEffortReadOnly}
       />
     </section>
   );

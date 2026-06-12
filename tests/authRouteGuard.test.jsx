@@ -190,6 +190,55 @@ describe("route and sidebar guards", () => {
     });
   });
 
+  it("shows standard effort meta route and page for the admin role", async () => {
+    vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "dev");
+    vi.stubEnv("VITE_FEATURE_STANDARD_EFFORT_META", "true");
+
+    render(
+      <AuthPermissionProvider
+        env={{
+          VITE_AUTH_PERMISSION_MODE: "dev",
+          VITE_DEV_AUTH_ROLE_CODES: ROLES.ADMIN,
+        }}
+      >
+        <AppSidebar activeRoute="/standard-effort-meta" />
+        <AppRouter route="/standard-effort-meta" />
+      </AuthPermissionProvider>
+    );
+
+    await waitFor(() => {
+      expect(
+        document.querySelector('a[href="#/standard-effort-meta"]')
+      ).toBeTruthy();
+    });
+    expect(await screen.findByTestId("standard-effort-meta-page")).toBeTruthy();
+  });
+
+  it("hides and blocks standard effort meta for the sales role", async () => {
+    vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "dev");
+    vi.stubEnv("VITE_FEATURE_STANDARD_EFFORT_META", "true");
+
+    render(
+      <AuthPermissionProvider
+        env={{
+          VITE_AUTH_PERMISSION_MODE: "dev",
+          VITE_DEV_AUTH_ROLE_CODES: ROLES.SALES,
+        }}
+      >
+        <AppSidebar activeRoute="/estimator" />
+        <AppRouter route="/standard-effort-meta" />
+      </AuthPermissionProvider>
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector('a[href="#/estimator"]')).toBeTruthy();
+    });
+    expect(
+      document.querySelector('a[href="#/standard-effort-meta"]')
+    ).toBeNull();
+    expect(screen.getByText("접근 권한이 없습니다.")).toBeTruthy();
+  });
+
   it("blocks direct URL access when route permission is missing", () => {
     vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "dev");
     vi.stubEnv("VITE_FEATURE_STANDARD_EFFORT_META", "true");

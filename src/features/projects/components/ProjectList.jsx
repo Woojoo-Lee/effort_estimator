@@ -45,6 +45,8 @@ export default function ProjectList({
   restoringProjectId = null,
   restoreActionLabel = "복원",
   restoreConfirmActionLabel = "복원",
+  canDeleteProject = true,
+  deleteDisabledReason = "프로젝트 삭제 권한이 없습니다.",
   canRestoreArchivedProject = true,
   restoreDisabledReason = "프로젝트 복원 권한이 없습니다.",
 }) {
@@ -53,11 +55,19 @@ export default function ProjectList({
     useState(null);
 
   function handleDeleteClick(project) {
+    if (!canDeleteProject) {
+      return;
+    }
+
     setConfirmingProjectId(project.id);
     setConfirmingRestoreProjectId(null);
   }
 
   async function handleConfirmDelete(project) {
+    if (!canDeleteProject) {
+      return;
+    }
+
     await deleteProject(project.id);
     setConfirmingProjectId(null);
   }
@@ -142,6 +152,10 @@ export default function ProjectList({
               const selectDisabled =
                 disabled || (disableSelectArchived && isArchived);
               const showDelete = !(hideDeleteForArchived && isArchived);
+              const deleteDisabled = disabled || !canDeleteProject;
+              const deleteTitle = canDeleteProject
+                ? undefined
+                : deleteDisabledReason;
               const showRestore = Boolean(restoreProject) && isArchived;
               const restoreDisabled =
                 disabled || isRestoring || !canRestoreArchivedProject;
@@ -202,7 +216,8 @@ export default function ProjectList({
                           <>
                             <ActionButton
                               onClick={() => handleConfirmDelete(project)}
-                              disabled={disabled}
+                              disabled={deleteDisabled}
+                              title={deleteTitle}
                             >
                               {deleteConfirmActionLabel}
                             </ActionButton>
@@ -216,7 +231,8 @@ export default function ProjectList({
                         ) : (
                           <ActionButton
                             onClick={() => handleDeleteClick(project)}
-                            disabled={disabled}
+                            disabled={deleteDisabled}
+                            title={deleteTitle}
                           >
                             {deleteActionLabel}
                           </ActionButton>

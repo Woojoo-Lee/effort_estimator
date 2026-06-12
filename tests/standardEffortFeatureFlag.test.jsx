@@ -54,10 +54,11 @@ vi.mock("../src/features/projects/components/VersionHistoryModal", () => ({
 }));
 
 vi.mock("../src/features/estimator/components/standard", () => ({
-  StandardEffortSection: ({ projectId, readOnly }) => (
+  StandardEffortSection: ({ projectId, readOnly, actualEffortReadOnly }) => (
     <div
       data-testid="standard-effort-section"
       data-readonly={String(readOnly)}
+      data-actual-readonly={String(actualEffortReadOnly)}
     >
       {projectId}
     </div>
@@ -292,6 +293,64 @@ describe("EstimatorPage standard effort feature flag", () => {
     expect(screen.getByTestId("standard-effort-section").dataset.readonly).toBe(
       "false"
     );
+  });
+
+  it("lets sales save standard effort selections while keeping actual effort read-only", async () => {
+    const { AuthPermissionProvider, ROLES } = await import(
+      "../src/features/auth"
+    );
+    mockPage.value = createPageModel(42);
+    vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "dev");
+    vi.stubEnv("VITE_FEATURE_STANDARD_EFFORT", "true");
+    vi.stubEnv("VITE_STANDARD_EFFORT_MODE", "standard");
+
+    render(
+      <AuthPermissionProvider
+        env={{
+          VITE_AUTH_PERMISSION_MODE: "dev",
+          VITE_DEV_AUTH_ROLE_CODES: ROLES.SALES,
+        }}
+      >
+        <EstimatorPage />
+      </AuthPermissionProvider>
+    );
+
+    await screen.findByTestId("standard-effort-section");
+    expect(screen.getByTestId("standard-effort-section").dataset.readonly).toBe(
+      "false"
+    );
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.actualReadonly
+    ).toBe("true");
+  });
+
+  it("keeps viewer standard effort actions read-only", async () => {
+    const { AuthPermissionProvider, ROLES } = await import(
+      "../src/features/auth"
+    );
+    mockPage.value = createPageModel(42);
+    vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "dev");
+    vi.stubEnv("VITE_FEATURE_STANDARD_EFFORT", "true");
+    vi.stubEnv("VITE_STANDARD_EFFORT_MODE", "standard");
+
+    render(
+      <AuthPermissionProvider
+        env={{
+          VITE_AUTH_PERMISSION_MODE: "dev",
+          VITE_DEV_AUTH_ROLE_CODES: ROLES.VIEWER,
+        }}
+      >
+        <EstimatorPage />
+      </AuthPermissionProvider>
+    );
+
+    await screen.findByTestId("standard-effort-section");
+    expect(screen.getByTestId("standard-effort-section").dataset.readonly).toBe(
+      "true"
+    );
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.actualReadonly
+    ).toBe("true");
   });
 
   it("keeps legacy estimator controls writable when auth permission mode is disabled", () => {

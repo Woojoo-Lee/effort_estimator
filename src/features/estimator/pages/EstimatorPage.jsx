@@ -116,13 +116,19 @@ function ArchivedProjectNotice() {
   );
 }
 
-function StandardEffortBlock({ page, readOnly = false, auditActor }) {
+function StandardEffortBlock({
+  page,
+  readOnly = false,
+  actualEffortReadOnly = readOnly,
+  auditActor,
+}) {
   return (
     <StandardEffortSection
       projectId={page.projectSelector.projectId}
       standardEffort={page.estimatorView.standardEffort}
       standardEffortActions={page.estimatorView.standardEffortActions}
       readOnly={readOnly}
+      actualEffortReadOnly={actualEffortReadOnly}
       auditActor={auditActor}
     />
   );
@@ -136,12 +142,16 @@ export default function EstimatorPage() {
   const isStandardExportAvailable =
     standardEffortMode.isStandardMode;
   const isAuthzEnabled = isAuthPermissionEnabled(import.meta.env);
-  const canWriteStandardEffort =
+  const canWriteStandardEffortSelection =
     !isAuthzEnabled ||
     authz.hasAnyPermission([
+      PERMISSIONS.STANDARD_EFFORT_SOLUTION_WRITE,
+      PERMISSIONS.STANDARD_EFFORT_ITEM_WRITE,
       PERMISSIONS.STANDARD_EFFORT_SELECTION_WRITE,
-      PERMISSIONS.STANDARD_EFFORT_ACTUAL_EFFORT_WRITE,
     ]);
+  const canWriteActualEffort =
+    !isAuthzEnabled ||
+    authz.hasPermission(PERMISSIONS.STANDARD_EFFORT_ACTUAL_EFFORT_WRITE);
   const canWriteProject =
     !isAuthzEnabled ||
     authz.hasAnyPermission([
@@ -149,7 +159,9 @@ export default function EstimatorPage() {
       PERMISSIONS.PROJECT_WRITE_ASSIGNED,
       PERMISSIONS.PROJECT_WRITE_ALL,
     ]);
-  const standardEffortReadOnly = isAuthzEnabled && !canWriteStandardEffort;
+  const standardEffortReadOnly =
+    isAuthzEnabled && !canWriteStandardEffortSelection;
+  const actualEffortReadOnly = isAuthzEnabled && !canWriteActualEffort;
   const legacyEstimatorReadOnly = isAuthzEnabled && !canWriteProject;
   const currentProject =
     page.currentProject ||
@@ -161,6 +173,8 @@ export default function EstimatorPage() {
     page.isCurrentProjectArchived || isArchivedProject(currentProject);
   const standardEffortEffectiveReadOnly =
     standardEffortReadOnly || isArchivedCurrentProject;
+  const actualEffortEffectiveReadOnly =
+    actualEffortReadOnly || isArchivedCurrentProject;
   const legacyEstimatorEffectiveReadOnly =
     legacyEstimatorReadOnly || isArchivedCurrentProject;
   const auditActor = {
@@ -207,6 +221,7 @@ export default function EstimatorPage() {
             <StandardEffortBlock
               page={page}
               readOnly={standardEffortEffectiveReadOnly}
+              actualEffortReadOnly={actualEffortEffectiveReadOnly}
               auditActor={auditActor}
             />
 
@@ -244,6 +259,7 @@ export default function EstimatorPage() {
               <StandardEffortBlock
                 page={page}
                 readOnly={standardEffortEffectiveReadOnly}
+                actualEffortReadOnly={actualEffortEffectiveReadOnly}
                 auditActor={auditActor}
               />
             ) : null}

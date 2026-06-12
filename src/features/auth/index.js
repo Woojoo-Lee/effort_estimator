@@ -6,6 +6,13 @@ export {
   resolveAuthLoginMode,
 } from "./lib/authLoginMode";
 export {
+  ROLE_PERMISSION_POLICY,
+  buildPermissionSnapshot,
+  getPermissionsForRole,
+  normalizePolicyPermissionCodes,
+  normalizePolicyRoleCodes,
+} from "./lib/authPermissionPolicy";
+export {
   buildAuthzSnapshot,
   buildPermissionSet,
   hasAllPermissions,

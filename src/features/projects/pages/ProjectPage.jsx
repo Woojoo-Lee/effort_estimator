@@ -47,9 +47,26 @@ export default function ProjectPage() {
 
   const isApiMode = isApiBackend(resolveDataBackend());
   const authPermissionEnabled = isAuthPermissionEnabled(import.meta.env);
+  const canCreateProject =
+    !authPermissionEnabled ||
+    authz.hasAnyPermission([
+      PERMISSIONS.PROJECT_CREATE,
+      PERMISSIONS.PROJECT_WRITE_OWN,
+      PERMISSIONS.PROJECT_WRITE_ASSIGNED,
+      PERMISSIONS.PROJECT_WRITE_ALL,
+    ]);
+  const canArchiveProject =
+    !authPermissionEnabled ||
+    authz.hasAnyPermission([
+      PERMISSIONS.PROJECT_ARCHIVE,
+      PERMISSIONS.PROJECT_WRITE_ALL,
+    ]);
   const canRestoreArchivedProject =
     !authPermissionEnabled ||
-    authz.hasPermission(PERMISSIONS.PROJECT_WRITE_ALL);
+    authz.hasAnyPermission([
+      PERMISSIONS.PROJECT_RESTORE,
+      PERMISSIONS.PROJECT_WRITE_ALL,
+    ]);
   const isBusy = isProjectsBusy || isProjectActionBusy;
   const isArchiveView = isApiMode && showArchivedProjects;
   const displayedProjects = isArchiveView ? archivedProjects : projects;
@@ -175,6 +192,8 @@ export default function ProjectPage() {
           setDraftProjectName={setDraftProjectName}
           createProjectFromDraft={createProjectFromDraft}
           disabled={isBusy}
+          canCreateProject={canCreateProject}
+          createDisabledReason="프로젝트 생성 권한이 없습니다."
         />
 
         {lastProjectsError && (
@@ -241,6 +260,8 @@ export default function ProjectPage() {
           hideDeleteForArchived={isArchiveView}
           restoreProject={isArchiveView ? handleRestoreProject : undefined}
           restoringProjectId={restoringProjectId}
+          canDeleteProject={canArchiveProject}
+          deleteDisabledReason="프로젝트 보관/삭제 권한이 없습니다."
           canRestoreArchivedProject={canRestoreArchivedProject}
           restoreDisabledReason="프로젝트 복원 권한이 없습니다."
         />

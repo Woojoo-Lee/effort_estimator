@@ -1,0 +1,135 @@
+import { PERMISSIONS, ROLES } from "./permissionCodes";
+
+function normalizeCodes(input) {
+  const values = Array.isArray(input) ? input : input ? [input] : [];
+  const normalized = [];
+  const seen = new Set();
+
+  for (const value of values) {
+    const code = String(value || "").trim();
+
+    if (!code || seen.has(code)) {
+      continue;
+    }
+
+    seen.add(code);
+    normalized.push(code);
+  }
+
+  return normalized;
+}
+
+export function normalizePolicyRoleCodes(input) {
+  return normalizeCodes(input);
+}
+
+export function normalizePolicyPermissionCodes(input) {
+  return normalizeCodes(input);
+}
+
+const ADMIN_PERMISSIONS = [
+  PERMISSIONS.ROUTE_ESTIMATOR_READ,
+  PERMISSIONS.ROUTE_PROJECTS_READ,
+  PERMISSIONS.ROUTE_STANDARD_EFFORT_META_READ,
+  PERMISSIONS.ROUTE_AUDIT_READ,
+
+  PERMISSIONS.PROJECT_READ,
+  PERMISSIONS.PROJECT_CREATE,
+  PERMISSIONS.PROJECT_UPDATE,
+  PERMISSIONS.PROJECT_ARCHIVE,
+  PERMISSIONS.PROJECT_RESTORE,
+  PERMISSIONS.PROJECT_READ_OWN,
+  PERMISSIONS.PROJECT_READ_DEPARTMENT,
+  PERMISSIONS.PROJECT_READ_ALL,
+  PERMISSIONS.PROJECT_WRITE_OWN,
+  PERMISSIONS.PROJECT_WRITE_ASSIGNED,
+  PERMISSIONS.PROJECT_WRITE_ALL,
+
+  PERMISSIONS.STANDARD_EFFORT_READ,
+  PERMISSIONS.STANDARD_EFFORT_SOLUTION_WRITE,
+  PERMISSIONS.STANDARD_EFFORT_ITEM_WRITE,
+  PERMISSIONS.STANDARD_EFFORT_SELECTION_WRITE,
+  PERMISSIONS.STANDARD_EFFORT_ACTUAL_EFFORT_WRITE,
+  PERMISSIONS.STANDARD_EFFORT_REFRESH,
+
+  PERMISSIONS.STANDARD_EFFORT_META_READ,
+  PERMISSIONS.STANDARD_EFFORT_META_BASE_EFFORT_WRITE,
+  PERMISSIONS.STANDARD_EFFORT_META_COEFFICIENT_WRITE,
+  PERMISSIONS.STANDARD_EFFORT_META_ACTIVE_WRITE,
+  PERMISSIONS.STANDARD_EFFORT_META_VALIDATE_READ,
+
+  PERMISSIONS.EXPORT_READ,
+  PERMISSIONS.EXPORT_STANDARD_EFFORT,
+  PERMISSIONS.AUDIT_READ,
+];
+
+const SALES_PERMISSIONS = [
+  PERMISSIONS.ROUTE_ESTIMATOR_READ,
+  PERMISSIONS.ROUTE_PROJECTS_READ,
+
+  PERMISSIONS.PROJECT_READ,
+  PERMISSIONS.PROJECT_CREATE,
+  PERMISSIONS.PROJECT_UPDATE,
+  PERMISSIONS.PROJECT_READ_OWN,
+  PERMISSIONS.PROJECT_READ_DEPARTMENT,
+  PERMISSIONS.PROJECT_WRITE_OWN,
+  PERMISSIONS.PROJECT_WRITE_ASSIGNED,
+
+  PERMISSIONS.STANDARD_EFFORT_READ,
+  PERMISSIONS.STANDARD_EFFORT_SOLUTION_WRITE,
+  PERMISSIONS.STANDARD_EFFORT_ITEM_WRITE,
+  PERMISSIONS.STANDARD_EFFORT_SELECTION_WRITE,
+  PERMISSIONS.STANDARD_EFFORT_REFRESH,
+
+  PERMISSIONS.EXPORT_READ,
+  PERMISSIONS.EXPORT_STANDARD_EFFORT,
+];
+
+const VIEWER_PERMISSIONS = [
+  PERMISSIONS.ROUTE_ESTIMATOR_READ,
+  PERMISSIONS.ROUTE_PROJECTS_READ,
+
+  PERMISSIONS.PROJECT_READ,
+  PERMISSIONS.PROJECT_READ_OWN,
+  PERMISSIONS.PROJECT_READ_DEPARTMENT,
+
+  PERMISSIONS.STANDARD_EFFORT_READ,
+  PERMISSIONS.STANDARD_EFFORT_REFRESH,
+
+  PERMISSIONS.EXPORT_READ,
+  PERMISSIONS.EXPORT_STANDARD_EFFORT,
+];
+
+export const ROLE_PERMISSION_POLICY = {
+  [ROLES.ADMIN]: ADMIN_PERMISSIONS,
+  [ROLES.SALES]: SALES_PERMISSIONS,
+  [ROLES.VIEWER]: VIEWER_PERMISSIONS,
+};
+
+export function getPermissionsForRole(roleCode) {
+  const code = String(roleCode || "").trim();
+  return [...(ROLE_PERMISSION_POLICY[code] || [])];
+}
+
+export function buildPermissionSnapshot({
+  roleCodes = [],
+  permissionCodes = [],
+} = {}) {
+  const normalizedRoleCodes = normalizePolicyRoleCodes(roleCodes);
+  const derivedPermissionCodes = normalizedRoleCodes.flatMap((roleCode) =>
+    getPermissionsForRole(roleCode)
+  );
+  const normalizedPermissionCodes = normalizePolicyPermissionCodes([
+    ...derivedPermissionCodes,
+    ...normalizePolicyPermissionCodes(permissionCodes),
+  ]);
+
+  return {
+    roleCodes: normalizedRoleCodes,
+    permissionCodes: normalizedPermissionCodes,
+    permissions: normalizedPermissionCodes.map((permission_code) => ({
+      permission_code,
+      active: true,
+    })),
+  };
+}
