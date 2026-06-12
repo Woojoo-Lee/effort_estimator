@@ -12,16 +12,18 @@ export function useHashRoute() {
   const [route, setRoute] = useState(() => readRouteFromHash());
 
   useEffect(() => {
-    if (!window.location.hash) {
-      window.location.hash = DEFAULT_ROUTE;
-      return;
-    }
-
     const handleHashChange = () => {
       setRoute(readRouteFromHash());
     };
 
     window.addEventListener("hashchange", handleHashChange);
+
+    if (!window.location.hash) {
+      window.location.hash = DEFAULT_ROUTE;
+      setRoute(DEFAULT_ROUTE);
+    } else {
+      handleHashChange();
+    }
 
     return () => {
       window.removeEventListener("hashchange", handleHashChange);
