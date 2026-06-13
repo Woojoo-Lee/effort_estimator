@@ -87,7 +87,7 @@ export function useAuthPermissionState(env = import.meta.env, options = {}) {
   const [state, setState] = useState(() => buildDisabledState());
 
   const reload = useCallback(async () => {
-    if (mode !== "dev") {
+    if (mode === "disabled") {
       setState(buildDisabledState());
       return;
     }
@@ -105,6 +105,11 @@ export function useAuthPermissionState(env = import.meta.env, options = {}) {
         authz,
         devOnly: false,
       });
+      return;
+    }
+
+    if (mode !== "dev") {
+      setState(buildDisabledState());
       return;
     }
 

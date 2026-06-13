@@ -209,6 +209,16 @@ Phase 11-BR-2-Fix table separation:
 - `public.app_login_users`: dedicated ID/password app-auth table.
 - App auth must not use email or pseudo email identifiers.
 
+Phase 11-D-Fix-2 permission bridge:
+
+- With `VITE_AUTH_LOGIN_MODE=app` and `VITE_AUTH_PERMISSION_MODE=enabled`,
+  the frontend permission layer derives permissions from the app session
+  `role_code` / `role_codes`.
+- `admin` can access Standard Effort meta routes and meta write permissions.
+- `sales` can save Standard Effort solution/item selections but cannot access
+  Standard Effort meta or edit `actual_effort_mm`.
+- `viewer` remains read-only.
+
 ## 7. Audit Actor Policy
 
 All save events should include actor identity where available.
