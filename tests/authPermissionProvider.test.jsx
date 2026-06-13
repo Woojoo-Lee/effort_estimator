@@ -13,6 +13,7 @@ vi.mock("../src/features/auth/services/authPermissionRepository", () => ({
 
 import {
   AuthPermissionProvider,
+  AuthSessionProvider,
   useAuthPermission,
 } from "../src/features/auth";
 
@@ -116,6 +117,54 @@ describe("AuthPermissionProvider", () => {
     );
     expect(permissionText).not.toContain(
       PERMISSIONS.ROUTE_STANDARD_EFFORT_META_READ
+    );
+  });
+
+  it("derives permissions from an app session role_code", async () => {
+    const repository = {
+      getAuthSession: vi.fn().mockResolvedValue({
+        data: {
+          session: {
+            user: {
+              user_id: "app-user-1",
+              login_id: "sales01",
+              display_name: "Sales User",
+              role_code: ROLES.SALES,
+              role_codes: [ROLES.SALES],
+            },
+          },
+        },
+        error: null,
+      }),
+      signIn: vi.fn(),
+      signOut: vi.fn(),
+      onAuthStateChange: vi.fn(() => ({})),
+    };
+
+    render(
+      <AuthSessionProvider
+        env={{ VITE_AUTH_LOGIN_MODE: "app" }}
+        repository={repository}
+      >
+        <AuthPermissionProvider
+          env={{
+            VITE_AUTH_PERMISSION_MODE: "dev",
+          }}
+        >
+          <Reader />
+        </AuthPermissionProvider>
+      </AuthSessionProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("authenticated").textContent).toBe("true");
+    });
+    expect(screen.getByTestId("roles").textContent).toBe(ROLES.SALES);
+    const permissionText = screen.getByTestId("permissions").textContent;
+
+    expect(permissionText).toContain(PERMISSIONS.STANDARD_EFFORT_ITEM_WRITE);
+    expect(permissionText).not.toContain(
+      PERMISSIONS.STANDARD_EFFORT_ACTUAL_EFFORT_WRITE
     );
   });
 });

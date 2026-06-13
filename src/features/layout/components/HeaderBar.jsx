@@ -59,6 +59,10 @@ function AccentButton({
 
 export default function HeaderBar({ projectMeta, status, actions }) {
   const authSession = useAuthSession();
+  const currentUserLabel =
+    authSession.user?.display_name ||
+    authSession.user?.login_id ||
+    "Signed in";
   const { projectId, projectName, savedAt } = projectMeta;
   const { dbReady, isBusy, saveStatus, actionPermissions = {} } = status;
   const canWriteProject = actionPermissions.canWriteProject !== false;
@@ -118,7 +122,7 @@ export default function HeaderBar({ projectMeta, status, actions }) {
                 data-testid="current-auth-user"
                 className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600"
               >
-                {authSession.user?.email || "Signed in"}
+                {currentUserLabel}
               </span>
               <SecondaryButton
                 onClick={authSession.signOut}

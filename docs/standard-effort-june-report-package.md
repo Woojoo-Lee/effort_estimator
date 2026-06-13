@@ -31,7 +31,7 @@ permissions, and audit actor tracking. See
 - Coefficient grid top scrollbar and wide layout UX improvement.
 - Project archive and restore UX.
 - Auth and read-only skeleton.
-- Supabase Auth login/session skeleton with default disabled mode.
+- App-managed ID/password login/session skeleton with default disabled mode.
 - Frontend audit policy.
 - Minimum login, role permission, and audit actor scope.
 - Tomcat backend scaffold and API contract preparation.

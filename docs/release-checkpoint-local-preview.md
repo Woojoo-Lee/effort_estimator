@@ -66,14 +66,14 @@ Included in this checkpoint:
 - Supabase mode.
 - Standard Effort estimator and meta admin flow.
 - Standard Effort Excel export in Supabase mode.
-- Supabase Auth login/session skeleton is present in code, but disabled by
-  default.
+- App-managed ID/password login/session skeleton is present in code, but
+  disabled by default.
 
 Excluded from this checkpoint:
 
 - Tomcat backend production deployment.
 - Internal PostgreSQL API mode.
-- `admin` / `sales` / `viewer` permission enforcement.
+- Backend-authoritative `admin` / `sales` / `viewer` permission enforcement.
 - Audit actor hardening.
 - Internal framework replacement.
 - Serverless conversion.
@@ -96,20 +96,23 @@ VITE_AUTH_PERMISSION_MODE=disabled
 
 ### Login Skeleton Verification
 
-Use only when manually managed Supabase Auth users are ready:
+Use only when manually managed `app_login_users` and Vercel server-only auth env are
+ready:
 
 ```env
-VITE_AUTH_LOGIN_MODE=supabase
+VITE_AUTH_LOGIN_MODE=app
 ```
 
 Notes:
 
-- `VITE_AUTH_LOGIN_MODE=supabase` verifies the login/session skeleton only.
-- Role enforcement is not implemented yet.
+- `VITE_AUTH_LOGIN_MODE=app` verifies the ID/password app-auth skeleton only.
+- `VITE_AUTH_LOGIN_MODE=supabase` is deprecated and should not be used.
+- Frontend `admin` / `sales` / `viewer` UX guards are implemented; backend
+  authoritative permission enforcement is still excluded from this checkpoint.
 - Do not open the app broadly to all sales users before Phase 11-C/D/E.
 - Do not document real Supabase URL/key values.
-- Do not commit `.env`, `.env.local`, service-role keys, DB passwords, or other
-  secrets.
+- Do not commit `.env`, `.env.local`, service-role keys, DB passwords,
+  `APP_AUTH_SESSION_SECRET`, or other secrets.
 
 ## 6. Local Preview Smoke
 

@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 
 export default function LoginForm({ error = null, loading = false, onSubmit }) {
-  const [email, setEmail] = useState("");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [submitError, setSubmitError] = useState("");
   const message = submitError || error?.message || "";
-  const disabled = loading || !email.trim() || !password;
+  const disabled = loading || !loginId.trim() || !password;
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -13,11 +13,13 @@ export default function LoginForm({ error = null, loading = false, onSubmit }) {
 
     try {
       await onSubmit?.({
-        email: email.trim(),
+        loginId: loginId.trim(),
         password,
       });
     } catch (submitFailure) {
-      setSubmitError(submitFailure?.message || "Login failed.");
+      setSubmitError(
+        submitFailure?.message || "사용자 ID 또는 비밀번호를 확인하세요."
+      );
     }
   }
 
@@ -27,17 +29,17 @@ export default function LoginForm({ error = null, loading = false, onSubmit }) {
       onSubmit={handleSubmit}
     >
       <div>
-        <label className="text-sm font-bold text-slate-700" htmlFor="login-email">
-          Email
+        <label className="text-sm font-bold text-slate-700" htmlFor="login-id">
+          사용자 ID
         </label>
         <input
-          id="login-email"
-          aria-label="Email"
-          autoComplete="email"
+          id="login-id"
+          aria-label="사용자 ID"
+          autoComplete="username"
           className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          type="text"
+          value={loginId}
+          onChange={(event) => setLoginId(event.target.value)}
         />
       </div>
 
@@ -70,7 +72,7 @@ export default function LoginForm({ error = null, loading = false, onSubmit }) {
         disabled={disabled}
         className="h-10 w-full rounded-lg bg-blue-600 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
       >
-        {loading ? "Signing in..." : "Login"}
+        {loading ? "로그인 중..." : "로그인"}
       </button>
     </form>
   );

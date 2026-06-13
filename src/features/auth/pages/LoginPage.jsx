@@ -23,7 +23,7 @@ export default function LoginPage() {
     navigateToDefaultRoute();
   }
 
-  if (authSession.loginMode !== AUTH_LOGIN_MODES.SUPABASE) {
+  if (authSession.loginMode !== AUTH_LOGIN_MODES.APP) {
     return (
       <div className="mx-auto max-w-[480px] p-4">
         <section className="rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm">
@@ -39,21 +39,23 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-[480px] items-center p-4">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
       <div className="w-full">
-        <div className="mb-4">
+        <div className="mx-auto mb-4 max-w-[480px]">
           <h1 className="text-xl font-extrabold text-slate-900">
-            Effort Estimator Login
+            Effort Estimator 로그인
           </h1>
           <p className="mt-1 text-sm font-semibold text-slate-500">
-            Sign in with a manually managed Supabase Auth account.
+            발급받은 사용자 ID와 비밀번호로 접속하세요.
           </p>
         </div>
-        <LoginForm
-          error={authSession.error}
-          loading={authSession.loading}
-          onSubmit={handleSubmit}
-        />
+        <div className="mx-auto w-full max-w-[480px]">
+          <LoginForm
+            error={authSession.error}
+            loading={authSession.loading}
+            onSubmit={handleSubmit}
+          />
+        </div>
       </div>
     </div>
   );

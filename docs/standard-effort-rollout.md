@@ -47,6 +47,13 @@ See [Auth, Permission, And Audit Actor Minimum Scope](./auth-permission-audit-mi
 for the June minimum login, `admin` / `sales` / `viewer` permission, and audit
 actor scope.
 
+See [App Auth User Setup](./app-auth-user-setup.md) for the `app_login_users`
+schema, PBKDF2 password hash helper, initial user SQL template, Vercel env
+checklist, and login E2E smoke sequence.
+
+See [App Auth Login E2E Smoke Result](./app-auth-login-smoke-result.md) for
+the current `VITE_AUTH_LOGIN_MODE=app` Supabase/Vercel login smoke status.
+
 See [Release Checkpoint And Local Preview Smoke](./release-checkpoint-local-preview.md)
 for the current Supabase-mode frontend release checkpoint, local preview smoke,
 env matrix, and known deployment limitations.
@@ -57,18 +64,63 @@ env matrix, and known deployment limitations.
 It is separate from `VITE_AUTH_PERMISSION_MODE`.
 
 - `disabled`: default. The current app remains available without login.
-- `supabase`: use Supabase Auth email/password session state. Missing sessions
-  show the login page; authenticated sessions can use the app and logout.
+- `app`: use the app-managed ID/password login flow through Vercel Functions.
+  Missing sessions show a full-screen login page; authenticated sessions can
+  use the app and logout.
 
-For the June minimum path, keep `disabled` unless the manually managed Supabase
-Auth users are ready. Role and permission enforcement is handled separately in
-the next phases.
+`VITE_AUTH_LOGIN_MODE=supabase` is deprecated and should not be used for June
+operation. It falls back to app login and does not enable Supabase Auth
+email/password sign-in.
+
+For the June minimum path, keep `disabled` until manually managed
+`app_login_users` and server-only Vercel env values are ready. Then use:
+
+```env
+VITE_AUTH_LOGIN_MODE=app
+```
+
+Server-only Vercel env values:
+
+```env
+APP_AUTH_SESSION_SECRET=<random-long-secret>
+SUPABASE_URL=<server-only-supabase-url>
+SUPABASE_SERVICE_ROLE_KEY=<server-only-service-role-key>
+```
+
+Never expose `SUPABASE_SERVICE_ROLE_KEY` through a `VITE_` variable.
 
 The `admin` / `sales` / `viewer` role permission resolver is available as a
 pure auth utility. UI route/menu/button/read-only enforcement is applied for
 the Supabase-mode June path: `admin` can access Standard Effort meta, `sales`
 can save solution/item selections but cannot edit `actual_effort_mm`, and
 `viewer` remains read-only.
+
+### App Auth Pre-Operation Checklist
+
+Before enabling `VITE_AUTH_LOGIN_MODE=app` for a shared environment:
+
+1. Keep `VITE_DATA_BACKEND=supabase` unless a separate API DB smoke has passed.
+2. Set frontend env `VITE_AUTH_LOGIN_MODE=app`.
+3. Set server-only Vercel env values:
+   `APP_AUTH_SESSION_SECRET`, `SUPABASE_URL`, and
+   `SUPABASE_SERVICE_ROLE_KEY`.
+4. Confirm `SUPABASE_SERVICE_ROLE_KEY` is not exposed through any `VITE_`
+   variable.
+5. Create the `app_login_users` table and manually prepare active `admin`,
+   `sales`, and `viewer` accounts with PBKDF2 password hashes.
+   See [App Auth User Setup](./app-auth-user-setup.md).
+6. Verify the app-mode unauthenticated state shows only the full-screen user
+   ID/password login page, with no sidebar, menu, header, or email wording.
+7. Verify the disabled mode still opens the existing app without login.
+8. Run targeted auth tests, full frontend tests, and frontend build.
+9. Run Vercel Function end-to-end smoke only after the target Vercel runtime,
+   server-only env, and `app_login_users` schema/accounts are ready.
+   Track the result in
+   [App Auth Login E2E Smoke Result](./app-auth-login-smoke-result.md).
+
+Commit, push, tag, and Vercel redeploy actions are collected into the Daily
+Release only. Gate tasks should stop at implementation verification and
+documentation unless explicitly promoted into a Daily Release.
 
 ## Frontend Audit Rollout
 

@@ -26,15 +26,20 @@ vi.mock("../src/features/standardEffortMeta/pages/StandardEffortMetaPage", () =>
 }));
 
 import AppRouter from "../src/app/AppRouter";
-import { AuthPermissionProvider, AuthSessionProvider } from "../src/features/auth";
+import {
+  AuthPermissionProvider,
+  AuthSessionProvider,
+} from "../src/features/auth";
 import LoginPage from "../src/features/auth/pages/LoginPage";
 
-function createSession(email = "admin@example.com") {
+function createSession(loginId = "admin01", roleCode = "admin") {
   return {
-    access_token: "token",
     user: {
-      id: "auth-user-1",
-      email,
+      user_id: "app-user-1",
+      login_id: loginId,
+      display_name: "Admin User",
+      role_code: roleCode,
+      role_codes: [roleCode],
     },
   };
 }
@@ -47,21 +52,15 @@ function createRepository({ session = null } = {}) {
       },
       error: null,
     }),
-    signInWithPassword: vi.fn(),
+    signIn: vi.fn(),
     signOut: vi.fn().mockResolvedValue({ data: null, error: null }),
-    onAuthStateChange: vi.fn(() => ({
-      data: {
-        subscription: {
-          unsubscribe: vi.fn(),
-        },
-      },
-    })),
+    onAuthStateChange: vi.fn(() => ({})),
   };
 }
 
 function renderWithProviders({
   route = "/login",
-  authEnv = { VITE_AUTH_LOGIN_MODE: "supabase" },
+  authEnv = { VITE_AUTH_LOGIN_MODE: "app" },
   permissionEnv = { VITE_AUTH_PERMISSION_MODE: "disabled" },
   repository = createRepository(),
   children = null,
@@ -84,29 +83,31 @@ describe("LoginPage", () => {
     window.location.hash = "";
   });
 
-  it("renders email and password inputs", () => {
+  it("renders user ID and password inputs without email wording", () => {
     renderWithProviders({ children: <LoginPage /> });
 
-    expect(screen.getByLabelText("Email")).toBeTruthy();
+    expect(screen.getByLabelText("사용자 ID")).toBeTruthy();
+    expect(screen.queryByLabelText("Email")).toBeNull();
+    expect(screen.queryByText(/email/i)).toBeNull();
     expect(screen.getByLabelText("Password")).toBeTruthy();
     expect(screen.getByLabelText("Password").type).toBe("password");
   });
 
-  it("submits Supabase credentials and navigates to the default route", async () => {
+  it("submits app login credentials and navigates to the default route", async () => {
     const repository = createRepository();
-    repository.signInWithPassword.mockResolvedValue({
+    repository.signIn.mockResolvedValue({
       data: {
-        session: createSession("sales@example.com"),
+        session: createSession("sales01", "sales"),
       },
       error: null,
     });
 
     renderWithProviders({ repository, children: <LoginPage /> });
 
-    const loginButton = await screen.findByRole("button", { name: "Login" });
+    const loginButton = await screen.findByRole("button", { name: "로그인" });
 
-    fireEvent.change(screen.getByLabelText("Email"), {
-      target: { value: "sales@example.com" },
+    fireEvent.change(screen.getByLabelText("사용자 ID"), {
+      target: { value: "sales01" },
     });
     fireEvent.change(screen.getByLabelText("Password"), {
       target: { value: "secret" },
@@ -114,31 +115,35 @@ describe("LoginPage", () => {
     fireEvent.click(loginButton);
 
     await waitFor(() =>
-      expect(repository.signInWithPassword).toHaveBeenCalledWith({
-        email: "sales@example.com",
+      expect(repository.signIn).toHaveBeenCalledWith({
+        loginId: "sales01",
         password: "secret",
       })
     );
     await waitFor(() => expect(window.location.hash).toBe("#/estimator"));
   });
 
-  it("shows an error message on sign-in failure", async () => {
+  it("shows an app login error message on sign-in failure", async () => {
     const repository = createRepository();
-    repository.signInWithPassword.mockRejectedValue(new Error("Invalid login"));
+    repository.signIn.mockRejectedValue(
+      new Error("사용자 ID 또는 비밀번호를 확인하세요.")
+    );
 
     renderWithProviders({ repository, children: <LoginPage /> });
 
-    const loginButton = await screen.findByRole("button", { name: "Login" });
+    const loginButton = await screen.findByRole("button", { name: "로그인" });
 
-    fireEvent.change(screen.getByLabelText("Email"), {
-      target: { value: "viewer@example.com" },
+    fireEvent.change(screen.getByLabelText("사용자 ID"), {
+      target: { value: "viewer01" },
     });
     fireEvent.change(screen.getByLabelText("Password"), {
       target: { value: "wrong" },
     });
     fireEvent.click(loginButton);
 
-    expect(await screen.findByText("Invalid login")).toBeTruthy();
+    expect(
+      await screen.findByText("사용자 ID 또는 비밀번호를 확인하세요.")
+    ).toBeTruthy();
   });
 
   it("keeps the existing estimator route available when login mode is disabled", () => {
@@ -150,27 +155,28 @@ describe("LoginPage", () => {
     expect(screen.getByText("Estimator Screen")).toBeTruthy();
   });
 
-  it("shows login for protected app routes when Supabase session is missing", async () => {
+  it("shows full-screen login for protected app routes when session is missing", async () => {
     renderWithProviders({
       route: "/estimator",
       repository: createRepository({ session: null }),
     });
 
-    expect(await screen.findByText("Effort Estimator Login")).toBeTruthy();
+    expect(await screen.findByText("Effort Estimator 로그인")).toBeTruthy();
+    expect(document.querySelector("aside")).toBeNull();
   });
 
-  it("shows the requested app route when a Supabase session exists", async () => {
+  it("shows the requested app route when an app session exists", async () => {
     renderWithProviders({
       route: "/estimator",
       repository: createRepository({
-        session: createSession("admin@example.com"),
+        session: createSession("admin01", "admin"),
       }),
     });
 
     expect(await screen.findByText("Estimator Screen")).toBeTruthy();
   });
 
-  it("shows a disabled login notice outside Supabase login mode", () => {
+  it("shows a disabled login notice outside app login mode", () => {
     renderWithProviders({
       authEnv: { VITE_AUTH_LOGIN_MODE: "disabled" },
       children: <LoginPage />,

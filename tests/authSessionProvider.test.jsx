@@ -11,12 +11,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AuthSessionProvider, useAuthSession } from "../src/features/auth";
 
-function createSession(email = "admin@example.com") {
+function createSession(loginId = "admin01", roleCode = "admin") {
   return {
-    access_token: "token",
     user: {
-      id: "auth-user-1",
-      email,
+      user_id: "app-user-1",
+      login_id: loginId,
+      display_name: "Admin User",
+      role_code: roleCode,
+      role_codes: [roleCode],
     },
   };
 }
@@ -32,7 +34,7 @@ function createRepository({ session = null, loadError = null } = {}) {
       },
       error: loadError,
     }),
-    signInWithPassword: vi.fn(),
+    signIn: vi.fn(),
     signOut: vi.fn().mockResolvedValue({ data: null, error: null }),
     onAuthStateChange: vi.fn(() => ({
       data: {
@@ -54,14 +56,18 @@ function Reader() {
       <div data-testid="authenticated">
         {String(authSession.isAuthenticated)}
       </div>
-      <div data-testid="email">{authSession.user?.email || ""}</div>
+      <div data-testid="login-id">{authSession.user?.login_id || ""}</div>
+      <div data-testid="display-name">
+        {authSession.user?.display_name || ""}
+      </div>
+      <div data-testid="role-code">{authSession.user?.role_code || ""}</div>
       <div data-testid="user-id">{authSession.user?.user_id || ""}</div>
       <div data-testid="error">{authSession.error?.message || ""}</div>
       <button
         type="button"
         onClick={() =>
           authSession.signIn({
-            email: "sales@example.com",
+            loginId: "sales01",
             password: "secret",
           })
         }
@@ -95,14 +101,14 @@ describe("AuthSessionProvider", () => {
     expect(repository.getAuthSession).not.toHaveBeenCalled();
   });
 
-  it("loads a Supabase session and exposes email and user_id", async () => {
+  it("loads an app auth session and exposes login_id and role_code", async () => {
     const repository = createRepository({
-      session: createSession("admin@example.com"),
+      session: createSession("admin01", "admin"),
     });
 
     render(
       <AuthSessionProvider
-        env={{ VITE_AUTH_LOGIN_MODE: "supabase" }}
+        env={{ VITE_AUTH_LOGIN_MODE: "app" }}
         repository={repository}
       >
         <Reader />
@@ -112,18 +118,16 @@ describe("AuthSessionProvider", () => {
     await waitFor(() => {
       expect(screen.getByTestId("authenticated").textContent).toBe("true");
     });
-    expect(screen.getByTestId("email").textContent).toBe("admin@example.com");
-    expect(screen.getByTestId("user-id").textContent).toBe("auth-user-1");
+    expect(screen.getByTestId("login-id").textContent).toBe("admin01");
+    expect(screen.getByTestId("display-name").textContent).toBe("Admin User");
+    expect(screen.getByTestId("role-code").textContent).toBe("admin");
+    expect(screen.getByTestId("user-id").textContent).toBe("app-user-1");
     expect(repository.onAuthStateChange).toHaveBeenCalledTimes(1);
   });
 
-  it("signs in and updates provider state", async () => {
-    const repository = createRepository();
-    repository.signInWithPassword.mockResolvedValue({
-      data: {
-        session: createSession("sales@example.com"),
-      },
-      error: null,
+  it("treats deprecated supabase login mode as app mode", async () => {
+    const repository = createRepository({
+      session: createSession("admin01", "admin"),
     });
 
     render(
@@ -135,27 +139,51 @@ describe("AuthSessionProvider", () => {
       </AuthSessionProvider>
     );
 
+    await waitFor(() => {
+      expect(screen.getByTestId("mode").textContent).toBe("app");
+    });
+    expect(repository.getAuthSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("signs in and updates provider state", async () => {
+    const repository = createRepository();
+    repository.signIn.mockResolvedValue({
+      data: {
+        session: createSession("sales01", "sales"),
+      },
+      error: null,
+    });
+
+    render(
+      <AuthSessionProvider
+        env={{ VITE_AUTH_LOGIN_MODE: "app" }}
+        repository={repository}
+      >
+        <Reader />
+      </AuthSessionProvider>
+    );
+
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() =>
-      expect(repository.signInWithPassword).toHaveBeenCalledWith({
-        email: "sales@example.com",
+      expect(repository.signIn).toHaveBeenCalledWith({
+        loginId: "sales01",
         password: "secret",
       })
     );
     await waitFor(() => {
-      expect(screen.getByTestId("email").textContent).toBe("sales@example.com");
+      expect(screen.getByTestId("login-id").textContent).toBe("sales01");
     });
   });
 
   it("signs out and clears provider state", async () => {
     const repository = createRepository({
-      session: createSession("viewer@example.com"),
+      session: createSession("viewer01", "viewer"),
     });
 
     render(
       <AuthSessionProvider
-        env={{ VITE_AUTH_LOGIN_MODE: "supabase" }}
+        env={{ VITE_AUTH_LOGIN_MODE: "app" }}
         repository={repository}
       >
         <Reader />
@@ -178,12 +206,12 @@ describe("AuthSessionProvider", () => {
 
   it("cleans up auth subscriptions on unmount", async () => {
     const repository = createRepository({
-      session: createSession("admin@example.com"),
+      session: createSession("admin01", "admin"),
     });
 
     const rendered = render(
       <AuthSessionProvider
-        env={{ VITE_AUTH_LOGIN_MODE: "supabase" }}
+        env={{ VITE_AUTH_LOGIN_MODE: "app" }}
         repository={repository}
       >
         <Reader />
@@ -206,7 +234,7 @@ describe("AuthSessionProvider", () => {
 
     render(
       <AuthSessionProvider
-        env={{ VITE_AUTH_LOGIN_MODE: "supabase" }}
+        env={{ VITE_AUTH_LOGIN_MODE: "app" }}
         repository={repository}
       >
         <Reader />

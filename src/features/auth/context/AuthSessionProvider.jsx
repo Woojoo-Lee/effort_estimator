@@ -17,10 +17,20 @@ function normalizeAuthUser(user) {
     return null;
   }
 
+  const roleCode = user.role_code || user.roleCode || null;
+  const roleCodes =
+    Array.isArray(user.role_codes) && user.role_codes.length > 0
+      ? user.role_codes
+      : roleCode
+        ? [roleCode]
+        : [];
+
   return {
-    ...user,
     user_id: user.user_id || user.id || null,
-    email: user.email || null,
+    login_id: user.login_id || user.loginId || null,
+    display_name: user.display_name || user.displayName || "",
+    role_code: roleCode,
+    role_codes: roleCodes,
   };
 }
 
@@ -138,7 +148,7 @@ export function AuthSessionProvider({
   }, [policy, repository]);
 
   const signIn = useCallback(
-    async ({ email, password }) => {
+    async ({ loginId, login_id, password }) => {
       if (!policy.requireLogin) {
         return { data: null, error: null };
       }
@@ -150,7 +160,10 @@ export function AuthSessionProvider({
       }));
 
       try {
-        const result = await repository.signInWithPassword({ email, password });
+        const result = await repository.signIn({
+          loginId: loginId || login_id,
+          password,
+        });
 
         if (result?.error) {
           throw result.error;

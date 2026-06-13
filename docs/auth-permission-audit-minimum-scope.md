@@ -94,26 +94,120 @@ Required actor fields:
 
 ## 6. Login Method
 
-SSO is not part of the June required scope.
+SSO is not part of the June required scope. The login method is the app-managed
+ID/password flow.
 
-Candidate login models:
+Selected model:
 
-- Supabase Auth email/password.
-- A simple login screen backed by manually managed users.
-
-Required constraints:
-
-- Do not hardcode passwords in frontend source.
-- Do not store service-role secrets in frontend env.
-- User creation can be manual for June.
+- `VITE_AUTH_LOGIN_MODE=app`
+- Full-screen login page.
+- Login form uses `login_id` and password only.
+- No email or pseudo-email login identifiers.
+- Password verification happens only in server-side Vercel Functions.
+- User creation remains manual SQL work for June.
 - User and permission management screens are excluded from the required June
   scope.
 
-Recommended June direction:
+Server endpoints:
 
-- Prefer Supabase Auth email/password if available quickly.
-- Keep the user set small and manually managed.
-- Map authenticated users to one of `admin`, `sales`, or `viewer`.
+- `POST /api/auth/login`
+- `GET /api/auth/session`
+- `POST /api/auth/logout`
+
+Server-only env:
+
+```env
+APP_AUTH_SESSION_SECRET=<random-long-secret>
+SUPABASE_URL=<server-only-supabase-url>
+SUPABASE_SERVICE_ROLE_KEY=<server-only-service-role-key>
+```
+
+Do not use a `VITE_` prefix for service-role secrets. Real secret values must
+not be committed or documented.
+
+`app_login_users` table proposal:
+
+```sql
+create table public.app_login_users (
+  user_id uuid primary key default gen_random_uuid(),
+  login_id text unique not null,
+  display_name text not null,
+  role_code text not null check (role_code in ('admin', 'sales', 'viewer')),
+  password_hash text not null,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+```
+
+The existing `public.app_users` table is the auth/profile table with an email
+column. It is not used for ID/password app auth. Do not alter, drop, rename, or
+populate it with pseudo email values for this flow.
+
+The executable migration and setup guide are:
+
+- `db/migrations/20260613002000_add_app_login_users.sql`
+- [App Auth User Setup](./app-auth-user-setup.md)
+
+Password hash policy:
+
+- Use server-side Node `crypto` PBKDF2 hash strings.
+- Current format: `pbkdf2$sha256$<iterations>$<salt>$<hash>`.
+- Do not expose plaintext passwords or password hashes to the frontend.
+- Invalid user, inactive user, and password mismatch return the same generic
+  login error.
+
+Phase 11-BR-1-Gate local checks:
+
+- `VITE_AUTH_LOGIN_MODE=disabled` or an unset login mode must keep the existing
+  app entry path available without login.
+- `VITE_AUTH_LOGIN_MODE=app` without a valid session must show only the
+  full-screen login page.
+- The app-mode login screen must not show the sidebar, menu, or header.
+- The login form must use user ID and password inputs. It must not show email
+  wording, and the input type must not be `email`.
+- When an app session is present, the main application layout is shown and the
+  session `role_code` / `role_codes` values feed the existing
+  `admin` / `sales` / `viewer` permission resolver.
+- Session payloads must not expose plaintext passwords or `password_hash`.
+
+Vercel Function smoke status:
+
+- Unit tests cover the app-auth repository and `/api/auth/login`,
+  `/api/auth/session`, and `/api/auth/logout` handler behavior.
+- End-to-end Vercel Function smoke can be `BLOCKED` or `SKIP` until the
+  `app_login_users` table, manually created `admin` / `sales` / `viewer`
+  accounts, `APP_AUTH_SESSION_SECRET`, `SUPABASE_URL`, and
+  `SUPABASE_SERVICE_ROLE_KEY` are present in the target environment.
+- `SUPABASE_SERVICE_ROLE_KEY` is server-only. It must be stored only in Vercel
+  Environment Variables and must never use a `VITE_` prefix.
+
+Phase 11-BR-2 preparation:
+
+- Adds the `app_login_users` schema migration with RLS enabled and no public
+  frontend read policy.
+- Adds `scripts/generateAppUserPasswordHash.mjs` for PBKDF2 hash generation.
+- Documents manual `admin01` / `sales01` / `viewer01` setup with placeholders
+  only.
+- Keeps login E2E smoke as a Daily Release/runtime step after Vercel env and
+  `app_login_users` rows are ready.
+
+Phase 11-BR-3 smoke tracking:
+
+- [App Auth Login E2E Smoke Result](./app-auth-login-smoke-result.md) records
+  the Supabase `app_login_users`, Vercel env, login UI, and role smoke
+  checklist.
+- Current result is `BLOCKED` until the target environment has
+  `app_login_users` rows, server-only Vercel env values, and a Daily Release
+  deployment.
+- Actual password values, password hashes, session secrets, and service-role
+  keys remain excluded from source-controlled docs.
+
+Phase 11-BR-2-Fix table separation:
+
+- `public.app_users`: existing auth/profile table. Not used for app auth.
+- `public.app_login_users`: dedicated ID/password app-auth table.
+- App auth must not use email or pseudo email identifiers.
 
 ## 7. Audit Actor Policy
 
@@ -152,10 +246,11 @@ Post-June policy:
 - Add login page skeleton.
 - Add current user provider.
 
-Status: implemented as a Supabase Auth email/password login/session skeleton.
+Status: replaced by the ID/password app-auth flow in Phase 11-BR-1.
 `VITE_AUTH_LOGIN_MODE` defaults to `disabled`, so the existing app remains
-available without login unless `VITE_AUTH_LOGIN_MODE=supabase` is explicitly
-set. Role and permission application is still deferred to Phase 11-C/D.
+available without login unless `VITE_AUTH_LOGIN_MODE=app` is explicitly set.
+`VITE_AUTH_LOGIN_MODE=supabase` is deprecated and maps to app login rather than
+Supabase Auth email login.
 
 ### Phase 11-C
 

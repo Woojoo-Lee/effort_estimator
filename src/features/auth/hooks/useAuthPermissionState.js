@@ -53,13 +53,58 @@ function buildDevSnapshotFromEnv(env) {
   };
 }
 
-export function useAuthPermissionState(env = import.meta.env) {
+function buildSessionSnapshot(sessionUser) {
+  if (!sessionUser) {
+    return null;
+  }
+
+  const roleCodes =
+    Array.isArray(sessionUser.role_codes) && sessionUser.role_codes.length > 0
+      ? sessionUser.role_codes
+      : sessionUser.role_code
+        ? [sessionUser.role_code]
+        : [];
+
+  return {
+    user: {
+      user_id: sessionUser.user_id || sessionUser.id || null,
+      login_id: sessionUser.login_id || sessionUser.loginId || null,
+      display_name: sessionUser.display_name || sessionUser.displayName || "",
+      status: "active",
+      active: true,
+    },
+    roles: roleCodes.map((role_code) => ({
+      role_code,
+      active: true,
+    })),
+    permissions: [],
+  };
+}
+
+export function useAuthPermissionState(env = import.meta.env, options = {}) {
   const mode = env.VITE_AUTH_PERMISSION_MODE || "disabled";
+  const sessionUser = options.sessionUser || null;
   const [state, setState] = useState(() => buildDisabledState());
 
   const reload = useCallback(async () => {
     if (mode !== "dev") {
       setState(buildDisabledState());
+      return;
+    }
+
+    const sessionSnapshot = buildSessionSnapshot(sessionUser);
+
+    if (sessionSnapshot) {
+      const authz = buildAuthzSnapshot(sessionSnapshot);
+      setState({
+        loading: false,
+        error: null,
+        user: sessionSnapshot.user,
+        roles: sessionSnapshot.roles,
+        permissions: [],
+        authz,
+        devOnly: false,
+      });
       return;
     }
 
@@ -116,7 +161,7 @@ export function useAuthPermissionState(env = import.meta.env) {
         devOnly: true,
       });
     }
-  }, [env, mode]);
+  }, [env, mode, sessionUser]);
 
   useEffect(() => {
     reload();

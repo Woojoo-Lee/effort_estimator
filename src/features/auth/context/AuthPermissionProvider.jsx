@@ -2,6 +2,7 @@ import React, { createContext, useContext } from "react";
 
 import { buildAuthzSnapshot } from "../lib/permissionUtils";
 import { useAuthPermissionState } from "../hooks/useAuthPermissionState";
+import { useAuthSession } from "../hooks/useAuthSession";
 
 function createFallbackValue() {
   return {
@@ -19,7 +20,10 @@ function createFallbackValue() {
 const AuthPermissionContext = createContext(createFallbackValue());
 
 export function AuthPermissionProvider({ children, env }) {
-  const value = useAuthPermissionState(env);
+  const authSession = useAuthSession();
+  const value = useAuthPermissionState(env, {
+    sessionUser: authSession.user,
+  });
 
   return (
     <AuthPermissionContext.Provider value={value}>

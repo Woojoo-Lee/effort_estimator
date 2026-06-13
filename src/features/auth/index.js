@@ -36,6 +36,7 @@ export {
   getAuthSession,
   getCurrentAuthUser,
   onAuthStateChange,
+  signIn,
   signInWithPassword,
   signOut,
 } from "./services/authSessionRepository";
