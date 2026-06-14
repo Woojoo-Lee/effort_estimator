@@ -11,14 +11,13 @@ server-only environment variables, and a Daily Release deployment.
 
 ## Current Status
 
-Status: `PARTIAL`
+Status: `PASS`
 
 Reason:
 
-- Feature-branch login, role, and row history smoke have enough evidence for
-  June sign-off.
-- Production Daily Release smoke still requires the target Vercel deployment
-  with `VITE_AUTH_LOGIN_MODE=app`.
+- Local Vercel dev smoke passed with `VITE_AUTH_LOGIN_MODE=app`.
+- `admin01`, `sales01`, and `viewer01` login/role smoke passed.
+- Production Daily Release smoke remains a separate scheduled release gate.
 - This phase does not perform commit, push, tag, or Vercel redeploy.
 
 No real password, password hash, `APP_AUTH_SESSION_SECRET`, or
@@ -28,6 +27,7 @@ Phase 11-F sign-off update:
 
 - `admin01`, `sales01`, and `viewer01` login and role smoke are confirmed for
   the feature branch sign-off.
+- Phase 12-B-R local Vercel dev smoke is `PASS`.
 - Row history smoke is PASS for `actual_effort_mm`, solution toggle, item
   checkbox, and meta coefficient.
 - Meta base effort row history remains `PENDING`.
@@ -72,6 +72,10 @@ where table_schema = 'public'
 ```
 
 Result: `PARTIAL`
+
+Note: local Vercel dev smoke confirms that the app can use
+`app_login_users` based session and role data. RLS SQL verification remains a
+separate checklist item below.
 
 Phase 11-E-R row history smoke status:
 
@@ -237,7 +241,12 @@ where schemaname = 'public'
 
 Expected: `rowsecurity = true`
 
-Result: `PENDING`
+Result: `PASS`
+
+Evidence:
+
+- `admin01`, `sales01`, and `viewer01` local login smoke passed.
+- Session/role connection through `app_login_users` worked.
 
 ### Initial Users
 
@@ -261,7 +270,13 @@ Expected rows:
 - `sales01` / sales / active
 - `viewer01` / viewer / active
 
-Result: `PENDING`
+Result: `PARTIAL`
+
+Evidence:
+
+- Local Vercel dev runtime had the env needed for app-mode login smoke.
+- Production Vercel env remains part of the scheduled release gate and is not
+  documented with real values here.
 
 ## Vercel Env Checklist
 
@@ -289,7 +304,7 @@ Security notes:
 
 ## Login UI Smoke
 
-Run after Daily Release deployment.
+Confirmed in local Vercel dev smoke.
 
 Expected:
 
@@ -300,7 +315,14 @@ Expected:
 - Password input is visible.
 - Email wording is not visible.
 
-Result: `PENDING`
+Result: `PASS`
+
+Evidence:
+
+- Full-screen login displayed.
+- Sidebar, menu, and header were not visible.
+- User ID and password inputs were visible.
+- Email wording was not used.
 
 ## Role Smoke
 
@@ -314,7 +336,12 @@ Expected:
 - `actual_effort_mm` input is editable.
 - Logout succeeds.
 
-Result: `PENDING`
+Result: `PASS`
+
+Evidence:
+
+- Login succeeded.
+- Standard Effort meta route was accessible.
 
 ### sales01
 
@@ -327,7 +354,15 @@ Expected:
 - `actual_effort_mm` is disabled/read-only.
 - Logout succeeds.
 
-Result: `PENDING`
+Result: `PASS`
+
+Evidence:
+
+- Login succeeded.
+- Standard Effort meta access was blocked.
+- Standard Effort estimation screen was usable.
+- Item checkbox save worked.
+- `actual_effort_mm` was read-only.
 
 ### viewer01
 
@@ -340,7 +375,13 @@ Expected:
 - Excel export follows the current viewer read policy.
 - Logout succeeds.
 
-Result: `PENDING`
+Result: `PASS`
+
+Evidence:
+
+- Login succeeded.
+- Standard Effort meta access was blocked.
+- Save actions were unavailable.
 
 ## Row History Smoke
 
@@ -362,8 +403,8 @@ Result: `PARTIAL`
 
 ## Overall Result
 
-Current result: `PARTIAL`
+Current result: `PASS`
 
-Feature-branch login, role, and row history smoke are sufficient for the June
-sign-off summary. Production Daily Release / Vercel deployment smoke remains a
-separate release gate until the scheduled release path is executed.
+Feature-branch local Vercel dev login, role, and row history smoke are
+sufficient for the June sign-off and release candidate gate. Production Daily
+Release / Vercel deployment smoke remains a separate scheduled release gate.

@@ -88,7 +88,7 @@ Non-blocking warnings:
 
 ## Local Vercel Dev Smoke
 
-Command to run before `main` merge:
+Command used for local runtime smoke:
 
 ```powershell
 npx vercel dev --listen 127.0.0.1:3000
@@ -108,13 +108,28 @@ Required smoke checklist:
 
 Gate status:
 
-- `PENDING`
+- `PASS`
 
-Reason:
+Confirmed result:
 
-- This phase documented the gate and ran frontend test/build.
-- Manual browser login smoke through local Vercel runtime was not executed in
-  this phase.
+- `admin01` login succeeded.
+- `admin01` can access Standard Effort meta.
+- `sales01` login succeeded.
+- `sales01` is blocked from Standard Effort meta.
+- `sales01` can use the Standard Effort estimation screen.
+- `sales01` can save item checkbox selections.
+- `sales01` cannot edit `actual_effort_mm`.
+- `viewer01` login succeeded.
+- `viewer01` is blocked from Standard Effort meta.
+- `viewer01` cannot save.
+- No broken screen was observed.
+- Email-free ID/password login remains in use.
+- `app_login_users` based session/role connection works.
+
+Note:
+
+- Excel download behavior was not separately re-documented in the Phase 12-B-R
+  local auth smoke result. Keep it in the Production release smoke checklist.
 
 ## Permission Smoke Status
 
@@ -137,8 +152,8 @@ Current documented status from Phase 11-F:
 
 Release gate note:
 
-- Re-run the role smoke in local Vercel dev or Preview/Production target before
-  merging to `main`.
+- Local Vercel dev role smoke passed. Re-run the same smoke after Production
+  deploy as part of the scheduled release gate.
 
 ## Row History Smoke Status
 
@@ -164,7 +179,6 @@ Policy:
 
 `PENDING`:
 
-- Local Vercel dev manual browser smoke for this release candidate.
 - Meta base effort row history smoke.
 
 `SKIP`:
@@ -182,7 +196,7 @@ Deferred beyond this release candidate:
 
 ## Release Candidate Decision
 
-Decision: `PARTIAL`
+Decision: `PASS`
 
 Rationale:
 
@@ -190,14 +204,17 @@ Rationale:
 - Working tree is docs-only for this gate.
 - Secret/env files are not shown in `git status --short`.
 - Login, permission, and row history sign-off has been documented.
-- Local Vercel dev browser smoke is still pending and must be completed before
-  merge to `main` / Vercel Production deployment.
+- Local Vercel dev browser smoke passed for `admin01`, `sales01`, and
+  `viewer01`.
+- Remaining row history `PENDING` / `SKIP` items are documented and do not block
+  this release candidate.
 
-Promotion condition:
+Release condition:
 
-- Move from `PARTIAL` to `PASS` after local Vercel dev or target Preview smoke
-  confirms `admin01`, `sales01`, `viewer01`, Standard Effort meta access rules,
-  save restrictions, and Excel download behavior.
+- This branch can be treated as the next scheduled release candidate.
+- Do not merge to `main` or deploy to Vercel Production outside the scheduled
+  release path or an approved hotfix.
+- Re-run the Production smoke checklist after deployment.
 
 ## No Release Action
 

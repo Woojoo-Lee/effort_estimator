@@ -71,7 +71,8 @@ feature branch, `main`, Vercel Production, hotfix, rollback, and Daily/Weekly
 release gates.
 
 See [Release Candidate Gate: App Auth Row History](./release-candidate-gate-app-auth-row-history.md)
-for the current `feature/app-auth-row-history` release candidate gate status.
+for the current `feature/app-auth-row-history` release candidate gate status,
+which is `PASS` after local Vercel dev smoke.
 
 ## Frontend Login Rollout
 

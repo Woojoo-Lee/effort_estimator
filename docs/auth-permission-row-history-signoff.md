@@ -161,8 +161,8 @@ Excluded or deferred:
 
 ## Next Release Candidate
 
-`feature/app-auth-row-history` is the next scheduled release candidate after the
-remaining gate checks are complete. It should not be pushed to `main` or Vercel
-Production outside the scheduled release path unless a hotfix criterion is met.
-The current release candidate gate is tracked in
+`feature/app-auth-row-history` is the next scheduled release candidate. The
+release candidate gate is `PASS` after local Vercel dev smoke, but it should
+not be pushed to `main` or Vercel Production outside the scheduled release path
+unless a hotfix criterion is met. The current gate is tracked in
 [Release Candidate Gate: App Auth Row History](./release-candidate-gate-app-auth-row-history.md).

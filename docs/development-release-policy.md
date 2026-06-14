@@ -149,7 +149,8 @@ Database rollback policy:
 
 - Phase 11-E remaining row history smoke.
 - Phase 11-F login, permission, and row history sign-off.
-- Release Candidate gate for `feature/app-auth-row-history`:
+- Release Candidate gate for `feature/app-auth-row-history` is `PASS` after
+  local Vercel dev smoke:
   [Release Candidate Gate: App Auth Row History](./release-candidate-gate-app-auth-row-history.md).
 - Phase 11-PW-1 logged-in user password change.
 - Release candidate creation for the next scheduled Production release.
