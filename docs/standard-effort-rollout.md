@@ -62,6 +62,10 @@ See [Release Checkpoint And Local Preview Smoke](./release-checkpoint-local-prev
 for the current Supabase-mode frontend release checkpoint, local preview smoke,
 env matrix, and known deployment limitations.
 
+See [Development And Release Policy](./development-release-policy.md) for the
+feature branch, `main`, Vercel Production, hotfix, rollback, and Daily/Weekly
+release gates.
+
 ## Frontend Login Rollout
 
 `VITE_AUTH_LOGIN_MODE` controls the minimum frontend login/session skeleton.

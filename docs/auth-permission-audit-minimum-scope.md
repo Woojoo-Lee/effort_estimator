@@ -205,6 +205,8 @@ Phase 11-BR-2 preparation:
   only.
 - Keeps login E2E smoke as a Daily Release/runtime step after Vercel env and
   `app_login_users` rows are ready.
+- Release timing, hotfix exceptions, and Production gates follow
+  [Development And Release Policy](./development-release-policy.md).
 
 Phase 11-BR-3 smoke tracking:
 
