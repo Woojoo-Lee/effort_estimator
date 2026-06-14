@@ -47,6 +47,10 @@ See [Auth, Permission, And Audit Actor Minimum Scope](./auth-permission-audit-mi
 for the June minimum login, `admin` / `sales` / `viewer` permission, and audit
 actor scope.
 
+See [Auth, Permission, Row History Sign-Off](./auth-permission-row-history-signoff.md)
+for the June ID/password login, role guard, row history, password reset, and
+release policy sign-off status.
+
 See [App Auth User Setup](./app-auth-user-setup.md) for the `app_login_users`
 schema, PBKDF2 password hash helper, initial user SQL template, Vercel env
 checklist, and login E2E smoke sequence.
@@ -65,6 +69,9 @@ env matrix, and known deployment limitations.
 See [Development And Release Policy](./development-release-policy.md) for the
 feature branch, `main`, Vercel Production, hotfix, rollback, and Daily/Weekly
 release gates.
+
+See [Release Candidate Gate: App Auth Row History](./release-candidate-gate-app-auth-row-history.md)
+for the current `feature/app-auth-row-history` release candidate gate status.
 
 ## Frontend Login Rollout
 
