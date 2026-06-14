@@ -54,10 +54,18 @@ vi.mock("../src/features/projects/components/VersionHistoryModal", () => ({
 }));
 
 vi.mock("../src/features/estimator/components/standard", () => ({
-  StandardEffortSection: ({ projectId, readOnly, actualEffortReadOnly }) => (
+  StandardEffortSection: ({
+    projectId,
+    readOnly,
+    solutionSelectionReadOnly,
+    itemSelectionReadOnly,
+    actualEffortReadOnly,
+  }) => (
     <div
       data-testid="standard-effort-section"
       data-readonly={String(readOnly)}
+      data-solution-readonly={String(solutionSelectionReadOnly)}
+      data-item-readonly={String(itemSelectionReadOnly)}
       data-actual-readonly={String(actualEffortReadOnly)}
     >
       {projectId}
@@ -293,6 +301,12 @@ describe("EstimatorPage standard effort feature flag", () => {
     expect(screen.getByTestId("standard-effort-section").dataset.readonly).toBe(
       "false"
     );
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.solutionReadonly
+    ).toBe("false");
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.itemReadonly
+    ).toBe("false");
   });
 
   it("lets sales save standard effort selections while keeping actual effort read-only", async () => {
@@ -319,6 +333,12 @@ describe("EstimatorPage standard effort feature flag", () => {
     expect(screen.getByTestId("standard-effort-section").dataset.readonly).toBe(
       "false"
     );
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.solutionReadonly
+    ).toBe("false");
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.itemReadonly
+    ).toBe("false");
     expect(
       screen.getByTestId("standard-effort-section").dataset.actualReadonly
     ).toBe("true");
@@ -348,6 +368,12 @@ describe("EstimatorPage standard effort feature flag", () => {
     expect(screen.getByTestId("standard-effort-section").dataset.readonly).toBe(
       "true"
     );
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.solutionReadonly
+    ).toBe("true");
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.itemReadonly
+    ).toBe("true");
     expect(
       screen.getByTestId("standard-effort-section").dataset.actualReadonly
     ).toBe("true");
@@ -388,6 +414,12 @@ describe("EstimatorPage standard effort feature flag", () => {
     expect(screen.getByTestId("standard-effort-section").dataset.readonly).toBe(
       "true"
     );
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.solutionReadonly
+    ).toBe("true");
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.itemReadonly
+    ).toBe("true");
     expect(screen.getByTestId("detail-table").dataset.readonly).toBe("true");
     expect(screen.getByTestId("right-sidebar").dataset.readonly).toBe("true");
   });

@@ -113,6 +113,8 @@ export default function StandardEffortPanel({
   onToggleItem,
   onChangeActualEffort,
   readOnly = false,
+  solutionSelectionReadOnly = readOnly,
+  itemSelectionReadOnly = readOnly,
   actualEffortReadOnly = readOnly,
 }) {
   const sortedVariants = useMemo(
@@ -127,8 +129,10 @@ export default function StandardEffortPanel({
     );
   }, [projectSolutionSelections, sortedVariants]);
   const hasSolutionVariants = sortedVariants.length > 0;
-  const controlsDisabled =
-    readOnly || loading || saveStatus.status === "saving";
+  const solutionControlsDisabled =
+    solutionSelectionReadOnly || loading || saveStatus.status === "saving";
+  const itemControlsDisabled =
+    itemSelectionReadOnly || loading || saveStatus.status === "saving";
   const actualEffortControlsDisabled =
     actualEffortReadOnly || loading || saveStatus.status === "saving";
   const isRefreshDisabled =
@@ -188,7 +192,7 @@ export default function StandardEffortPanel({
             solutionVariants={sortedVariants}
             projectSolutionSelections={projectSolutionSelections}
             onToggleSolution={onToggleSolution}
-            readOnly={controlsDisabled}
+            readOnly={solutionControlsDisabled}
           />
 
           {selectedSolutionVariants.length === 0 ? (
@@ -206,7 +210,7 @@ export default function StandardEffortPanel({
               selectedSolutionVariants={selectedSolutionVariants}
               projectItemSelections={projectItemSelections}
               onToggleItem={onToggleItem}
-              readOnly={controlsDisabled}
+              readOnly={itemControlsDisabled}
             />
           )}
 

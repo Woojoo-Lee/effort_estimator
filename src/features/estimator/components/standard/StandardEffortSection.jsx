@@ -62,6 +62,8 @@ export default function StandardEffortSection({
   standardEffort,
   standardEffortActions,
   readOnly = false,
+  solutionSelectionReadOnly = readOnly,
+  itemSelectionReadOnly = readOnly,
   actualEffortReadOnly = readOnly,
   auditActor,
 }) {
@@ -273,7 +275,7 @@ export default function StandardEffortSection({
 
   const handleToggleSolution = useCallback(
     async (solutionVariantId, enabled) => {
-      if (readOnly) {
+      if (solutionSelectionReadOnly) {
         return false;
       }
 
@@ -351,7 +353,7 @@ export default function StandardEffortSection({
       recordAudit,
       projectId,
       projectSolutionSelections,
-      readOnly,
+      solutionSelectionReadOnly,
       rowHistoryOptions,
       runSave,
       saveStandardProjectSolutionSelections,
@@ -361,7 +363,7 @@ export default function StandardEffortSection({
 
   const handleToggleItem = useCallback(
     async (solutionVariantId, itemId, checked) => {
-      if (readOnly) {
+      if (itemSelectionReadOnly) {
         return false;
       }
 
@@ -435,7 +437,7 @@ export default function StandardEffortSection({
       recordAudit,
       projectId,
       projectItemSelections,
-      readOnly,
+      itemSelectionReadOnly,
       rowHistoryOptions,
       runSave,
       saveStandardProjectItemSelections,
@@ -546,6 +548,8 @@ export default function StandardEffortSection({
         onToggleItem={handleToggleItem}
         onChangeActualEffort={handleChangeActualEffort}
         readOnly={readOnly}
+        solutionSelectionReadOnly={solutionSelectionReadOnly}
+        itemSelectionReadOnly={itemSelectionReadOnly}
         actualEffortReadOnly={actualEffortReadOnly}
       />
     </section>

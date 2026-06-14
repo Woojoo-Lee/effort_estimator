@@ -110,8 +110,17 @@ authoritative audit track.
 
 Phase 11-E-R smoke status is partial: `actual_effort_mm` row history has been
 confirmed in Supabase for `project_id=7` with `updated_by_login_id=admin01`.
-Solution toggle, item checkbox, base effort, and coefficient row history smoke
-remain pending until their save/restore actions are rechecked with SQL joins.
+Solution toggle row history has also been confirmed by manual SQL join with
+`updated_by_login_id=admin01`; the toggled value was restored, but exact row
+timestamp/id evidence was not captured. Item checkbox row history has been
+confirmed for `project_id=7`, WFM
+`solution_variant_id=d3fd971f-505a-4829-b519-a379b40d034b`, and
+`item_id=ffcd0c35-4c8f-4040-9942-0ec1f7e9fb5c` with
+`updated_by_login_id=sales01` / `updated_by_display_name=영업대표`.
+Meta coefficient row history has been confirmed by manual SQL join with
+`updated_by_login_id=admin01`; the coefficient value was restored, but exact
+row timestamp/id evidence was not captured. Meta base effort row history smoke
+remains pending until its save/restore action is rechecked with a SQL join.
 Active toggle row history is optional and should stay skipped unless the row is
 restored in the same smoke. Keep `updated_by` as the UUID `user_id`; use joins
 or future read-only views for operator-readable `login_id` / `display_name`

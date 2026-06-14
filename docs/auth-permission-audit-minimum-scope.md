@@ -233,6 +233,17 @@ Phase 11-D-Fix-2 permission bridge:
   Standard Effort meta or edit `actual_effort_mm`.
 - `viewer` remains read-only.
 
+Phase 11-D-Fix-3 Standard Effort write guard split:
+
+- Standard Effort solution selection, item selection, and `actual_effort_mm`
+  write guards are handled separately.
+- `sales` can trigger solution toggle and item checkbox saves while
+  `actual_effort_mm` remains read-only.
+- `viewer` cannot trigger solution, item, or actual effort writes.
+- `admin` keeps all Standard Effort write paths.
+- Permission-disabled mode preserves the previous unrestricted development
+  behavior.
+
 ## 7. Row History Responsibility Policy
 
 Phase 11-E narrows the June responsibility tracking scope to business table
@@ -323,9 +334,22 @@ paths.
 - `actual_effort_mm` save is confirmed as `PASS` for `project_id=7` and WFM
   `solution_variant_id=d3fd971f-505a-4829-b519-a379b40d034b`; SQL join
   verification showed `updated_by_login_id=admin01`.
-- Solution toggle, item checkbox, meta base effort, and meta coefficient row
-  history smoke remain `PENDING` until real browser save/restore actions and
-  SQL joins confirm `updated_by_login_id=admin01`.
+- Solution toggle save is confirmed as `PASS`; manual SQL join verification
+  showed `updated_by_login_id=admin01`, and the toggled value was restored.
+  Exact row timestamp/id evidence was not captured.
+- Item checkbox save is confirmed as `PASS` for `project_id=7`, WFM
+  `solution_variant_id=d3fd971f-505a-4829-b519-a379b40d034b`, and
+  `item_id=ffcd0c35-4c8f-4040-9942-0ec1f7e9fb5c`; SQL join verification
+  showed `updated_by_login_id=sales01`,
+  `updated_by_display_name=영업대표`, `checked=true`, and
+  `updated_at=2026-06-14 08:18:00.148+00`. Restore status remains
+  `restore confirmation needed` unless separately confirmed.
+- Meta coefficient save/restore is confirmed as `PASS`; manual browser smoke
+  changed and saved a coefficient while logged in as `admin01`, SQL join
+  verification showed `updated_by_login_id=admin01`, and the value was
+  restored. Exact row timestamp/id evidence was not captured.
+- Meta base effort row history smoke remains `PENDING` until a real browser
+  save/restore action and SQL join confirm the expected updater.
 - Meta active toggle row history smoke is optional and remains `SKIP` unless a
   safe restore check is performed.
 - `updated_by` remains a UUID `user_id`. Operator-readable checks should use a

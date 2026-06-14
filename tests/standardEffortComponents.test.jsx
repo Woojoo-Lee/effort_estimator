@@ -212,6 +212,7 @@ describe("StandardEffortPanel", () => {
 
   it("keeps solution and item controls writable while actual effort is read-only", () => {
     const onToggleItem = vi.fn();
+    const onToggleSolution = vi.fn();
 
     render(
       <StandardEffortPanel
@@ -220,13 +221,18 @@ describe("StandardEffortPanel", () => {
         projectSolutionSelections={projectSolutionSelections}
         projectItemSelections={projectItemSelections}
         results={results}
+        onToggleSolution={onToggleSolution}
         onToggleItem={onToggleItem}
         readOnly={false}
         actualEffortReadOnly
       />
     );
 
-    expect(screen.getAllByRole("checkbox")[0].disabled).toBe(false);
+    const solutionCheckbox = screen.getAllByRole("checkbox")[0];
+
+    expect(solutionCheckbox.disabled).toBe(false);
+    fireEvent.click(solutionCheckbox);
+    expect(onToggleSolution).toHaveBeenCalledWith("pbx", false);
 
     const checkTable = screen.getByRole("region", {
       name: "표준공수 기능항목 선택",
@@ -238,6 +244,65 @@ describe("StandardEffortPanel", () => {
     expect(onToggleItem).toHaveBeenCalledWith("wfm", "item-c", true);
 
     expect(screen.getByLabelText("PBX 실투입공수").disabled).toBe(true);
+  });
+
+  it("can disable solution and item controls independently", () => {
+    const onToggleSolution = vi.fn();
+    const onToggleItem = vi.fn();
+
+    const { rerender } = render(
+      <StandardEffortPanel
+        solutionVariants={solutionVariants}
+        itemRows={itemRows}
+        projectSolutionSelections={projectSolutionSelections}
+        projectItemSelections={projectItemSelections}
+        results={results}
+        onToggleSolution={onToggleSolution}
+        onToggleItem={onToggleItem}
+        solutionSelectionReadOnly
+        itemSelectionReadOnly={false}
+        actualEffortReadOnly
+      />
+    );
+
+    const solutionCheckbox = screen.getAllByRole("checkbox")[0];
+    const checkTable = screen.getByRole("region", {
+      name: "표준공수 기능항목 선택",
+    });
+    const itemCheckbox = within(checkTable).getByLabelText("WFM 보안 선택");
+
+    expect(solutionCheckbox.disabled).toBe(true);
+    expect(itemCheckbox.disabled).toBe(false);
+
+    fireEvent.click(itemCheckbox);
+
+    expect(onToggleSolution).not.toHaveBeenCalled();
+    expect(onToggleItem).toHaveBeenCalledWith("wfm", "item-c", true);
+
+    rerender(
+      <StandardEffortPanel
+        solutionVariants={solutionVariants}
+        itemRows={itemRows}
+        projectSolutionSelections={projectSolutionSelections}
+        projectItemSelections={projectItemSelections}
+        results={results}
+        onToggleSolution={onToggleSolution}
+        onToggleItem={onToggleItem}
+        solutionSelectionReadOnly={false}
+        itemSelectionReadOnly
+        actualEffortReadOnly
+      />
+    );
+
+    const enabledSolutionCheckbox = screen.getAllByRole("checkbox")[0];
+    const disabledItemCheckbox = within(
+      screen.getByRole("region", {
+        name: "표준공수 기능항목 선택",
+      })
+    ).getByLabelText("WFM 보안 선택");
+
+    expect(enabledSolutionCheckbox.disabled).toBe(false);
+    expect(disabledItemCheckbox.disabled).toBe(true);
   });
 
   it("renders selected variant columns, group headers, summary totals, and calls immediate checkbox handlers", () => {
@@ -900,6 +965,69 @@ describe("StandardEffortSection", () => {
     ]);
     expect(auditMocks.createAuditLogSafe).not.toHaveBeenCalled();
     consoleError.mockRestore();
+  });
+
+  it("keeps item checkbox save available when only actual effort is read-only", async () => {
+    const saveStandardProjectItemSelections = vi.fn().mockResolvedValue(true);
+    const updateStandardActualEffort = vi.fn().mockResolvedValue(true);
+
+    render(
+      <StandardEffortSection
+        projectId={42}
+        actualEffortReadOnly
+        standardEffort={{
+          meta: {
+            solutionVariants: solutionVariants.slice(0, 2),
+            itemRows: itemRows.slice(0, 1),
+          },
+          projectSolutionSelections: [
+            {
+              solution_variant_id: "pbx",
+              enabled: true,
+              actual_effort_mm: 4.5,
+            },
+          ],
+          projectItemSelections: [
+            {
+              solution_variant_id: "pbx",
+              item_id: "item-a",
+              checked: false,
+            },
+          ],
+          results: results.slice(0, 1),
+          loadedProjectId: 42,
+        }}
+        standardEffortActions={{
+          loadProjectStandardEffort: vi.fn(),
+          saveStandardProjectSolutionSelections: vi.fn(),
+          saveStandardProjectItemSelections,
+          updateStandardActualEffort,
+        }}
+      />
+    );
+
+    const itemCheckbox = screen.getByLabelText("PBX 업종 금융_증권 선택");
+    const actualInput = screen.getByLabelText("PBX 실투입공수");
+
+    expect(itemCheckbox.disabled).toBe(false);
+    expect(actualInput.disabled).toBe(true);
+
+    fireEvent.click(itemCheckbox);
+
+    await screen.findByText("저장 완료");
+    expect(saveStandardProjectItemSelections).toHaveBeenCalledWith(42, [
+      {
+        solution_variant_id: "pbx",
+        item_id: "item-a",
+        checked: true,
+      },
+    ]);
+
+    fireEvent.change(actualInput, {
+      target: { value: "9.25" },
+    });
+    fireEvent.blur(actualInput);
+    expect(updateStandardActualEffort).not.toHaveBeenCalled();
   });
 
   it("records item check audit after a successful item toggle", async () => {

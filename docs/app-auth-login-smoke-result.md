@@ -65,10 +65,10 @@ Phase 11-E-R row history smoke status:
 | Path | Result | Evidence status |
 | --- | --- | --- |
 | `actual_effort_mm` save | `PASS` | `project_id=7`, WFM `solution_variant_id=d3fd971f-505a-4829-b519-a379b40d034b`, and `updated_by_login_id=admin01` confirmed through a join from `updated_by` to `app_login_users.user_id`. |
-| Solution toggle save | `PENDING` | SQL/checklist prepared. Do not mark PASS until a real toggle/restore and `updated_by_login_id=admin01` are confirmed. |
-| Item checkbox save | `PENDING` | SQL/checklist prepared. Do not mark PASS until a real check/uncheck/restore and `updated_by_login_id=admin01` are confirmed. |
+| Solution toggle save | `PASS` | Manual SQL join confirmed `updated_by_login_id=admin01`. The toggled value was restored. Exact row timestamp/id evidence was not captured, so this remains a manual SQL join confirmation rather than a row-level evidence capture. |
+| Item checkbox save | `PASS` | `project_id=7`, WFM `solution_variant_id=d3fd971f-505a-4829-b519-a379b40d034b`, `item_id=ffcd0c35-4c8f-4040-9942-0ec1f7e9fb5c`, `checked=true`, `updated_at=2026-06-14 08:18:00.148+00`, `updated_by_login_id=sales01`, and `updated_by_display_name=영업대표` confirmed through a join from `updated_by` to `app_login_users.user_id`. Restore status: restore confirmation needed if the checked state must return to the pre-smoke value. |
 | Meta base effort save/restore | `PENDING` | SQL/checklist prepared. Do not mark PASS until a real edit/restore and `updated_by_login_id=admin01` are confirmed. |
-| Meta coefficient save/restore | `PENDING` | SQL/checklist prepared. Do not mark PASS until a real edit/restore and `updated_by_login_id=admin01` are confirmed. |
+| Meta coefficient save/restore | `PASS` | Manual browser smoke in Standard Effort meta > item/coefficient tab changed and saved a coefficient while logged in as `admin01`; SQL join confirmed `updated_by_login_id=admin01`. The value was restored. Exact row timestamp/id evidence was not captured, so this remains a manual SQL join confirmation rather than a row-level evidence capture. |
 | Meta active toggle save/restore | `SKIP` | Optional smoke because it changes active visibility. Run only when a restore path is ready and record the restore result. |
 
 SQL checklist for remaining row history smoke:
@@ -190,7 +190,25 @@ Expected columns:
 - `created_at`
 - `updated_at`
 
-Result: `PENDING`
+Result: `PARTIAL`
+
+Confirmed:
+
+- `actual_effort_mm` save row history: `PASS`.
+- Solution toggle row history: `PASS`.
+- Item checkbox save row history: `PASS`.
+- Meta coefficient row history: `PASS`.
+
+Pending or skipped:
+
+- Meta base effort row history is still `PENDING`.
+- Meta active toggle row history remains `SKIP` unless a safe restore smoke is
+  performed.
+
+The item checkbox smoke used `sales01` and verified operator-readable identity
+through an `app_login_users` join. `updated_by` remains the UUID `user_id`;
+`login_id` and `display_name` are not denormalized into the business table.
+Detailed `app_audit_logs`, `before_json`, and `after_json` remain out of scope.
 
 ### RLS
 
