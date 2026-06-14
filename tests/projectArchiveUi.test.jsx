@@ -84,6 +84,7 @@ function renderProjectPageWithAuth(env) {
 
 describe("project archive UI", () => {
   beforeEach(() => {
+    vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "disabled");
     storeMock.state = createStoreState();
     projectServiceMocks.fetchProjects.mockReset();
     projectServiceMocks.restoreProjectById.mockReset();

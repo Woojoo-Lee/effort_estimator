@@ -7,7 +7,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../src/features/estimator/pages/EstimatorPage", () => ({
   default: () => <div>Estimator Screen</div>,
@@ -78,8 +78,13 @@ function renderWithProviders({
 }
 
 describe("LoginPage", () => {
+  beforeEach(() => {
+    vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "disabled");
+  });
+
   afterEach(() => {
     cleanup();
+    vi.unstubAllEnvs();
     window.location.hash = "";
   });
 

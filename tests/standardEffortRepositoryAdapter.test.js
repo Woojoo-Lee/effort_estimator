@@ -321,6 +321,111 @@ describe("standard effort repository adapter boundary", () => {
     });
   });
 
+  it("adds row history updater to Supabase solution and item selection writes when a user is provided", async () => {
+    useFixedSystemTime();
+    const solutionClient = createSupabaseUpsertClient();
+    const itemClient = createSupabaseUpsertClient();
+
+    await standardEffortRepository.upsertProjectSolutionSelections(
+      "42",
+      [
+        {
+          solution_variant_id: "pbx",
+          enabled: true,
+          actual_effort_mm: 3.5,
+        },
+      ],
+      solutionClient.client,
+      { currentUser: { user_id: "user-1", email: "ignored@example.com" } }
+    );
+    await standardEffortRepository.upsertProjectItemSelections(
+      "42",
+      [
+        {
+          solution_variant_id: "pbx",
+          item_id: "item-a",
+          checked: true,
+        },
+      ],
+      itemClient.client,
+      { currentUser: { user_id: "user-1" } }
+    );
+
+    expect(solutionClient.upsert.mock.calls[0][0][0]).toMatchObject({
+      project_id: "42",
+      solution_variant_id: "pbx",
+      updated_at: FIXED_NOW_ISO,
+      updated_by: "user-1",
+    });
+    expect(solutionClient.upsert.mock.calls[0][0][0]).not.toHaveProperty(
+      "created_by"
+    );
+    expect(solutionClient.upsert.mock.calls[0][0][0]).not.toHaveProperty(
+      "email"
+    );
+    expect(itemClient.upsert.mock.calls[0][0][0]).toMatchObject({
+      project_id: "42",
+      solution_variant_id: "pbx",
+      item_id: "item-a",
+      updated_at: FIXED_NOW_ISO,
+      updated_by: "user-1",
+    });
+    expect(itemClient.upsert.mock.calls[0][0][0]).not.toHaveProperty(
+      "created_by"
+    );
+  });
+
+  it("adds row history fields to actual effort update and insert fallback when a user is provided", async () => {
+    useFixedSystemTime();
+    const updateClient = createSupabaseActualEffortClient([
+      {
+        project_id: "42",
+        solution_variant_id: "pbx",
+        enabled: true,
+        actual_effort_mm: 4.5,
+      },
+    ]);
+    const insertClient = createSupabaseActualEffortClient([], {
+      project_id: "42",
+      solution_variant_id: "pbx",
+      enabled: true,
+      actual_effort_mm: 0,
+    });
+
+    await standardEffortRepository.updateProjectActualEffort(
+      "42",
+      "pbx",
+      "4.5",
+      updateClient.client,
+      { currentUser: { user_id: "user-1" } }
+    );
+    await standardEffortRepository.updateProjectActualEffort(
+      "42",
+      "pbx",
+      "",
+      insertClient.client,
+      { currentUser: { user_id: "user-1" } }
+    );
+
+    expect(updateClient.update).toHaveBeenCalledWith({
+      actual_effort_mm: 4.5,
+      updated_at: FIXED_NOW_ISO,
+      updated_by: "user-1",
+    });
+    expect(updateClient.update.mock.calls[0][0]).not.toHaveProperty(
+      "created_by"
+    );
+    expect(insertClient.insert).toHaveBeenCalledWith({
+      project_id: "42",
+      solution_variant_id: "pbx",
+      enabled: true,
+      actual_effort_mm: 0,
+      updated_at: FIXED_NOW_ISO,
+      created_by: "user-1",
+      updated_by: "user-1",
+    });
+  });
+
 
   it("uses the API adapter read path through the facade in api mode", async () => {
     vi.stubEnv("VITE_DATA_BACKEND", "api");

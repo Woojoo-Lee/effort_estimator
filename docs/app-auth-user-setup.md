@@ -155,6 +155,23 @@ Current Phase 11-BR-3 status:
 - No real password, generated password hash, session secret, or service-role
   key has been recorded in source-controlled files.
 
+## Password Reset
+
+Forgotten passwords are handled by admin manual reset for the June operating
+path. Email reset, SMS reset, self-service reset, user-management UI, and
+permission-management UI are out of scope.
+
+Use [App Auth Password Reset Policy](./app-auth-password-reset-policy.md) for:
+
+- Password reset operating rules.
+- PBKDF2 `password_hash` generation procedure.
+- `app_login_users.password_hash` update SQL template.
+- Account lock/unlock SQL templates.
+- Post-reset login smoke.
+
+Never record real passwords, generated hashes, session secrets, service-role
+keys, or cookie values in this repository.
+
 ## Rollback
 
 Disable the login gate by rebuilding with:

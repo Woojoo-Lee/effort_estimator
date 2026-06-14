@@ -650,6 +650,9 @@ describe("StandardEffortSection", () => {
     render(
       <StandardEffortSection
         projectId={42}
+        auditActor={{
+          actorUserId: "user-solution",
+        }}
         standardEffort={{
           meta: {
             solutionVariants: solutionVariants.slice(0, 2),
@@ -678,7 +681,21 @@ describe("StandardEffortSection", () => {
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
 
     expect(await screen.findByText("저장 완료")).toBeTruthy();
-    expect(saveStandardProjectSolutionSelections).toHaveBeenCalled();
+    expect(saveStandardProjectSolutionSelections).toHaveBeenCalledWith(
+      42,
+      [
+        {
+          solution_variant_id: "pbx",
+          enabled: false,
+          actual_effort_mm: 4.5,
+        },
+      ],
+      {
+        currentUser: {
+          user_id: "user-solution",
+        },
+      }
+    );
     expect(auditMocks.createAuditLogSafe).not.toHaveBeenCalled();
   });
 
@@ -930,6 +947,21 @@ describe("StandardEffortSection", () => {
     fireEvent.click(screen.getByLabelText("PBX 업종 금융_증권 선택"));
 
     await screen.findByText("저장 완료");
+    expect(saveStandardProjectItemSelections).toHaveBeenCalledWith(
+      42,
+      [
+        {
+          solution_variant_id: "pbx",
+          item_id: "item-a",
+          checked: true,
+        },
+      ],
+      {
+        currentUser: {
+          user_id: "user-1",
+        },
+      }
+    );
     expect(auditMocks.createAuditLogSafe).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: "standard_effort.item.check",
@@ -1127,6 +1159,9 @@ describe("StandardEffortSection", () => {
     render(
       <StandardEffortSection
         projectId={"42"}
+        auditActor={{
+          actorUserId: "user-2",
+        }}
         standardEffort={{
           meta: {
             solutionVariants: solutionVariants.slice(0, 2),
@@ -1172,7 +1207,12 @@ describe("StandardEffortSection", () => {
     expect(updateStandardActualEffort).toHaveBeenCalledWith(
       "42",
       "pbx",
-      "9.25"
+      "9.25",
+      {
+        currentUser: {
+          user_id: "user-2",
+        },
+      }
     );
     expect(auditMocks.createAuditLogSafe).toHaveBeenCalledWith(
       expect.objectContaining({

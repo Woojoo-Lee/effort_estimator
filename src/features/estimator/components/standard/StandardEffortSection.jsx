@@ -8,6 +8,7 @@ import {
   resolveFrontendAuditPolicy,
   shouldWriteFrontendAudit,
 } from "../../../audit";
+import { buildRowHistoryActor } from "../../../auth/lib/rowHistoryActor";
 import StandardEffortPanel from "./StandardEffortPanel";
 
 const SAVE_COMPLETE_VISIBLE_MS = 1600;
@@ -91,6 +92,11 @@ export default function StandardEffortSection({
     saveStandardProjectItemSelections,
     updateStandardActualEffort,
   } = standardEffortActions || {};
+  const rowHistoryOptions = useMemo(() => {
+    const currentUser = buildRowHistoryActor(auditActor);
+
+    return currentUser ? { currentUser } : null;
+  }, [auditActor?.actorUserId]);
   const visibleProjectSolutionSelections = useMemo(
     () =>
       projectSolutionSelections.filter((selection) =>
@@ -292,13 +298,25 @@ export default function StandardEffortSection({
       );
       const previousEnabled = existingSelection?.enabled === true;
       const saved = await runSave(() =>
-        saveStandardProjectSolutionSelections(projectId, [
-          {
-            solution_variant_id: solutionVariantId,
-            enabled,
-            actual_effort_mm: existingActualEffortMm,
-          },
-        ])
+        rowHistoryOptions
+          ? saveStandardProjectSolutionSelections(
+              projectId,
+              [
+                {
+                  solution_variant_id: solutionVariantId,
+                  enabled,
+                  actual_effort_mm: existingActualEffortMm,
+                },
+              ],
+              rowHistoryOptions
+            )
+          : saveStandardProjectSolutionSelections(projectId, [
+              {
+                solution_variant_id: solutionVariantId,
+                enabled,
+                actual_effort_mm: existingActualEffortMm,
+              },
+            ])
       );
 
       if (saved) {
@@ -334,6 +352,7 @@ export default function StandardEffortSection({
       projectId,
       projectSolutionSelections,
       readOnly,
+      rowHistoryOptions,
       runSave,
       saveStandardProjectSolutionSelections,
       setTransientSaveStatus,
@@ -362,13 +381,25 @@ export default function StandardEffortSection({
       );
       const previousChecked = existingSelection?.checked === true;
       const saved = await runSave(() =>
-        saveStandardProjectItemSelections(projectId, [
-          {
-            solution_variant_id: solutionVariantId,
-            item_id: itemId,
-            checked,
-          },
-        ])
+        rowHistoryOptions
+          ? saveStandardProjectItemSelections(
+              projectId,
+              [
+                {
+                  solution_variant_id: solutionVariantId,
+                  item_id: itemId,
+                  checked,
+                },
+              ],
+              rowHistoryOptions
+            )
+          : saveStandardProjectItemSelections(projectId, [
+              {
+                solution_variant_id: solutionVariantId,
+                item_id: itemId,
+                checked,
+              },
+            ])
       );
 
       if (saved) {
@@ -405,6 +436,7 @@ export default function StandardEffortSection({
       projectId,
       projectItemSelections,
       readOnly,
+      rowHistoryOptions,
       runSave,
       saveStandardProjectItemSelections,
       setTransientSaveStatus,
@@ -438,7 +470,15 @@ export default function StandardEffortSection({
       );
       const nextActualEffortMm = toNumberOrZero(value);
       const saved = await runSave(
-        () => updateStandardActualEffort(projectId, solutionVariantId, value),
+        () =>
+          rowHistoryOptions
+            ? updateStandardActualEffort(
+                projectId,
+                solutionVariantId,
+                value,
+                rowHistoryOptions
+              )
+            : updateStandardActualEffort(projectId, solutionVariantId, value),
         { rethrow: true }
       );
 
@@ -474,6 +514,7 @@ export default function StandardEffortSection({
       projectId,
       projectSolutionSelections,
       recordAudit,
+      rowHistoryOptions,
       runSave,
       setTransientSaveStatus,
       updateStandardActualEffort,

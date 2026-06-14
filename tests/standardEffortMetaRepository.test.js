@@ -572,6 +572,51 @@ describe("standardEffortMetaRepository", () => {
     ).rejects.toThrow("coefficient upsert failed");
   });
 
+  it("adds row history updater to base effort and coefficient upserts when a user is provided", async () => {
+    const baseClient = createUpsertClient();
+    const coefficientClient = createUpsertClient();
+
+    await upsertStandardBaseEffortRows(
+      "variant-pbx",
+      [
+        {
+          phase_code: "analysis",
+          phase_name: "遺꾩꽍",
+          effort_mm: 1,
+        },
+      ],
+      baseClient,
+      { currentUser: { user_id: "user-1", email: "ignored@example.com" } }
+    );
+    await upsertStandardCoefficientRows(
+      "item-1",
+      [
+        {
+          solution_variant_id: "variant-pbx",
+          coefficient: 1,
+        },
+      ],
+      coefficientClient,
+      { currentUser: { user_id: "user-1" } }
+    );
+
+    expect(baseClient.query.rows[0]).toMatchObject({
+      solution_variant_id: "variant-pbx",
+      phase_code: "analysis",
+      updated_by: "user-1",
+      updated_at: expect.any(String),
+    });
+    expect(baseClient.query.rows[0]).not.toHaveProperty("created_by");
+    expect(baseClient.query.rows[0]).not.toHaveProperty("email");
+    expect(coefficientClient.query.rows[0]).toMatchObject({
+      item_id: "item-1",
+      solution_variant_id: "variant-pbx",
+      updated_by: "user-1",
+      updated_at: expect.any(String),
+    });
+    expect(coefficientClient.query.rows[0]).not.toHaveProperty("created_by");
+  });
+
   it("updates only solution variant active", async () => {
     const client = createUpdateClient({
       data: [
@@ -603,6 +648,52 @@ describe("standardEffortMetaRepository", () => {
     expect(client.query.payload).not.toHaveProperty("actual_effort_mm");
     expect(client.query.payload).not.toHaveProperty("coefficient");
     expect(result.active).toBe(false);
+  });
+
+  it("adds row history updater to active updates when a user is provided", async () => {
+    const variantClient = createUpdateClient({
+      data: [
+        {
+          solution_variant_id: "variant-pbx",
+          solution_code: "pbx",
+          variant_code: "avaya",
+          active: false,
+        },
+      ],
+    });
+    const itemClient = createUpdateClient({
+      data: [
+        {
+          item_id: "item-1",
+          category_l1: "怨듯넻?뺣낫",
+          item_name: "?낆쥌",
+          active: false,
+        },
+      ],
+    });
+
+    await updateStandardSolutionVariantActive(
+      "variant-pbx",
+      false,
+      variantClient,
+      { currentUser: { user_id: "user-1" } }
+    );
+    await updateStandardItemActive("item-1", false, itemClient, {
+      currentUser: { user_id: "user-1" },
+    });
+
+    expect(variantClient.query.payload).toMatchObject({
+      active: false,
+      updated_by: "user-1",
+      updated_at: expect.any(String),
+    });
+    expect(variantClient.query.payload).not.toHaveProperty("created_by");
+    expect(itemClient.query.payload).toMatchObject({
+      active: false,
+      updated_by: "user-1",
+      updated_at: expect.any(String),
+    });
+    expect(itemClient.query.payload).not.toHaveProperty("created_by");
   });
 
   it("rejects invalid solution variant active updates before update", async () => {

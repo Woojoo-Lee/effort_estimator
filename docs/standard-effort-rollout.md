@@ -51,6 +51,10 @@ See [App Auth User Setup](./app-auth-user-setup.md) for the `app_login_users`
 schema, PBKDF2 password hash helper, initial user SQL template, Vercel env
 checklist, and login E2E smoke sequence.
 
+See [App Auth Password Reset Policy](./app-auth-password-reset-policy.md) for
+the June admin-manual password reset, account lock/unlock, and post-reset smoke
+procedure. Email password reset is not used.
+
 See [App Auth Login E2E Smoke Result](./app-auth-login-smoke-result.md) for
 the current `VITE_AUTH_LOGIN_MODE=app` Supabase/Vercel login smoke status.
 
@@ -95,6 +99,24 @@ the Supabase-mode June path: `admin` can access Standard Effort meta, `sales`
 can save solution/item selections but cannot edit `actual_effort_mm`, and
 `viewer` remains read-only.
 
+Supabase-mode responsibility tracking uses business table row history for the
+June path. Standard Effort and Standard Effort meta save paths write
+`updated_by` / `updated_at` when a session `user_id` is available; insert-only
+fallbacks may write `created_by` / `updated_by`. Update/upsert paths do not
+overwrite `created_by` / `created_at`. Email, `login_id`, and `display_name`
+are not written to row history columns. Detailed `app_audit_logs` event
+history remains out of scope for Phase 11-E and belongs to the later backend
+authoritative audit track.
+
+Phase 11-E-R smoke status is partial: `actual_effort_mm` row history has been
+confirmed in Supabase for `project_id=7` with `updated_by_login_id=admin01`.
+Solution toggle, item checkbox, base effort, and coefficient row history smoke
+remain pending until their save/restore actions are rechecked with SQL joins.
+Active toggle row history is optional and should stay skipped unless the row is
+restored in the same smoke. Keep `updated_by` as the UUID `user_id`; use joins
+or future read-only views for operator-readable `login_id` / `display_name`
+checks.
+
 ### App Auth Pre-Operation Checklist
 
 Before enabling `VITE_AUTH_LOGIN_MODE=app` for a shared environment:
@@ -109,11 +131,13 @@ Before enabling `VITE_AUTH_LOGIN_MODE=app` for a shared environment:
 5. Create the `app_login_users` table and manually prepare active `admin`,
    `sales`, and `viewer` accounts with PBKDF2 password hashes.
    See [App Auth User Setup](./app-auth-user-setup.md).
-6. Verify the app-mode unauthenticated state shows only the full-screen user
+6. Confirm the admin-manual password reset and account lock/unlock procedure.
+   See [App Auth Password Reset Policy](./app-auth-password-reset-policy.md).
+7. Verify the app-mode unauthenticated state shows only the full-screen user
    ID/password login page, with no sidebar, menu, header, or email wording.
-7. Verify the disabled mode still opens the existing app without login.
-8. Run targeted auth tests, full frontend tests, and frontend build.
-9. Run Vercel Function end-to-end smoke only after the target Vercel runtime,
+8. Verify the disabled mode still opens the existing app without login.
+9. Run targeted auth tests, full frontend tests, and frontend build.
+10. Run Vercel Function end-to-end smoke only after the target Vercel runtime,
    server-only env, and `app_login_users` schema/accounts are ready.
    Track the result in
    [App Auth Login E2E Smoke Result](./app-auth-login-smoke-result.md).

@@ -59,3 +59,10 @@ export {
   getRouteDeniedReason,
   isAuthPermissionEnabled,
 } from "./lib/routeAuthz";
+export {
+  buildCreateHistoryFields,
+  buildRowHistoryActor,
+  buildUpdateHistoryFields,
+  mergeCreateHistoryFields,
+  mergeUpdateHistoryFields,
+} from "./lib/rowHistoryActor";

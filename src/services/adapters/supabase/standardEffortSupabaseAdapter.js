@@ -9,6 +9,10 @@ import {
   normalizeStandardItemRow,
   toNumberOrZero,
 } from "../../../shared/lib/standardEffortMapper";
+import {
+  mergeCreateHistoryFields,
+  mergeUpdateHistoryFields,
+} from "../../../features/auth/lib/rowHistoryActor";
 
 const TABLES = {
   solutions: "estimation_solution",
@@ -57,6 +61,10 @@ function withUpdatedAt(row, updatedAt) {
     ...row,
     updated_at: updatedAt,
   };
+}
+
+function getHistoryActor(options = {}) {
+  return options.currentUser || options.actor || options.sessionUser || null;
 }
 
 export async function fetchStandardEffortMeta(client) {
@@ -167,12 +175,18 @@ export async function fetchStandardEffortInput(projectId, client) {
 export async function upsertProjectSolutionSelections(
   projectId,
   selections = [],
-  client
+  client,
+  options = {}
 ) {
   const nowIso = new Date().toISOString();
+  const historyActor = getHistoryActor(options);
   const rows = selections.map((selection) =>
-    withUpdatedAt(
-      normalizeProjectSolutionSelection(withProjectId(projectId, selection)),
+    mergeUpdateHistoryFields(
+      withUpdatedAt(
+        normalizeProjectSolutionSelection(withProjectId(projectId, selection)),
+        nowIso
+      ),
+      historyActor,
       nowIso
     )
   );
@@ -194,12 +208,18 @@ export async function upsertProjectSolutionSelections(
 export async function upsertProjectItemSelections(
   projectId,
   selections = [],
-  client
+  client,
+  options = {}
 ) {
   const nowIso = new Date().toISOString();
+  const historyActor = getHistoryActor(options);
   const rows = selections.map((selection) =>
-    withUpdatedAt(
-      normalizeProjectItemSelection(withProjectId(projectId, selection)),
+    mergeUpdateHistoryFields(
+      withUpdatedAt(
+        normalizeProjectItemSelection(withProjectId(projectId, selection)),
+        nowIso
+      ),
+      historyActor,
       nowIso
     )
   );
@@ -222,14 +242,22 @@ export async function updateProjectActualEffort(
   projectId,
   solutionVariantId,
   actualEffortMm,
-  client
+  client,
+  options = {}
 ) {
   const db = getClient(client);
   const nowIso = new Date().toISOString();
+  const historyActor = getHistoryActor(options);
   const actual_effort_mm = toNumberOrZero(actualEffortMm);
   const updateResult = await db
     .from(TABLES.projectSolutions)
-    .update({ actual_effort_mm, updated_at: nowIso })
+    .update(
+      mergeUpdateHistoryFields(
+        { actual_effort_mm, updated_at: nowIso },
+        historyActor,
+        nowIso
+      )
+    )
     .eq("project_id", projectId)
     .eq("solution_variant_id", solutionVariantId)
     .select("*");
@@ -242,13 +270,18 @@ export async function updateProjectActualEffort(
 
   const insertResult = await db
     .from(TABLES.projectSolutions)
-    .insert({
-      project_id: projectId,
-      solution_variant_id: solutionVariantId,
-      enabled: true,
-      actual_effort_mm,
-      updated_at: nowIso,
-    })
+    .insert(
+      mergeCreateHistoryFields(
+        {
+          project_id: projectId,
+          solution_variant_id: solutionVariantId,
+          enabled: true,
+          actual_effort_mm,
+          updated_at: nowIso,
+        },
+        historyActor
+      )
+    )
     .select("*")
     .single();
 

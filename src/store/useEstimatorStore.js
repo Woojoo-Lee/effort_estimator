@@ -609,7 +609,8 @@ export const useEstimatorStore = create(
 
         saveStandardProjectSolutionSelections: async (
           projectId,
-          selections = []
+          selections = [],
+          options = {}
         ) => {
           if (!projectId) {
             set({ standardEffortError: "projectId가 없습니다." });
@@ -623,7 +624,12 @@ export const useEstimatorStore = create(
 
           try {
             const savedSelections =
-              await upsertProjectSolutionSelections(projectId, selections);
+              await upsertProjectSolutionSelections(
+                projectId,
+                selections,
+                undefined,
+                options
+              );
             const state = get();
             const nextSelections = mergeByKey(
               state.standardProjectSolutionSelections,
@@ -663,7 +669,8 @@ export const useEstimatorStore = create(
 
         saveStandardProjectItemSelections: async (
           projectId,
-          selections = []
+          selections = [],
+          options = {}
         ) => {
           if (!projectId) {
             set({ standardEffortError: "projectId가 없습니다." });
@@ -678,7 +685,9 @@ export const useEstimatorStore = create(
           try {
             const savedSelections = await upsertProjectItemSelections(
               projectId,
-              selections
+              selections,
+              undefined,
+              options
             );
             const state = get();
             const nextSelections = mergeByKey(
@@ -720,7 +729,8 @@ export const useEstimatorStore = create(
         updateStandardActualEffort: async (
           projectId,
           solutionVariantId,
-          actualEffortMm
+          actualEffortMm,
+          options = {}
         ) => {
           if (!projectId || !solutionVariantId) {
             set({ standardEffortError: "projectId 또는 solutionVariantId가 없습니다." });
@@ -736,7 +746,9 @@ export const useEstimatorStore = create(
             const savedSelection = await updateProjectActualEffort(
               projectId,
               solutionVariantId,
-              actualEffortMm
+              actualEffortMm,
+              undefined,
+              options
             );
             const state = get();
             const nextSelections = mergeByKey(

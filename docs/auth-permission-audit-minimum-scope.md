@@ -2,8 +2,8 @@
 
 ## 1. Purpose
 
-This document fixes the minimum login, permission, and audit actor scope needed
-to protect the end-of-June delivery schedule.
+This document fixes the minimum login, permission, and row history
+responsibility scope needed to protect the end-of-June delivery schedule.
 
 Internal framework replacement, serverless conversion, production SSO, and full
 Tomcat API cutover are separated into later development. The June target is a
@@ -21,7 +21,7 @@ Plan A is selected for the June delivery:
 - Treat internal PostgreSQL DB conversion as a smoke/stretch track.
 - Exclude user and permission management screens from the required June scope.
 - Use a small set of manually managed users.
-- Add minimum login, role permissions, and audit actor tracking.
+- Add minimum login, role permissions, and row-level responsibility tracking.
 
 ## 3. Role Model
 
@@ -81,16 +81,18 @@ UI policy:
 - Sales and viewer users see the actual effort value but the input is disabled
   or read-only.
 - Save handlers must not run for sales/viewer actual effort edits.
-- Admin actual effort updates write audit events with actor information.
+- Admin actual effort updates write row history with the session `user_id` when
+  available.
 
-Audit event:
+Row history policy:
 
-- `standard_effort.actual_effort.update`
-
-Required actor fields:
-
-- `actor_user_id`
-- `actor_email`
+- Admin `actual_effort_mm` saves update
+  `estimation_project_solution_selection.updated_by` and `updated_at` when a
+  session `user_id` is available.
+- `created_by` remains the first creator and must not be overwritten by update
+  saves.
+- Email, `login_id`, and `display_name` are not written to business table row
+  history columns.
 
 ## 6. Login Method
 
@@ -157,6 +159,18 @@ Password hash policy:
 - Invalid user, inactive user, and password mismatch return the same generic
   login error.
 
+Phase 11-PW-0 password reset policy:
+
+- Email-based password recovery is not used.
+- Users request password reset from an admin operator.
+- Admin operators generate a new temporary password, create a PBKDF2 hash with
+  `scripts/generateAppUserPasswordHash.mjs`, and update
+  `app_login_users.password_hash` manually in Supabase SQL Editor.
+- Account locking is handled by setting `app_login_users.active=false`.
+- Real passwords, password hashes, session secrets, service-role keys, and
+  cookie values must not be recorded.
+- See [App Auth Password Reset Policy](./app-auth-password-reset-policy.md).
+
 Phase 11-BR-1-Gate local checks:
 
 - `VITE_AUTH_LOGIN_MODE=disabled` or an unset login mode must keep the existing
@@ -219,28 +233,36 @@ Phase 11-D-Fix-2 permission bridge:
   Standard Effort meta or edit `actual_effort_mm`.
 - `viewer` remains read-only.
 
-## 7. Audit Actor Policy
+## 7. Row History Responsibility Policy
 
-All save events should include actor identity where available.
+Phase 11-E narrows the June responsibility tracking scope to business table
+row history only. Detailed event audit logging is explicitly out of scope for
+this phase.
 
-Target events:
+Target save paths:
 
-- `project.create`
-- `project.update`
-- `standard_effort.solution.toggle`
-- `standard_effort.item.check`
-- `standard_effort.actual_effort.update`
-- `standard_effort_meta.base_effort.update`
-- `standard_effort_meta.coefficient.update`
-- `standard_effort_meta.active.update`
+- Standard Effort solution selection saves.
+- Standard Effort item checkbox saves.
+- Standard Effort `actual_effort_mm` saves.
+- Standard Effort meta base effort saves.
+- Standard Effort meta coefficient saves.
+- Standard Effort meta active toggles.
 
 June policy:
 
-- Frontend/Supabase mode records actor metadata through existing non-blocking
-  audit paths.
-- Audit failure must not block business save success.
-- Actor-less legacy audit rows may remain in the database.
-- New rows should include actor identity after the minimum auth implementation.
+- Insert-only paths may set `created_by` and `updated_by` from the current
+  session `user_id`.
+- Update paths set `updated_by` and `updated_at` only.
+- Upsert paths do not write `created_by`, because conflict updates could
+  overwrite the first creator. Preserving `created_by` across upsert conflicts
+  remains a future DB/service refinement.
+- If no session `user_id` is available, row history fields are omitted and the
+  existing save behavior is preserved.
+- Email, `login_id`, and `display_name` are not written to row history.
+- `app_audit_logs`, `before_json`, `after_json`, and audit metadata actor
+  enrichment are not implemented in Phase 11-E.
+- Project table row history is deferred until `estimation_projects` history
+  columns are confirmed or added by a future migration.
 
 Post-June policy:
 
@@ -286,13 +308,60 @@ boundary; backend/API permission enforcement remains a later operating target.
 
 ### Phase 11-E
 
-- Add audit actor fields to save audit payloads.
-- Verify `actor_email` and `actor_user_id` in SQL smoke.
+- Add business table row history fields for Supabase-mode Standard Effort and
+  Standard Effort meta saves.
+- Verify `created_by`, `created_at`, `updated_by`, and `updated_at` semantics
+  where columns exist.
+- Keep detailed `app_audit_logs` event history out of scope.
+
+Status: implemented for Standard Effort and Standard Effort meta Supabase save
+paths.
+
+### Phase 11-E-R
+
+- Row history smoke documentation is in progress.
+- `actual_effort_mm` save is confirmed as `PASS` for `project_id=7` and WFM
+  `solution_variant_id=d3fd971f-505a-4829-b519-a379b40d034b`; SQL join
+  verification showed `updated_by_login_id=admin01`.
+- Solution toggle, item checkbox, meta base effort, and meta coefficient row
+  history smoke remain `PENDING` until real browser save/restore actions and
+  SQL joins confirm `updated_by_login_id=admin01`.
+- Meta active toggle row history smoke is optional and remains `SKIP` unless a
+  safe restore check is performed.
+- `updated_by` remains a UUID `user_id`. Operator-readable checks should use a
+  join to `app_login_users` or a future read-only view; do not denormalize
+  `login_id` into business tables in this phase.
+- No password, password hash, session secret, service-role key, cookie value,
+  or detailed audit event payload is documented.
+
+Future improvement candidates:
+
+- Add read-only row history views such as
+  `v_standard_effort_solution_selection_history`.
+- Revisit whether a sequence/int user identifier is needed for operator
+  readability.
+- Consider a denormalized `updated_by_login_id` only after DB ownership and
+  reporting requirements are explicit.
+- Add or confirm project table `created_by` / `updated_by` columns in a future
+  migration before applying project row history.
 
 ### Phase 11-F
 
 - Run browser smoke for `admin`, `sales`, and `viewer`.
 - Update June sign-off/report documents.
+
+### Phase 11-PW-1
+
+- Add logged-in user password change.
+- Verify the current password.
+- Accept new password and confirm-new-password inputs.
+- Add `/api/auth/change-password`.
+- Update `password_hash` server-side only.
+
+### Phase 11-PW-2
+
+- Add admin user/password management UI.
+- Support account creation, lock/unlock, password reset, and role changes.
 
 ### Separate Stretch Track: Phase 11-DB-0
 
@@ -327,7 +396,8 @@ boundary; backend/API permission enforcement remains a later operating target.
 The updated June completion criteria are:
 
 - Supabase-mode Standard Effort functionality complete.
-- Minimum login, role permission, and audit actor support included.
+- Minimum login, role permission, and row history responsibility support
+  included.
 - Internal DB conversion excluded.
 - Tomcat API production cutover excluded.
 - Serverless conversion excluded.

@@ -22,24 +22,28 @@ export async function fetchStandardEffortInput(projectId, client) {
 export async function upsertProjectSolutionSelections(
   projectId,
   selections = [],
-  client
+  client,
+  options = {}
 ) {
   return getAdapterForCall(client).upsertProjectSolutionSelections(
     projectId,
     selections,
-    client
+    client,
+    options
   );
 }
 
 export async function upsertProjectItemSelections(
   projectId,
   selections = [],
-  client
+  client,
+  options = {}
 ) {
   return getAdapterForCall(client).upsertProjectItemSelections(
     projectId,
     selections,
-    client
+    client,
+    options
   );
 }
 
@@ -47,12 +51,14 @@ export async function updateProjectActualEffort(
   projectId,
   solutionVariantId,
   actualEffortMm,
-  client
+  client,
+  options = {}
 ) {
   return getAdapterForCall(client).updateProjectActualEffort(
     projectId,
     solutionVariantId,
     actualEffortMm,
-    client
+    client,
+    options
   );
 }

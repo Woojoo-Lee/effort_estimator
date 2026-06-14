@@ -16,43 +16,55 @@ export async function fetchStandardEffortMetaAdmin(client) {
 export async function upsertStandardBaseEffortRows(
   solutionVariantId,
   phaseRows,
-  client
+  client,
+  options = {}
 ) {
   return getAdapterForCall(client).upsertStandardBaseEffortRows(
     solutionVariantId,
     phaseRows,
-    client
+    client,
+    options
   );
 }
 
 export async function upsertStandardCoefficientRows(
   itemId,
   coefficientRows,
-  client
+  client,
+  options = {}
 ) {
   return getAdapterForCall(client).upsertStandardCoefficientRows(
     itemId,
     coefficientRows,
-    client
+    client,
+    options
   );
 }
 
 export async function updateStandardSolutionVariantActive(
   solutionVariantId,
   active,
-  client
+  client,
+  options = {}
 ) {
   return getAdapterForCall(client).updateStandardSolutionVariantActive(
     solutionVariantId,
     active,
-    client
+    client,
+    options
   );
 }
 
-export async function updateStandardItemActive(itemId, active, client) {
+export async function updateStandardItemActive(
+  itemId,
+  active,
+  client,
+  options = {}
+) {
   return getAdapterForCall(client).updateStandardItemActive(
     itemId,
     active,
-    client
+    client,
+    options
   );
 }
