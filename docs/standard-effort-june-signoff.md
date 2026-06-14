@@ -15,6 +15,9 @@ For team lead sharing, demo flow, and one-page reporting, see
 The June completion gate also includes the minimum login, role permission, and
 audit actor scope described in
 [Auth, Permission, And Audit Actor Minimum Scope](./auth-permission-audit-minimum-scope.md).
+For the final June login, permission, row history, password reset, and
+development release policy sign-off, see
+[Auth, Permission, Row History Sign-Off](./auth-permission-row-history-signoff.md).
 
 ## 2. First Completion Criteria
 
@@ -31,7 +34,13 @@ audit actor scope described in
 - Solution variant and item active toggle save and restore.
 - Standard Effort Excel export in `standard + supabase` mode.
 - Coefficient grid usability improvement for right-side WFM columns.
-- Minimum login, role permission, and audit actor support.
+- ID/password app login with no email login.
+- `admin` / `sales` / `viewer` role-based frontend UI permission.
+- Minimum row history responsibility tracking through business table
+  `updated_by` / `updated_at`.
+- Admin-manual password reset operating procedure.
+- Development and release policy for feature branches, scheduled Production
+  releases, hotfixes, rollback, and secret handling.
 
 ### Excluded Scope
 
@@ -43,6 +52,10 @@ audit actor scope described in
 - Production backend authoritative audit verification.
 - SSO, internal framework replacement, serverless conversion, and user
   management screens.
+- Detailed `app_audit_logs` event history.
+- Logged-in user password change screen.
+- Meta base effort row history smoke.
+- Active toggle row history smoke.
 
 ## 3. Completed Functionality
 
@@ -58,6 +71,12 @@ audit actor scope described in
 - Supabase-mode Standard Effort export.
 - Project archive and restore UX.
 - Auth, read-only, route, sidebar, and header permission skeletons.
+- ID/password app login with `admin01`, `sales01`, and `viewer01` smoke.
+- Role-based frontend UI permissions for `admin`, `sales`, and `viewer`.
+- Row history smoke PASS for `actual_effort_mm`, solution toggle, item
+  checkbox, and meta coefficient.
+- Admin-manual password reset policy.
+- Development and release policy.
 - Frontend audit policy:
   - `auto`
   - `enabled`

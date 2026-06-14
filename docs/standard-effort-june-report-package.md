@@ -16,6 +16,9 @@ separated into the July-and-later transition track.
 The June scope also includes minimum login, `admin` / `sales` / `viewer`
 permissions, and audit actor tracking. See
 [Auth, Permission, And Audit Actor Minimum Scope](./auth-permission-audit-minimum-scope.md).
+The final login, permission, row history, password reset, and release policy
+sign-off is summarized in
+[Auth, Permission, Row History Sign-Off](./auth-permission-row-history-signoff.md).
 
 ## 2. Completed Functionality
 
@@ -31,9 +34,13 @@ permissions, and audit actor tracking. See
 - Coefficient grid top scrollbar and wide layout UX improvement.
 - Project archive and restore UX.
 - Auth and read-only skeleton.
-- App-managed ID/password login/session skeleton with default disabled mode.
+- App-managed ID/password login with no email login.
+- `admin` / `sales` / `viewer` role-based frontend UI permissions.
+- Minimum row history responsibility tracking.
+- Admin-manual password reset operating procedure.
 - Frontend audit policy.
-- Minimum login, role permission, and audit actor scope.
+- Development and release policy for feature branches, scheduled Production
+  releases, hotfixes, rollback, and secret handling.
 - Tomcat backend scaffold and API contract preparation.
 
 ## 3. Verification Summary
@@ -51,6 +58,7 @@ Reference documents:
 
 - [Supabase Mode Interim Smoke Result](./supabase-mode-interim-smoke-result.md)
 - [Standard Effort June Sign-Off](./standard-effort-june-signoff.md)
+- [Auth, Permission, Row History Sign-Off](./auth-permission-row-history-signoff.md)
 - [Release Checkpoint And Local Preview Smoke](./release-checkpoint-local-preview.md)
 - [Development And Release Policy](./development-release-policy.md)
 - [Supabase Standard Effort Export Design](./supabase-standard-effort-export-design.md)
@@ -88,6 +96,12 @@ Use `VITE_DATA_BACKEND=supabase` for the June demo path.
   scope.
 - SSO and internal framework replacement are excluded from the June required
   scope.
+- Logged-in user password change is deferred.
+- Detailed `app_audit_logs` event history is excluded from the June row history
+  scope.
+- Meta base effort row history smoke remains pending.
+- Active toggle row history smoke remains skipped unless a safe restore smoke is
+  prepared.
 - `actual_effort_mm` Enter-specific smoke remains SKIP where direct evidence
   was not captured.
 - `updated_at` re-smoke is WAIVED or DEFERRED where it does not block the
@@ -100,6 +114,10 @@ Use `VITE_DATA_BACKEND=supabase` for the June demo path.
 - Complete production auth, permission, and audit cutover.
 - Add Jenkins deployment pipeline.
 - Design server-side recalculation.
+- Add logged-in user password change.
+- Add user and permission management screens.
+- Complete meta base effort row history smoke.
+- Run active toggle row history smoke only with a safe restore path.
 - Add coefficient grid sticky left column or WFM quick navigation UX.
 - Verify backend authoritative export/download audit.
 

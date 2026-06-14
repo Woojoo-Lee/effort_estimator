@@ -213,8 +213,8 @@ Phase 11-BR-3 smoke tracking:
 - [App Auth Login E2E Smoke Result](./app-auth-login-smoke-result.md) records
   the Supabase `app_login_users`, Vercel env, login UI, and role smoke
   checklist.
-- Current result is `BLOCKED` until the target environment has
-  `app_login_users` rows, server-only Vercel env values, and a Daily Release
+- Production Daily Release smoke remains pending until the target environment
+  has `app_login_users` rows, server-only Vercel env values, and a scheduled
   deployment.
 - Actual password values, password hashes, session secrets, and service-role
   keys remain excluded from source-controlled docs.
@@ -376,6 +376,12 @@ Future improvement candidates:
 - Run browser smoke for `admin`, `sales`, and `viewer`.
 - Update June sign-off/report documents.
 
+Status: documented in
+[Auth, Permission, Row History Sign-Off](./auth-permission-row-history-signoff.md).
+The June sign-off includes ID/password app login, role-based frontend UI
+permissions, minimum row history responsibility tracking, admin-manual password
+reset operation, and the feature-branch/main release policy.
+
 ### Phase 11-PW-1
 
 - Add logged-in user password change.
@@ -422,8 +428,12 @@ Future improvement candidates:
 The updated June completion criteria are:
 
 - Supabase-mode Standard Effort functionality complete.
-- Minimum login, role permission, and row history responsibility support
-  included.
+- ID/password app login without email included.
+- `admin` / `sales` / `viewer` frontend UI permissions included.
+- Minimum row history responsibility support included.
+- Admin-manual password reset operation included.
+- Feature branch, scheduled release, hotfix, rollback, and secret handling
+  policy included.
 - Internal DB conversion excluded.
 - Tomcat API production cutover excluded.
 - Serverless conversion excluded.

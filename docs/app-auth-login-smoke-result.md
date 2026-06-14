@@ -11,18 +11,31 @@ server-only environment variables, and a Daily Release deployment.
 
 ## Current Status
 
-Status: `BLOCKED`
+Status: `PARTIAL`
 
 Reason:
 
-- The smoke requires target Supabase `app_login_users` rows.
-- The smoke requires server-only Vercel env values.
-- The smoke requires a Daily Release deployment with
-  `VITE_AUTH_LOGIN_MODE=app`.
+- Feature-branch login, role, and row history smoke have enough evidence for
+  June sign-off.
+- Production Daily Release smoke still requires the target Vercel deployment
+  with `VITE_AUTH_LOGIN_MODE=app`.
 - This phase does not perform commit, push, tag, or Vercel redeploy.
 
 No real password, password hash, `APP_AUTH_SESSION_SECRET`, or
 `SUPABASE_SERVICE_ROLE_KEY` is recorded in this document.
+
+Phase 11-F sign-off update:
+
+- `admin01`, `sales01`, and `viewer01` login and role smoke are confirmed for
+  the feature branch sign-off.
+- Row history smoke is PASS for `actual_effort_mm`, solution toggle, item
+  checkbox, and meta coefficient.
+- Meta base effort row history remains `PENDING`.
+- Active toggle row history remains `SKIP`.
+- Production Daily Release / Vercel deployment smoke is still governed by
+  [Development And Release Policy](./development-release-policy.md).
+- See [Auth, Permission, Row History Sign-Off](./auth-permission-row-history-signoff.md)
+  for the June sign-off summary.
 
 ## Scope
 
@@ -345,12 +358,12 @@ Expected:
   business table row history columns.
 - Detailed `app_audit_logs` event history is not part of Phase 11-E.
 
-Result: `PENDING`
+Result: `PARTIAL`
 
 ## Overall Result
 
-Current result: `BLOCKED`
+Current result: `PARTIAL`
 
-The implementation and local tests are ready, but target-environment E2E smoke
-is not complete until Supabase `app_login_users`, Vercel env, Daily Release
-deploy, and browser role smoke are finished.
+Feature-branch login, role, and row history smoke are sufficient for the June
+sign-off summary. Production Daily Release / Vercel deployment smoke remains a
+separate release gate until the scheduled release path is executed.
