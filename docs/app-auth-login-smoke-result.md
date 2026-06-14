@@ -241,12 +241,7 @@ where schemaname = 'public'
 
 Expected: `rowsecurity = true`
 
-Result: `PASS`
-
-Evidence:
-
-- `admin01`, `sales01`, and `viewer01` local login smoke passed.
-- Session/role connection through `app_login_users` worked.
+Result: `PENDING`
 
 ### Initial Users
 
@@ -270,13 +265,12 @@ Expected rows:
 - `sales01` / sales / active
 - `viewer01` / viewer / active
 
-Result: `PARTIAL`
+Result: `PASS`
 
 Evidence:
 
-- Local Vercel dev runtime had the env needed for app-mode login smoke.
-- Production Vercel env remains part of the scheduled release gate and is not
-  documented with real values here.
+- `admin01`, `sales01`, and `viewer01` local login smoke passed.
+- Session/role connection through `app_login_users` worked.
 
 ## Vercel Env Checklist
 
@@ -294,7 +288,13 @@ Server-only env:
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-Result: `PENDING`
+Result: `PARTIAL`
+
+Evidence:
+
+- Local Vercel dev runtime had the env needed for app-mode login smoke.
+- Production Vercel env remains part of the scheduled release gate and is not
+  documented with real values here.
 
 Security notes:
 
