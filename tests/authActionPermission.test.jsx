@@ -4,7 +4,6 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import HeaderBar from "../src/features/layout/components/HeaderBar";
-import { AuthSessionProvider } from "../src/features/auth";
 
 function createHeaderProps(actionPermissions) {
   return {
@@ -35,34 +34,6 @@ function renderHeader(actionPermissions) {
   const props = createHeaderProps(actionPermissions);
 
   render(<HeaderBar {...props} />);
-
-  return props;
-}
-
-function renderHeaderWithAuthSession(actionPermissions, user) {
-  const props = createHeaderProps(actionPermissions);
-  const repository = {
-    getAuthSession: vi.fn().mockResolvedValue({
-      data: {
-        session: {
-          user,
-        },
-      },
-      error: null,
-    }),
-    signIn: vi.fn(),
-    signOut: vi.fn().mockResolvedValue({ data: null, error: null }),
-    onAuthStateChange: vi.fn(() => ({})),
-  };
-
-  render(
-    <AuthSessionProvider
-      env={{ VITE_AUTH_LOGIN_MODE: "app" }}
-      repository={repository}
-    >
-      <HeaderBar {...props} />
-    </AuthSessionProvider>
-  );
 
   return props;
 }
@@ -163,18 +134,10 @@ describe("HeaderBar action permissions", () => {
     expect(props.actions.showPrint).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the current app user by display name instead of email", async () => {
-    renderHeaderWithAuthSession(undefined, {
-      user_id: "user-1",
-      login_id: "admin01",
-      display_name: "Admin User",
-      role_code: "admin",
-      role_codes: ["admin"],
-    });
+  it("keeps account controls out of the estimator header", () => {
+    renderHeader();
 
-    expect((await screen.findByTestId("current-auth-user")).textContent).toBe(
-      "Admin User"
-    );
-    expect(screen.queryByText(/@/)).toBeNull();
+    expect(screen.queryByTestId("current-auth-user")).toBeNull();
+    expect(screen.queryByRole("button", { name: "로그아웃" })).toBeNull();
   });
 });

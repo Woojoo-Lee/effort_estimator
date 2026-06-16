@@ -56,11 +56,15 @@ export default function ProjectPage() {
       PERMISSIONS.PROJECT_WRITE_ALL,
     ]);
   const canArchiveProject =
-    !authPermissionEnabled ||
-    authz.hasAnyPermission([
-      PERMISSIONS.PROJECT_ARCHIVE,
-      PERMISSIONS.PROJECT_WRITE_ALL,
-    ]);
+    isApiMode &&
+    (!authPermissionEnabled ||
+      authz.hasAnyPermission([
+        PERMISSIONS.PROJECT_ARCHIVE,
+        PERMISSIONS.PROJECT_WRITE_ALL,
+      ]));
+  const archiveDisabledReason = isApiMode
+    ? "프로젝트 보관 권한이 없습니다."
+    : "프로젝트 보관은 API 모드에서만 사용할 수 있습니다.";
   const canRestoreArchivedProject =
     !authPermissionEnabled ||
     authz.hasAnyPermission([
@@ -148,7 +152,7 @@ export default function ProjectPage() {
             프로젝트 관리
           </h1>
           <p className="mt-1 text-sm font-semibold text-slate-500">
-            생성, 선택, 삭제 후 공수 산정 화면으로 이어집니다.
+            프로젝트 생성, 선택, 보관 상태 확인을 위한 관리자용 보조 화면입니다.
           </p>
         </div>
 
@@ -254,14 +258,14 @@ export default function ProjectPage() {
               ? "표시할 보관 프로젝트가 없습니다."
               : "프로젝트명을 입력하고 산정 프로젝트를 시작하세요."
           }
-          deleteActionLabel={isApiMode ? "보관" : "삭제"}
-          deleteConfirmActionLabel={isApiMode ? "보관 처리" : "정말 삭제"}
+          deleteActionLabel="보관"
+          deleteConfirmActionLabel="보관 처리"
           disableSelectArchived={isArchiveView}
           hideDeleteForArchived={isArchiveView}
           restoreProject={isArchiveView ? handleRestoreProject : undefined}
           restoringProjectId={restoringProjectId}
           canDeleteProject={canArchiveProject}
-          deleteDisabledReason="프로젝트 보관/삭제 권한이 없습니다."
+          deleteDisabledReason={archiveDisabledReason}
           canRestoreArchivedProject={canRestoreArchivedProject}
           restoreDisabledReason="프로젝트 복원 권한이 없습니다."
         />

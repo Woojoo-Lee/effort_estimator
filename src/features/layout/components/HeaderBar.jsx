@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
 
-import { useAuthSession } from "../../auth";
-
 function StatusBadge({ children, tone = "slate" }) {
   const toneClass = {
     slate: "bg-slate-100 text-slate-600",
@@ -58,11 +56,6 @@ function AccentButton({
 }
 
 export default function HeaderBar({ projectMeta, status, actions }) {
-  const authSession = useAuthSession();
-  const currentUserLabel =
-    authSession.user?.display_name ||
-    authSession.user?.login_id ||
-    "Signed in";
   const { projectId, projectName, savedAt } = projectMeta;
   const { dbReady, isBusy, saveStatus, actionPermissions = {} } = status;
   const canWriteProject = actionPermissions.canWriteProject !== false;
@@ -116,22 +109,6 @@ export default function HeaderBar({ projectMeta, status, actions }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {authSession.requireLogin ? (
-            <>
-              <span
-                data-testid="current-auth-user"
-                className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600"
-              >
-                {currentUserLabel}
-              </span>
-              <SecondaryButton
-                onClick={authSession.signOut}
-                disabled={authSession.loading}
-              >
-                Logout
-              </SecondaryButton>
-            </>
-          ) : null}
           {!dbReady && <StatusBadge tone="red">DB 미연결</StatusBadge>}
           {displayStatus === "dirty" && (
             <StatusBadge tone="amber">수정됨</StatusBadge>

@@ -411,7 +411,16 @@ describe("project archive UI", () => {
 
     render(<ProjectPage />);
 
+    expect(screen.getByText("프로젝트 관리")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "프로젝트 생성, 선택, 보관 상태 확인을 위한 관리자용 보조 화면입니다."
+      )
+    ).toBeTruthy();
+    expect(screen.getByText("작업")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "보관 프로젝트 보기" })).toBeNull();
+    expect(screen.queryByText(/삭제/)).toBeNull();
+    expect(screen.getByRole("button", { name: "보관" }).disabled).toBe(true);
     expect(projectServiceMocks.fetchProjects).not.toHaveBeenCalled();
   });
 

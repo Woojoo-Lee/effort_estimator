@@ -37,8 +37,8 @@ export default function ProjectList({
   countLabel = "전체",
   emptyTitle = "프로젝트가 없습니다",
   emptyDescription = "프로젝트명을 입력하고 산정 프로젝트를 시작하세요.",
-  deleteActionLabel = "삭제",
-  deleteConfirmActionLabel = "정말 삭제",
+  deleteActionLabel = "보관",
+  deleteConfirmActionLabel = "보관 처리",
   disableSelectArchived = false,
   hideDeleteForArchived = false,
   restoreProject,
@@ -46,7 +46,7 @@ export default function ProjectList({
   restoreActionLabel = "복원",
   restoreConfirmActionLabel = "복원",
   canDeleteProject = true,
-  deleteDisabledReason = "프로젝트 삭제 권한이 없습니다.",
+  deleteDisabledReason = "프로젝트 보관 권한이 없습니다.",
   canRestoreArchivedProject = true,
   restoreDisabledReason = "프로젝트 복원 권한이 없습니다.",
 }) {
@@ -134,7 +134,7 @@ export default function ProjectList({
               <th className="px-6 py-3">프로젝트명</th>
               <th className="px-4 py-3">수정일</th>
               <th className="px-4 py-3">ID</th>
-              <th className="px-6 py-3 text-right">?묒뾽</th>
+              <th className="px-6 py-3 text-right">작업</th>
             </tr>
           </thead>
           <tbody>

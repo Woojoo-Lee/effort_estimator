@@ -29,8 +29,10 @@ import AppRouter from "../src/app/AppRouter";
 import {
   AuthPermissionProvider,
   AuthSessionProvider,
+  useAuthSession,
 } from "../src/features/auth";
 import LoginPage from "../src/features/auth/pages/LoginPage";
+import MainLayout from "../src/features/layout/components/MainLayout";
 
 function createSession(loginId = "admin01", roleCode = "admin") {
   return {
@@ -77,6 +79,44 @@ function renderWithProviders({
   };
 }
 
+function TestAuthenticatedShell({ route = "/estimator" }) {
+  const authSession = useAuthSession();
+
+  if (authSession.loading) {
+    return <div>Loading session</div>;
+  }
+
+  if (authSession.requireLogin && !authSession.isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return (
+    <MainLayout activeRoute={route}>
+      <AppRouter route={route} />
+    </MainLayout>
+  );
+}
+
+function renderAppShell({
+  route = "/estimator",
+  authEnv = { VITE_AUTH_LOGIN_MODE: "app" },
+  permissionEnv = { VITE_AUTH_PERMISSION_MODE: "disabled" },
+  repository = createRepository({
+    session: createSession("admin01", "admin"),
+  }),
+} = {}) {
+  return {
+    repository,
+    ...render(
+      <AuthSessionProvider env={authEnv} repository={repository}>
+        <AuthPermissionProvider env={permissionEnv}>
+          <TestAuthenticatedShell route={route} />
+        </AuthPermissionProvider>
+      </AuthSessionProvider>
+    ),
+  };
+}
+
 describe("LoginPage", () => {
   beforeEach(() => {
     vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "disabled");
@@ -96,6 +136,9 @@ describe("LoginPage", () => {
     expect(screen.queryByText(/email/i)).toBeNull();
     expect(screen.getByLabelText("Password")).toBeTruthy();
     expect(screen.getByLabelText("Password").type).toBe("password");
+    expect(screen.queryByTestId("global-auth-user")).toBeNull();
+    expect(screen.queryByRole("button", { name: "로그아웃" })).toBeNull();
+    expect(document.querySelector("aside")).toBeNull();
   });
 
   it("submits app login credentials and navigates to the default route", async () => {
@@ -179,6 +222,65 @@ describe("LoginPage", () => {
     });
 
     expect(await screen.findByText("Estimator Screen")).toBeTruthy();
+  });
+
+  it("shows the current app user and logout on authenticated estimator routes", async () => {
+    renderAppShell({
+      route: "/estimator",
+      repository: createRepository({
+        session: createSession("admin01", "admin"),
+      }),
+    });
+
+    expect(await screen.findByText("Estimator Screen")).toBeTruthy();
+    expect(screen.getByTestId("global-auth-user").textContent).toBe(
+      "Admin User"
+    );
+    expect(screen.getByRole("button", { name: "로그아웃" })).toBeTruthy();
+    expect(screen.queryByText(/email/i)).toBeNull();
+  });
+
+  it("falls back to login_id when display_name is missing", async () => {
+    const session = createSession("sales01", "sales");
+    session.user.display_name = "";
+
+    renderAppShell({
+      route: "/estimator",
+      repository: createRepository({ session }),
+    });
+
+    expect(await screen.findByText("Estimator Screen")).toBeTruthy();
+    expect(screen.getByTestId("global-auth-user").textContent).toBe("sales01");
+  });
+
+  it("shows logout on the standard effort meta route", async () => {
+    renderAppShell({
+      route: "/standard-effort-meta",
+      repository: createRepository({
+        session: createSession("admin01", "admin"),
+      }),
+    });
+
+    expect(await screen.findByText("Standard Effort Meta Screen")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "로그아웃" })).toBeTruthy();
+  });
+
+  it("returns to the login page after logout", async () => {
+    const repository = createRepository({
+      session: createSession("admin01", "admin"),
+    });
+
+    renderAppShell({
+      route: "/estimator",
+      repository,
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: "로그아웃" }));
+
+    await waitFor(() => expect(repository.signOut).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Effort Estimator 로그인")).toBeTruthy();
+    expect(document.querySelector("aside")).toBeNull();
+    expect(screen.queryByTestId("global-auth-user")).toBeNull();
   });
 
   it("shows a disabled login notice outside app login mode", () => {
