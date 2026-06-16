@@ -194,8 +194,20 @@ Deferred beyond this release candidate:
 - Backend authoritative audit.
 - Detailed event audit log.
 - User and permission management screens.
-- Logged-in user password change.
 - Server-side recalculation.
+
+Implemented after the original RC gate:
+
+- Logged-in user password change is implemented in Phase 13-B.
+- Phase 13-B-R local API validation smoke and Phase 13-B-R-Manual-2 browser
+  smoke are recorded in
+  [Password Change Smoke Result](./password-change-smoke-result.md).
+- Password change smoke is `PASS`: `viewer01` changed the password, returned to
+  LoginPage, re-logged in with the changed password, confirmed the old password
+  no longer worked, retained viewer permissions, restored the original
+  password, and re-logged in successfully.
+- No plaintext password, password hash, cookie, session secret, or service-role
+  key is recorded.
 
 ## Release Candidate Decision
 

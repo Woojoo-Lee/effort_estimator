@@ -31,6 +31,17 @@ When a user forgets a password:
 Email reset links are not implemented for the June delivery. User-management
 and permission-management screens are also out of scope for June.
 
+Logged-in users can change their own password through the app account area.
+This is not a password-finding or email-reset flow: the user must already be
+authenticated, must enter the current password, and is signed out after a
+successful change so they can log in again with the new password.
+
+The June default new-password minimum length is `4` characters for internal
+operation and demonstration. A stricter runtime policy can be applied with the
+server-only `APP_AUTH_PASSWORD_MIN_LENGTH` environment variable, for example
+`8`, `10`, or `12`. Values below `4` are clamped to `4`, invalid values fall
+back to `4`, and very large values are capped.
+
 ## Generate Password Hash
 
 Run the helper locally from the repository root:
@@ -158,11 +169,15 @@ plaintext password, or password hash during the smoke.
 
 ### Phase 11-PW-1
 
-- Add logged-in user password change.
-- Require current password verification.
-- Require new password and confirm-new-password inputs.
-- Add `/api/auth/change-password`.
-- Update `password_hash` server-side only.
+Status: implemented in Phase 13-B.
+
+- Logged-in users can change their own password.
+- Current password verification is required.
+- New password and confirm-new-password inputs are required.
+- `/api/auth/change-password` updates `password_hash` server-side only.
+- Successful change clears the app session and requires re-login.
+- No email reset, SMS reset, plaintext password response, or `password_hash`
+  response is used.
 
 ### Phase 11-PW-2
 

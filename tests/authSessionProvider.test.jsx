@@ -36,6 +36,10 @@ function createRepository({ session = null, loadError = null } = {}) {
     }),
     signIn: vi.fn(),
     signOut: vi.fn().mockResolvedValue({ data: null, error: null }),
+    changePassword: vi.fn().mockResolvedValue({
+      data: { reauth_required: true },
+      error: null,
+    }),
     onAuthStateChange: vi.fn(() => ({
       data: {
         subscription: {
@@ -63,6 +67,7 @@ function Reader() {
       <div data-testid="role-code">{authSession.user?.role_code || ""}</div>
       <div data-testid="user-id">{authSession.user?.user_id || ""}</div>
       <div data-testid="error">{authSession.error?.message || ""}</div>
+      <div data-testid="notice">{authSession.notice || ""}</div>
       <button
         type="button"
         onClick={() =>
@@ -76,6 +81,18 @@ function Reader() {
       </button>
       <button type="button" onClick={() => authSession.signOut()}>
         Sign out
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          authSession.changePassword({
+            currentPassword: "current-secret",
+            newPassword: "new-secret-123",
+            newPasswordConfirm: "new-secret-123",
+          }).catch(() => {})
+        }
+      >
+        Change password
       </button>
     </div>
   );
@@ -202,6 +219,74 @@ describe("AuthSessionProvider", () => {
     await waitFor(() => {
       expect(screen.getByTestId("authenticated").textContent).toBe("false");
     });
+  });
+
+  it("changes password, clears provider state, and exposes a re-login notice", async () => {
+    const repository = createRepository({
+      session: createSession("viewer01", "viewer"),
+    });
+
+    render(
+      <AuthSessionProvider
+        env={{ VITE_AUTH_LOGIN_MODE: "app" }}
+        repository={repository}
+      >
+        <Reader />
+      </AuthSessionProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("authenticated").textContent).toBe("true");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Change password" }));
+
+    await waitFor(() =>
+      expect(repository.changePassword).toHaveBeenCalledWith({
+        currentPassword: "current-secret",
+        newPassword: "new-secret-123",
+        newPasswordConfirm: "new-secret-123",
+      })
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("authenticated").textContent).toBe("false");
+    });
+    expect(screen.getByTestId("notice").textContent).toBe(
+      "비밀번호가 변경되었습니다. 다시 로그인해 주세요."
+    );
+  });
+
+  it("keeps the session when password change validation fails", async () => {
+    const repository = createRepository({
+      session: createSession("viewer01", "viewer"),
+    });
+    repository.changePassword.mockRejectedValue(
+      new Error("new_password must be at least 4 characters.")
+    );
+
+    render(
+      <AuthSessionProvider
+        env={{ VITE_AUTH_LOGIN_MODE: "app" }}
+        repository={repository}
+      >
+        <Reader />
+      </AuthSessionProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("authenticated").textContent).toBe("true");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Change password" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("error").textContent).toBe(
+        "new_password must be at least 4 characters."
+      );
+    });
+    expect(screen.getByTestId("authenticated").textContent).toBe("true");
+    expect(screen.getByTestId("login-id").textContent).toBe("viewer01");
+    expect(screen.getByTestId("notice").textContent).toBe("");
   });
 
   it("cleans up auth subscriptions on unmount", async () => {

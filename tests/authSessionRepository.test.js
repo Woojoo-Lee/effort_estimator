@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   getAuthSession,
   getCurrentAuthUser,
+  changePassword,
   onAuthStateChange,
   signIn,
   signInWithPassword,
@@ -163,6 +164,72 @@ describe("authSessionRepository", () => {
         credentials: "include",
       })
     );
+  });
+
+  it("calls app password change without logging password values", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      createResponse({
+        ok: true,
+        data: { reauth_required: true },
+      })
+    );
+    const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const result = await changePassword(
+      {
+        currentPassword: "current-secret",
+        newPassword: "new-secret-123",
+        newPasswordConfirm: "new-secret-123",
+      },
+      fetchImpl
+    );
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "/api/auth/change-password",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({
+          current_password: "current-secret",
+          new_password: "new-secret-123",
+          new_password_confirm: "new-secret-123",
+        }),
+      })
+    );
+    expect(result.data).toEqual({ reauth_required: true });
+    expect(consoleLog).not.toHaveBeenCalled();
+
+    consoleLog.mockRestore();
+  });
+
+  it("surfaces app password change validation messages", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      createResponse(
+        {
+          ok: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "new_password must be at least 4 characters.",
+          },
+        },
+        { status: 400, ok: false }
+      )
+    );
+
+    await expect(
+      changePassword(
+        {
+          currentPassword: "current-secret",
+          newPassword: "abc",
+          newPasswordConfirm: "abc",
+        },
+        fetchImpl
+      )
+    ).rejects.toMatchObject({
+      message: "new_password must be at least 4 characters.",
+      status: 400,
+      code: "VALIDATION_ERROR",
+    });
   });
 
   it("exposes a no-op auth state change subscription", () => {

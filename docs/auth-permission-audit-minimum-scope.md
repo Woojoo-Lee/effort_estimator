@@ -115,6 +115,7 @@ Server endpoints:
 - `POST /api/auth/login`
 - `GET /api/auth/session`
 - `POST /api/auth/logout`
+- `POST /api/auth/change-password`
 
 Server-only env:
 
@@ -170,6 +171,20 @@ Phase 11-PW-0 password reset policy:
 - Real passwords, password hashes, session secrets, service-role keys, and
   cookie values must not be recorded.
 - See [App Auth Password Reset Policy](./app-auth-password-reset-policy.md).
+
+Phase 13-B logged-in password change:
+
+- Logged-in users can change their own password from the global account area.
+- The endpoint verifies the current session cookie and current password before
+  updating `app_login_users.password_hash`.
+- The user enters current password, new password, and new password confirmation.
+- The June default new-password minimum length is `4` characters. It can be
+  strengthened with server-only `APP_AUTH_PASSWORD_MIN_LENGTH`.
+- A successful change clears the session cookie and returns the user to the
+  LoginPage with a re-login notice.
+- The response does not include plaintext passwords or `password_hash`.
+- This is not email/SMS password recovery and does not replace the
+  admin-manual reset procedure for forgotten passwords.
 
 Phase 11-BR-1-Gate local checks:
 
@@ -384,11 +399,14 @@ reset operation, and the feature-branch/main release policy.
 
 ### Phase 11-PW-1
 
-- Add logged-in user password change.
-- Verify the current password.
-- Accept new password and confirm-new-password inputs.
-- Add `/api/auth/change-password`.
-- Update `password_hash` server-side only.
+Status: implemented in Phase 13-B.
+
+- Logged-in user password change.
+- Current password verification.
+- New password and confirm-new-password inputs.
+- `/api/auth/change-password`.
+- Server-side-only `password_hash` update.
+- Session clear and re-login after success.
 
 ### Phase 11-PW-2
 

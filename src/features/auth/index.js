@@ -33,6 +33,7 @@ export {
 } from "./services/authPermissionRepository";
 export {
   authSessionRepository,
+  changePassword,
   getAuthSession,
   getCurrentAuthUser,
   onAuthStateChange,

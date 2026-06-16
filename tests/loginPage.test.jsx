@@ -56,6 +56,10 @@ function createRepository({ session = null } = {}) {
     }),
     signIn: vi.fn(),
     signOut: vi.fn().mockResolvedValue({ data: null, error: null }),
+    changePassword: vi.fn().mockResolvedValue({
+      data: { reauth_required: true },
+      error: null,
+    }),
     onAuthStateChange: vi.fn(() => ({})),
   };
 }
@@ -138,6 +142,9 @@ describe("LoginPage", () => {
     expect(screen.getByLabelText("Password").type).toBe("password");
     expect(screen.queryByTestId("global-auth-user")).toBeNull();
     expect(screen.queryByRole("button", { name: "로그아웃" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "비밀번호 변경" })
+    ).toBeNull();
     expect(document.querySelector("aside")).toBeNull();
   });
 
@@ -237,6 +244,9 @@ describe("LoginPage", () => {
       "Admin User"
     );
     expect(screen.getByRole("button", { name: "로그아웃" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "비밀번호 변경" })
+    ).toBeTruthy();
     expect(screen.queryByText(/email/i)).toBeNull();
   });
 
@@ -263,6 +273,136 @@ describe("LoginPage", () => {
 
     expect(await screen.findByText("Standard Effort Meta Screen")).toBeTruthy();
     expect(screen.getByRole("button", { name: "로그아웃" })).toBeTruthy();
+  });
+
+  it("opens and closes the password change panel without email wording", async () => {
+    renderAppShell({
+      route: "/estimator",
+      repository: createRepository({
+        session: createSession("admin01", "admin"),
+      }),
+    });
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "비밀번호 변경" })
+    );
+
+    expect(screen.getByLabelText("현재 비밀번호")).toBeTruthy();
+    expect(screen.getByLabelText("새 비밀번호")).toBeTruthy();
+    expect(screen.getByLabelText("새 비밀번호 확인")).toBeTruthy();
+    expect(screen.queryByText(/email/i)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "취소" }));
+
+    await waitFor(() =>
+      expect(screen.queryByLabelText("현재 비밀번호")).toBeNull()
+    );
+  });
+
+  it("shows a local password confirmation error", async () => {
+    const repository = createRepository({
+      session: createSession("sales01", "sales"),
+    });
+
+    renderAppShell({
+      route: "/estimator",
+      repository,
+    });
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "비밀번호 변경" })
+    );
+    fireEvent.change(screen.getByLabelText("현재 비밀번호"), {
+      target: { value: "current-secret" },
+    });
+    fireEvent.change(screen.getByLabelText("새 비밀번호"), {
+      target: { value: "new-secret-123" },
+    });
+    fireEvent.change(screen.getByLabelText("새 비밀번호 확인"), {
+      target: { value: "different-secret-123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "변경" }));
+
+    expect(
+      await screen.findByText("새 비밀번호 확인이 일치하지 않습니다.")
+    ).toBeTruthy();
+    expect(repository.changePassword).not.toHaveBeenCalled();
+  });
+
+  it("shows API password validation errors and keeps the panel open", async () => {
+    const repository = createRepository({
+      session: createSession("sales01", "sales"),
+    });
+    repository.changePassword.mockRejectedValue(
+      new Error("new_password must be at least 4 characters.")
+    );
+
+    renderAppShell({
+      route: "/estimator",
+      repository,
+    });
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "비밀번호 변경" })
+    );
+    fireEvent.change(screen.getByLabelText("현재 비밀번호"), {
+      target: { value: "current-secret" },
+    });
+    fireEvent.change(screen.getByLabelText("새 비밀번호"), {
+      target: { value: "abc" },
+    });
+    fireEvent.change(screen.getByLabelText("새 비밀번호 확인"), {
+      target: { value: "abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "변경" }));
+
+    expect(
+      await screen.findByText("new_password must be at least 4 characters.")
+    ).toBeTruthy();
+    expect(screen.getByLabelText("현재 비밀번호")).toBeTruthy();
+    expect(screen.getByTestId("global-auth-user").textContent).toBe(
+      "Admin User"
+    );
+    expect(screen.queryByText("Effort Estimator 로그인")).toBeNull();
+  });
+
+  it("changes password and returns to the full-screen login page", async () => {
+    const repository = createRepository({
+      session: createSession("viewer01", "viewer"),
+    });
+
+    renderAppShell({
+      route: "/estimator",
+      repository,
+    });
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "비밀번호 변경" })
+    );
+    fireEvent.change(screen.getByLabelText("현재 비밀번호"), {
+      target: { value: "current-secret" },
+    });
+    fireEvent.change(screen.getByLabelText("새 비밀번호"), {
+      target: { value: "new-secret-123" },
+    });
+    fireEvent.change(screen.getByLabelText("새 비밀번호 확인"), {
+      target: { value: "new-secret-123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "변경" }));
+
+    await waitFor(() =>
+      expect(repository.changePassword).toHaveBeenCalledWith({
+        currentPassword: "current-secret",
+        newPassword: "new-secret-123",
+        newPasswordConfirm: "new-secret-123",
+      })
+    );
+    expect(
+      await screen.findByText("비밀번호가 변경되었습니다. 다시 로그인해 주세요.")
+    ).toBeTruthy();
+    expect(await screen.findByText("Effort Estimator 로그인")).toBeTruthy();
+    expect(document.querySelector("aside")).toBeNull();
+    expect(screen.queryByTestId("global-auth-user")).toBeNull();
   });
 
   it("returns to the login page after logout", async () => {
