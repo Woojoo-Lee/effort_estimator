@@ -18,6 +18,8 @@ audit actor scope described in
 For the final June login, permission, row history, password reset, and
 development release policy sign-off, see
 [Auth, Permission, Row History Sign-Off](./auth-permission-row-history-signoff.md).
+For the remaining June delivery cutline and stabilization freeze, see
+[June Delivery Cutline](./june-delivery-cutline.md).
 
 ## 2. First Completion Criteria
 

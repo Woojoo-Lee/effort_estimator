@@ -19,6 +19,8 @@ permissions, and audit actor tracking. See
 The final login, permission, row history, password reset, and release policy
 sign-off is summarized in
 [Auth, Permission, Row History Sign-Off](./auth-permission-row-history-signoff.md).
+The remaining June cutline and stabilization freeze are summarized in
+[June Delivery Cutline](./june-delivery-cutline.md).
 
 ## 2. Completed Functionality
 

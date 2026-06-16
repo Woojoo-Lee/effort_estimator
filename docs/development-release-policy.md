@@ -152,5 +152,7 @@ Database rollback policy:
 - Release Candidate gate for `feature/app-auth-row-history` is `PASS` after
   local Vercel dev smoke:
   [Release Candidate Gate: App Auth Row History](./release-candidate-gate-app-auth-row-history.md).
+- June delivery cutline and stabilization freeze:
+  [June Delivery Cutline](./june-delivery-cutline.md).
 - Phase 11-PW-1 logged-in user password change.
 - Release candidate creation for the next scheduled Production release.

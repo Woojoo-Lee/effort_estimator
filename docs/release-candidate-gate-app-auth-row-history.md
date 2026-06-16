@@ -6,6 +6,9 @@ This document records the release candidate gate for
 `feature/app-auth-row-history`. It checks whether the branch can be promoted as
 the next scheduled Production release candidate.
 
+The remaining June delivery cutline is tracked in
+[June Delivery Cutline](./june-delivery-cutline.md).
+
 This phase does not commit, push, tag, merge to `main`, or trigger Vercel
 Production deployment.
 
