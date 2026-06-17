@@ -193,7 +193,7 @@ Deferred beyond this release candidate:
 - Internal PostgreSQL / Tomcat API production cutover.
 - Backend authoritative audit.
 - Detailed event audit log.
-- User and permission management screens.
+- Full user/password administration beyond the admin-only role/active MVP.
 - Server-side recalculation.
 
 Implemented after the original RC gate:
@@ -208,6 +208,13 @@ Implemented after the original RC gate:
   password, and re-logged in successfully.
 - No plaintext password, password hash, cookie, session secret, or service-role
   key is recorded.
+- Admin-only user management MVP is implemented in Phase 13-C-1. Manual browser
+  smoke is recorded in
+  [User Management Smoke Result](./user-management-smoke-result.md).
+- User management smoke is `PASS`: admin access, safe field display,
+  self-lock/self-role-change guards, `viewer01` role update/restore,
+  `viewer01` active lock/unlock with restore, and sales/viewer access blocking
+  are confirmed.
 
 ## Release Candidate Decision
 

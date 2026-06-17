@@ -4,6 +4,7 @@ export const PERMISSIONS = {
   ROUTE_ITEM_META_READ: "route.item_meta.read",
   ROUTE_PROJECTS_READ: "route.projects.read",
   ROUTE_AUDIT_READ: "route.audit.read",
+  ROUTE_USER_MANAGEMENT_READ: "route.user_management.read",
 
   PROJECT_READ: "project.read",
   PROJECT_CREATE: "project.create",
@@ -34,6 +35,8 @@ export const PERMISSIONS = {
   STANDARD_EFFORT_META_VALIDATE_READ: "standard_effort_meta.validate.read",
 
   USER_MANAGE: "user.manage",
+  USER_READ: "user.read",
+  USER_UPDATE: "user.update",
   ROLE_MANAGE: "role.manage",
   AUDIT_READ: "audit.read",
 

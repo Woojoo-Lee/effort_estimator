@@ -34,14 +34,22 @@ export const STANDARD_EFFORT_META_ROUTE = {
   requiredPermissions: [PERMISSIONS.ROUTE_STANDARD_EFFORT_META_READ],
 };
 
+export const USER_MANAGEMENT_ROUTE = {
+  path: "/users",
+  label: "사용자 관리",
+  requiredPermissions: [PERMISSIONS.ROUTE_USER_MANAGEMENT_READ],
+};
+
 export function isStandardEffortMetaRouteEnabled() {
   return import.meta.env.VITE_FEATURE_STANDARD_EFFORT_META === "true";
 }
 
 export function getAppRoutes() {
-  return isStandardEffortMetaRouteEnabled()
+  const routes = isStandardEffortMetaRouteEnabled()
     ? [...BASE_ROUTES, STANDARD_EFFORT_META_ROUTE]
     : BASE_ROUTES;
+
+  return [...routes, USER_MANAGEMENT_ROUTE];
 }
 
 export const APP_ROUTES = getAppRoutes();

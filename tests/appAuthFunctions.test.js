@@ -13,6 +13,7 @@ import loginHandler from "../api/auth/login.js";
 import logoutHandler from "../api/auth/logout.js";
 import sessionHandler from "../api/auth/session.js";
 import changePasswordHandler from "../api/auth/change-password.js";
+import usersHandler from "../api/auth/users.js";
 import {
   APP_LOGIN_USERS_TABLE,
   APP_SESSION_COOKIE,
@@ -96,6 +97,64 @@ function createPasswordChangeSupabaseClient({ row, updatedRow }) {
     from: vi.fn(() => {
       fromCallCount += 1;
       return fromCallCount === 1 ? findQuery : updateQuery;
+    }),
+  };
+}
+
+function createUserAdminListClient({ currentUser, users }) {
+  let fromCallCount = 0;
+  const currentQuery = {
+    select: vi.fn(() => currentQuery),
+    eq: vi.fn(() => currentQuery),
+    maybeSingle: vi.fn().mockResolvedValue({
+      data: currentUser,
+      error: null,
+    }),
+  };
+  const listQuery = {
+    select: vi.fn(() => listQuery),
+    order: vi.fn().mockResolvedValue({
+      data: users,
+      error: null,
+    }),
+  };
+
+  return {
+    currentQuery,
+    listQuery,
+    from: vi.fn(() => {
+      fromCallCount += 1;
+      return fromCallCount === 1 ? currentQuery : listQuery;
+    }),
+  };
+}
+
+function createUserAdminPatchClient({ currentUser, updatedUser }) {
+  let fromCallCount = 0;
+  const currentQuery = {
+    select: vi.fn(() => currentQuery),
+    eq: vi.fn(() => currentQuery),
+    maybeSingle: vi.fn().mockResolvedValue({
+      data: currentUser,
+      error: null,
+    }),
+  };
+  const updateQuery = {
+    update: vi.fn(() => updateQuery),
+    eq: vi.fn(() => updateQuery),
+    select: vi.fn(() => updateQuery),
+    maybeSingle: vi.fn().mockResolvedValue({
+      data: updatedUser,
+      error: null,
+    }),
+  };
+
+  return {
+    currentQuery,
+    updateQuery,
+    from: vi.fn(() => {
+      fromCallCount += 1;
+      return fromCallCount === 1 ? currentQuery : updateQuery;
     }),
   };
 }
@@ -582,5 +641,337 @@ describe("app auth Vercel functions", () => {
     expect(body.data.reauth_required).toBe(true);
     expect(JSON.stringify(body)).not.toContain("password_hash");
     expect(JSON.stringify(body)).not.toContain("email");
+  });
+
+  it("rejects user admin list without a session cookie", async () => {
+    const req = {
+      method: "GET",
+      headers: {},
+    };
+    const res = createResponse();
+
+    await usersHandler(req, res);
+
+    expect(res.statusCode).toBe(401);
+    expect(readResponseBody(res).error.code).toBe("INVALID_CREDENTIALS");
+  });
+
+  it("rejects user admin list for sales users", async () => {
+    const salesUser = createUser({
+      user_id: "sales-user",
+      role_code: "sales",
+    });
+    supabaseMocks.client = createUserAdminListClient({
+      currentUser: salesUser,
+      users: [],
+    });
+    const req = {
+      method: "GET",
+      headers: {
+        cookie: createSessionCookie(salesUser),
+      },
+    };
+    const res = createResponse();
+
+    await usersHandler(req, res);
+
+    expect(res.statusCode).toBe(403);
+    expect(readResponseBody(res).error.code).toBe("FORBIDDEN");
+  });
+
+  it("rejects user admin list for viewer users", async () => {
+    const viewerUser = createUser({
+      user_id: "viewer-user",
+      role_code: "viewer",
+    });
+    supabaseMocks.client = createUserAdminListClient({
+      currentUser: viewerUser,
+      users: [],
+    });
+    const req = {
+      method: "GET",
+      headers: {
+        cookie: createSessionCookie(viewerUser),
+      },
+    };
+    const res = createResponse();
+
+    await usersHandler(req, res);
+
+    expect(res.statusCode).toBe(403);
+    expect(readResponseBody(res).error.code).toBe("FORBIDDEN");
+  });
+
+  it("returns sanitized app login users for admins", async () => {
+    const adminUser = createUser({
+      user_id: "admin-user",
+      login_id: "admin01",
+      role_code: "admin",
+    });
+    supabaseMocks.client = createUserAdminListClient({
+      currentUser: adminUser,
+      users: [
+        {
+          user_id: "target-user",
+          login_id: "sales01",
+          display_name: "Sales User",
+          role_code: "sales",
+          active: true,
+          created_at: "2026-06-01T00:00:00.000Z",
+          updated_at: "2026-06-02T00:00:00.000Z",
+          password_hash: "should-not-leak",
+          email: "should-not-exist@example.com",
+        },
+      ],
+    });
+    const req = {
+      method: "GET",
+      headers: {
+        cookie: createSessionCookie(adminUser),
+      },
+    };
+    const res = createResponse();
+
+    await usersHandler(req, res);
+
+    const body = readResponseBody(res);
+
+    expect(res.statusCode).toBe(200);
+    expect(body.data.users).toEqual([
+      {
+        user_id: "target-user",
+        login_id: "sales01",
+        display_name: "Sales User",
+        role_code: "sales",
+        active: true,
+        created_at: "2026-06-01T00:00:00.000Z",
+        updated_at: "2026-06-02T00:00:00.000Z",
+      },
+    ]);
+    expect(JSON.stringify(body)).not.toContain("password_hash");
+    expect(JSON.stringify(body)).not.toContain("email");
+  });
+
+  it("rejects user admin patch for non-admin users", async () => {
+    const salesUser = createUser({
+      user_id: "sales-user",
+      role_code: "sales",
+    });
+    supabaseMocks.client = createUserAdminPatchClient({
+      currentUser: salesUser,
+      updatedUser: null,
+    });
+    const req = {
+      method: "PATCH",
+      body: {
+        user_id: "target-user",
+        role_code: "viewer",
+      },
+      headers: {
+        cookie: createSessionCookie(salesUser),
+      },
+    };
+    const res = createResponse();
+
+    await usersHandler(req, res);
+
+    expect(res.statusCode).toBe(403);
+    expect(readResponseBody(res).error.code).toBe("FORBIDDEN");
+  });
+
+  it("rejects invalid user admin role_code updates", async () => {
+    const adminUser = createUser({
+      user_id: "admin-user",
+      role_code: "admin",
+    });
+    supabaseMocks.client = createUserAdminPatchClient({
+      currentUser: adminUser,
+      updatedUser: null,
+    });
+    const req = {
+      method: "PATCH",
+      body: {
+        user_id: "target-user",
+        role_code: "owner",
+      },
+      headers: {
+        cookie: createSessionCookie(adminUser),
+      },
+    };
+    const res = createResponse();
+
+    await usersHandler(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(readResponseBody(res).error.code).toBe("VALIDATION_ERROR");
+    expect(supabaseMocks.client.updateQuery.update).not.toHaveBeenCalled();
+  });
+
+  it("updates user role_code and active status as admin", async () => {
+    const adminUser = createUser({
+      user_id: "admin-user",
+      role_code: "admin",
+    });
+    const updatedUser = {
+      user_id: "target-user",
+      login_id: "viewer01",
+      display_name: "Viewer User",
+      role_code: "viewer",
+      active: false,
+      created_at: "2026-06-01T00:00:00.000Z",
+      updated_at: "2026-06-03T00:00:00.000Z",
+      password_hash: "should-not-leak",
+    };
+    supabaseMocks.client = createUserAdminPatchClient({
+      currentUser: adminUser,
+      updatedUser,
+    });
+    const req = {
+      method: "PATCH",
+      body: {
+        user_id: "target-user",
+        role_code: "viewer",
+        active: false,
+      },
+      headers: {
+        cookie: createSessionCookie(adminUser),
+      },
+    };
+    const res = createResponse();
+
+    await usersHandler(req, res);
+
+    const updatePayload =
+      supabaseMocks.client.updateQuery.update.mock.calls[0][0];
+    const body = readResponseBody(res);
+
+    expect(res.statusCode).toBe(200);
+    expect(updatePayload.role_code).toBe("viewer");
+    expect(updatePayload.active).toBe(false);
+    expect(updatePayload.updated_at).toBeTruthy();
+    expect(body.data.user).toEqual({
+      user_id: "target-user",
+      login_id: "viewer01",
+      display_name: "Viewer User",
+      role_code: "viewer",
+      active: false,
+      created_at: "2026-06-01T00:00:00.000Z",
+      updated_at: "2026-06-03T00:00:00.000Z",
+    });
+    expect(JSON.stringify(body)).not.toContain("password_hash");
+    expect(JSON.stringify(body)).not.toContain("email");
+  });
+
+  it("rejects self account lock", async () => {
+    const adminUser = createUser({
+      user_id: "admin-user",
+      role_code: "admin",
+    });
+    supabaseMocks.client = createUserAdminPatchClient({
+      currentUser: adminUser,
+      updatedUser: null,
+    });
+    const req = {
+      method: "PATCH",
+      body: {
+        user_id: "admin-user",
+        active: false,
+      },
+      headers: {
+        cookie: createSessionCookie(adminUser),
+      },
+    };
+    const res = createResponse();
+
+    await usersHandler(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(readResponseBody(res).error.message).toBe(
+      "You cannot lock your own account."
+    );
+    expect(supabaseMocks.client.updateQuery.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects self role_code changes", async () => {
+    const adminUser = createUser({
+      user_id: "admin-user",
+      role_code: "admin",
+    });
+    supabaseMocks.client = createUserAdminPatchClient({
+      currentUser: adminUser,
+      updatedUser: null,
+    });
+    const req = {
+      method: "PATCH",
+      body: {
+        user_id: "admin-user",
+        role_code: "sales",
+      },
+      headers: {
+        cookie: createSessionCookie(adminUser),
+      },
+    };
+    const res = createResponse();
+
+    await usersHandler(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(readResponseBody(res).error.message).toBe(
+      "You cannot change your own role_code."
+    );
+    expect(supabaseMocks.client.updateQuery.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects user admin patch without user_id", async () => {
+    const adminUser = createUser({
+      user_id: "admin-user",
+      role_code: "admin",
+    });
+    supabaseMocks.client = createUserAdminPatchClient({
+      currentUser: adminUser,
+      updatedUser: null,
+    });
+    const req = {
+      method: "PATCH",
+      body: {
+        role_code: "viewer",
+      },
+      headers: {
+        cookie: createSessionCookie(adminUser),
+      },
+    };
+    const res = createResponse();
+
+    await usersHandler(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(readResponseBody(res).error.message).toBe("user_id is required.");
+  });
+
+  it("returns not found for missing user admin patch targets", async () => {
+    const adminUser = createUser({
+      user_id: "admin-user",
+      role_code: "admin",
+    });
+    supabaseMocks.client = createUserAdminPatchClient({
+      currentUser: adminUser,
+      updatedUser: null,
+    });
+    const req = {
+      method: "PATCH",
+      body: {
+        user_id: "missing-user",
+        active: true,
+      },
+      headers: {
+        cookie: createSessionCookie(adminUser),
+      },
+    };
+    const res = createResponse();
+
+    await usersHandler(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(readResponseBody(res).error.code).toBe("NOT_FOUND");
   });
 });

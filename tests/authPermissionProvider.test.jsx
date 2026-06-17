@@ -197,6 +197,9 @@ describe("AuthPermissionProvider", () => {
     expect(permissionText).toContain(
       PERMISSIONS.STANDARD_EFFORT_META_BASE_EFFORT_WRITE
     );
+    expect(permissionText).toContain(PERMISSIONS.ROUTE_USER_MANAGEMENT_READ);
+    expect(permissionText).toContain(PERMISSIONS.USER_READ);
+    expect(permissionText).toContain(PERMISSIONS.USER_UPDATE);
   });
 
   it("falls back to role_code when role_codes is missing", async () => {
@@ -234,6 +237,8 @@ describe("AuthPermissionProvider", () => {
 
     expect(permissionText).toContain(PERMISSIONS.STANDARD_EFFORT_SOLUTION_WRITE);
     expect(permissionText).toContain(PERMISSIONS.STANDARD_EFFORT_ITEM_WRITE);
+    expect(permissionText).not.toContain(PERMISSIONS.ROUTE_USER_MANAGEMENT_READ);
+    expect(permissionText).not.toContain(PERMISSIONS.USER_UPDATE);
     expect(permissionText).not.toContain(
       PERMISSIONS.ROUTE_STANDARD_EFFORT_META_READ
     );
@@ -258,6 +263,8 @@ describe("AuthPermissionProvider", () => {
     const permissionText = screen.getByTestId("permissions").textContent;
 
     expect(permissionText).toContain(PERMISSIONS.STANDARD_EFFORT_READ);
+    expect(permissionText).not.toContain(PERMISSIONS.ROUTE_USER_MANAGEMENT_READ);
+    expect(permissionText).not.toContain(PERMISSIONS.USER_UPDATE);
     expect(permissionText).not.toContain(
       PERMISSIONS.STANDARD_EFFORT_SOLUTION_WRITE
     );

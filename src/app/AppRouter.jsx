@@ -9,6 +9,7 @@ import {
   canAccessRoute,
   getRouteDeniedReason,
   LoginPage,
+  UserManagementPage,
   useAuthPermission,
   useAuthSession,
 } from "../features/auth";
@@ -63,6 +64,8 @@ export default function AppRouter({ route }) {
       return <ItemMetaPage />;
     case "/standard-effort-meta":
       return <StandardEffortMetaPage />;
+    case "/users":
+      return <UserManagementPage />;
     case "/projects":
       return <ProjectPage />;
     case "/estimator":
