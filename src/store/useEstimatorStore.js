@@ -17,11 +17,13 @@ import {
   fetchEstimationEnvVarMeta,
   fetchEstimationCalculationMeta,
   fetchEstimationPolicy,
-  fetchCommonCodeRows,
-  createCommonCodeRow,
-  updateCommonCodeRow,
-  updateCommonCodeActive,
 } from "../services/projectService";
+import {
+  createCodebookRow as createAdminCodebookRow,
+  fetchCodebookRows as fetchAdminCodebookRows,
+  updateCodebookActive as updateAdminCodebookActive,
+  updateCodebookRow as updateAdminCodebookRow,
+} from "../features/codebooks/services/codebookAdminRepository";
 import {
   fetchStandardEffortInput,
   fetchStandardEffortMeta,
@@ -275,7 +277,7 @@ export const useEstimatorStore = create(
             lastCodebookRowsError: "",
           });
 
-          const { data, error } = await fetchCommonCodeRows();
+          const { data, error } = await fetchAdminCodebookRows();
 
           if (error) {
             console.error(error);
@@ -301,7 +303,7 @@ export const useEstimatorStore = create(
             lastCodebookRowsError: "",
           });
 
-          const { error } = await createCommonCodeRow(payload);
+          const { error } = await createAdminCodebookRow(payload);
 
           if (error) {
             console.error(error);
@@ -327,7 +329,7 @@ export const useEstimatorStore = create(
             lastCodebookRowsError: "",
           });
 
-          const { error } = await updateCommonCodeRow(id, payload);
+          const { error } = await updateAdminCodebookRow(id, payload);
 
           if (error) {
             console.error(error);
@@ -353,7 +355,7 @@ export const useEstimatorStore = create(
             lastCodebookRowsError: "",
           });
 
-          const { error } = await updateCommonCodeActive(id, isActive);
+          const { error } = await updateAdminCodebookActive(id, isActive);
 
           if (error) {
             console.error(error);

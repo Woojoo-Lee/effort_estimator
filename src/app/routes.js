@@ -15,6 +15,7 @@ const BASE_ROUTES = [
   {
     path: "/codebooks",
     label: "코드북 관리",
+    requiredPermissions: [PERMISSIONS.ROUTE_CODEBOOKS_READ],
   },
   {
     path: "/item-meta",

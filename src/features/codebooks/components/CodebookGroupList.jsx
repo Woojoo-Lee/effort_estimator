@@ -1,13 +1,5 @@
 import React from "react";
 
-const TEXT = {
-  loading: "\uADF8\uB8F9 \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uB294 \uC911\uC785\uB2C8\uB2E4.",
-  empty: "\uD45C\uC2DC\uD560 \uADF8\uB8F9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
-  title: "\uADF8\uB8F9 \uBAA9\uB85D",
-  active: "\uC0AC\uC6A9",
-  inactive: "\uBBF8\uC0AC\uC6A9",
-};
-
 export default function CodebookGroupList({
   groups = [],
   selectedGroupCode = "",
@@ -16,67 +8,74 @@ export default function CodebookGroupList({
 }) {
   if (isBusy) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm font-semibold text-slate-500 shadow-sm">
-        {TEXT.loading}
-      </div>
-    );
-  }
-
-  if (groups.length === 0) {
-    return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm font-semibold text-slate-500 shadow-sm">
-        {TEXT.empty}
-      </div>
+      <section className="rounded-lg border border-slate-200 bg-white p-6 text-center text-sm font-semibold text-slate-500 shadow-sm">
+        코드유형 목록을 불러오는 중입니다.
+      </section>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-4 py-3">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-3 py-2">
         <h2 className="text-sm font-extrabold text-slate-900">
-          {TEXT.title}
+          코드유형목록
         </h2>
       </div>
 
-      <div className="divide-y divide-slate-100">
-        {groups.map((group) => {
-          const isSelected = selectedGroupCode === group.groupCode;
+      {groups.length === 0 ? (
+        <div className="p-6 text-center text-sm font-semibold text-slate-500">
+          등록된 코드유형이 없습니다.
+        </div>
+      ) : (
+        <div className="min-h-[420px] max-h-[520px] overflow-auto">
+          <table className="min-w-full table-fixed border-collapse text-sm">
+            <colgroup>
+              <col className="w-12" />
+              <col className="w-32" />
+              <col />
+              <col className="w-20" />
+            </colgroup>
+            <thead className="sticky top-0 bg-slate-50 text-left text-xs font-bold uppercase text-slate-500">
+              <tr className="border-b border-slate-200">
+                <th className="px-2 py-2 text-center">번호</th>
+                <th className="px-3 py-2 text-center">코드유형아이디</th>
+                <th className="px-3 py-2 text-left">코드유형명</th>
+                <th className="px-3 py-2 text-center">사용여부</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groups.map((group, index) => {
+                const isSelected = selectedGroupCode === group.groupCode;
 
-          return (
-            <button
-              key={group.groupCode}
-              type="button"
-              onClick={() => onSelectGroup?.(group.groupCode)}
-              className={`block w-full px-4 py-3 text-left transition ${
-                isSelected
-                  ? "bg-blue-50 text-blue-700"
-                  : "bg-white text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-extrabold">
-                    {group.groupCode}
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    {TEXT.active} {group.activeCount} / {TEXT.inactive}{" "}
-                    {group.inactiveCount}
-                  </div>
-                </div>
-                <div
-                  className={`rounded-lg px-2 py-1 text-xs font-bold ${
-                    isSelected
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-slate-100 text-slate-500"
-                  }`}
-                >
-                  {group.totalCount}
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
+                return (
+                  <tr
+                    key={group.groupCode}
+                    onClick={() => onSelectGroup?.(group.groupCode)}
+                    className={`cursor-pointer border-b border-slate-100 last:border-b-0 ${
+                      isSelected
+                        ? "bg-blue-50 text-blue-800"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    <td className="px-1.5 py-2 text-center font-semibold">
+                      {index + 1}
+                    </td>
+                    <td className="px-2 py-2 text-center font-mono text-xs">
+                      {group.groupCode}
+                    </td>
+                    <td className="px-2 py-2 text-left">
+                      {group.typeName || group.groupCode}
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      {group.isActive === false ? "미사용" : "사용"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }

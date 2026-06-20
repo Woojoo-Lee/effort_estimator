@@ -215,6 +215,16 @@ Implemented after the original RC gate:
   self-lock/self-role-change guards, `viewer01` role update/restore,
   `viewer01` active lock/unlock with restore, and sales/viewer access blocking
   are confirmed.
+- Admin-only codebook management MVP is implemented in Phase 13-D-1. Manual
+  browser smoke is recorded in
+  [Codebook Management Smoke Result](./codebook-management-smoke-result.md).
+- Codebook management smoke is `PASS`: admin access, compact UI, active-state
+  search select, code type/code active-state selects, left-aligned name columns,
+  center-aligned number/ID/active columns, active-state save, password/hash/email
+  non-exposure, hard-delete wording absence, sales/viewer access blocking, and
+  hard-coded auth resolver retention are confirmed.
+- The `common_code` physical schema remains unchanged. The codebook screen
+  simplifies only the UI and payload surface for the June MVP.
 
 ## Release Candidate Decision
 

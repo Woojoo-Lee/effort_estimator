@@ -239,6 +239,27 @@ describe("route and sidebar guards", () => {
     expect(await screen.findByTestId("user-management-page")).toBeTruthy();
   });
 
+  it("shows codebook route and page for the admin role", async () => {
+    vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "dev");
+
+    render(
+      <AuthPermissionProvider
+        env={{
+          VITE_AUTH_PERMISSION_MODE: "dev",
+          VITE_DEV_AUTH_ROLE_CODES: ROLES.ADMIN,
+        }}
+      >
+        <AppSidebar activeRoute="/codebooks" />
+        <AppRouter route="/codebooks" />
+      </AuthPermissionProvider>
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector('a[href="#/codebooks"]')).toBeTruthy();
+    });
+    expect(await screen.findByTestId("codebooks-page")).toBeTruthy();
+  });
+
   it("hides and blocks standard effort meta for the sales role", async () => {
     vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "dev");
     vi.stubEnv("VITE_FEATURE_STANDARD_EFFORT_META", "true");
@@ -287,6 +308,28 @@ describe("route and sidebar guards", () => {
     expect(screen.getByText("접근 권한이 없습니다.")).toBeTruthy();
   });
 
+  it("hides and blocks codebook management for the sales role", async () => {
+    vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "dev");
+
+    render(
+      <AuthPermissionProvider
+        env={{
+          VITE_AUTH_PERMISSION_MODE: "dev",
+          VITE_DEV_AUTH_ROLE_CODES: ROLES.SALES,
+        }}
+      >
+        <AppSidebar activeRoute="/estimator" />
+        <AppRouter route="/codebooks" />
+      </AuthPermissionProvider>
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector('a[href="#/estimator"]')).toBeTruthy();
+    });
+    expect(document.querySelector('a[href="#/codebooks"]')).toBeNull();
+    expect(screen.queryByTestId("codebooks-page")).toBeNull();
+  });
+
   it("hides and blocks user management for the viewer role", async () => {
     vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "dev");
 
@@ -308,6 +351,28 @@ describe("route and sidebar guards", () => {
     expect(document.querySelector('a[href="#/users"]')).toBeNull();
     expect(screen.queryByTestId("user-management-page")).toBeNull();
     expect(screen.getByText("접근 권한이 없습니다.")).toBeTruthy();
+  });
+
+  it("hides and blocks codebook management for the viewer role", async () => {
+    vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "dev");
+
+    render(
+      <AuthPermissionProvider
+        env={{
+          VITE_AUTH_PERMISSION_MODE: "dev",
+          VITE_DEV_AUTH_ROLE_CODES: ROLES.VIEWER,
+        }}
+      >
+        <AppSidebar activeRoute="/estimator" />
+        <AppRouter route="/codebooks" />
+      </AuthPermissionProvider>
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector('a[href="#/estimator"]')).toBeTruthy();
+    });
+    expect(document.querySelector('a[href="#/codebooks"]')).toBeNull();
+    expect(screen.queryByTestId("codebooks-page")).toBeNull();
   });
 
   it("blocks direct URL access when route permission is missing", () => {

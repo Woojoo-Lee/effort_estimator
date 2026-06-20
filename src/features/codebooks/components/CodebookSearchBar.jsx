@@ -1,92 +1,144 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
-const TEXT = {
-  title: "\uCF54\uB4DC\uBD81 \uAD00\uB9AC",
-  subtitle:
-    "\uACF5\uD1B5 \uCF54\uB4DC\uB97C \uC870\uD68C\uD558\uACE0 \uC120\uD0DD \uADF8\uB8F9\uC758 \uCF54\uB4DC\uB97C \uAD00\uB9AC\uD569\uB2C8\uB2E4.",
-  search: "\uAC80\uC0C9\uC5B4",
-  searchPlaceholder:
-    "\uCF54\uB4DC, \uCF54\uB4DC\uBA85, \uC124\uBA85 \uAC80\uC0C9",
-  status: "\uC0AC\uC6A9 \uC5EC\uBD80",
-  all: "\uC804\uCCB4",
-  active: "\uC0AC\uC6A9",
-  inactive: "\uBBF8\uC0AC\uC6A9",
-  refresh: "\uC0C8\uB85C\uACE0\uCE68",
-  createCode: "\uCF54\uB4DC \uB4F1\uB85D",
-};
+const SEARCH_FIELDS = [
+  { value: "group_code", label: "코드유형아이디" },
+  { value: "code", label: "코드아이디" },
+  { value: "code_name", label: "코드명" },
+];
 
 export default function CodebookSearchBar({
-  searchText,
-  onSearchTextChange,
-  activeFilter,
-  onActiveFilterChange,
+  groupCodeOptions = [],
+  filters,
+  onApplyFilters,
+  onResetFilters,
   onRefresh,
-  onCreateCode,
   isBusy = false,
   isSaving = false,
 }) {
+  const [draft, setDraft] = useState(filters);
   const isDisabled = isBusy || isSaving;
 
+  useEffect(() => {
+    setDraft(filters);
+  }, [filters]);
+
+  const updateDraft = (field, value) => {
+    setDraft((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const applyFilters = () => {
+    onApplyFilters?.(draft);
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      applyFilters();
+    }
+  };
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-xl font-extrabold text-slate-900">
-            {TEXT.title}
-          </h1>
-          <p className="mt-2 text-sm text-slate-500">{TEXT.subtitle}</p>
-        </div>
+    <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="grid min-w-0 gap-2 lg:grid-cols-[minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(180px,1.4fr)_minmax(110px,0.7fr)_auto] lg:items-end">
+        <label className="block">
+          <span className="mb-1 block text-xs font-bold text-slate-600">
+            코드분류
+          </span>
+          <select
+            value={draft.groupCode}
+            onChange={(event) => updateDraft("groupCode", event.target.value)}
+            className="h-8 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            disabled={isDisabled}
+          >
+            <option value="ALL">전체</option>
+            {groupCodeOptions.map((groupCode) => (
+              <option key={groupCode} value={groupCode}>
+                {groupCode}
+              </option>
+            ))}
+          </select>
+        </label>
 
-        <div className="flex flex-col gap-3 md:flex-row md:items-end">
-          <label className="block">
-            <span className="mb-1 block text-xs font-bold text-slate-600">
-              {TEXT.search}
-            </span>
-            <input
-              value={searchText}
-              onChange={(event) => onSearchTextChange?.(event.target.value)}
-              placeholder={TEXT.searchPlaceholder}
-              className="h-10 w-full min-w-[240px] rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-              disabled={isDisabled}
-            />
-          </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-bold text-slate-600">
+            조회조건
+          </span>
+          <select
+            value={draft.searchField}
+            onChange={(event) => updateDraft("searchField", event.target.value)}
+            className="h-8 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            disabled={isDisabled}
+          >
+            {SEARCH_FIELDS.map((field) => (
+              <option key={field.value} value={field.value}>
+                {field.label}
+              </option>
+            ))}
+          </select>
+        </label>
 
-          <label className="block">
-            <span className="mb-1 block text-xs font-bold text-slate-600">
-              {TEXT.status}
-            </span>
-            <select
-              value={activeFilter}
-              onChange={(event) => onActiveFilterChange?.(event.target.value)}
-              className="h-10 min-w-[140px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-              disabled={isDisabled}
-            >
-              <option value="ALL">{TEXT.all}</option>
-              <option value="ACTIVE">{TEXT.active}</option>
-              <option value="INACTIVE">{TEXT.inactive}</option>
-            </select>
-          </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-bold text-slate-600">
+            검색어
+          </span>
+          <input
+            value={draft.searchText}
+            onChange={(event) => updateDraft("searchText", event.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="검색어 입력"
+            className="h-8 w-full min-w-0 rounded-md border border-slate-200 px-2 text-xs font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            disabled={isDisabled}
+          />
+        </label>
 
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onRefresh}
-              className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isDisabled}
-            >
-              {TEXT.refresh}
-            </button>
-            <button
-              type="button"
-              onClick={onCreateCode}
-              className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
-              disabled={isDisabled}
-            >
-              {TEXT.createCode}
-            </button>
-          </div>
+        <label className="block">
+          <span className="mb-1 block text-xs font-bold text-slate-600">
+            사용여부
+          </span>
+          <select
+            value={draft.activeFilter}
+            onChange={(event) =>
+              updateDraft("activeFilter", event.target.value)
+            }
+            className="h-8 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            disabled={isDisabled}
+          >
+            <option value="ALL">전체</option>
+            <option value="ACTIVE">사용</option>
+            <option value="INACTIVE">미사용</option>
+          </select>
+        </label>
+
+        <div className="flex justify-end gap-1.5">
+          <button
+            type="button"
+            onClick={applyFilters}
+            className="h-8 rounded-md bg-blue-600 px-3 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+            disabled={isDisabled}
+          >
+            조회
+          </button>
+          <button
+            type="button"
+            onClick={onResetFilters}
+            className="h-8 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isDisabled}
+          >
+            초기화
+          </button>
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="h-8 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isDisabled}
+          >
+            새로고침
+          </button>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

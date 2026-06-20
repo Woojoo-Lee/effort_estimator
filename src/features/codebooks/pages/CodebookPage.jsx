@@ -8,35 +8,113 @@ import CodebookTable from "../components/CodebookTable";
 import { useEstimatorStore } from "../../../store/useEstimatorStore";
 
 const TEXT = {
-  formClosed:
-    "\uCF54\uB4DC\uB97C \uB4F1\uB85D\uD558\uAC70\uB098 \uBAA9\uB85D\uC5D0\uC11C \uC218\uC815\uD560 \uCF54\uB4DC\uB97C \uC120\uD0DD\uD558\uC138\uC694.",
+  emptyRows:
+    "등록된 코드가 없습니다. 하단 코드 상세에서 신규 코드를 입력하세요.",
+  createSuccess: "코드 등록이 완료되었습니다.",
+  createFailure: "코드 등록에 실패했습니다.",
+  saveSuccess: "코드 수정이 완료되었습니다.",
+  saveFailure: "코드 수정에 실패했습니다.",
+  activeSuccess: "코드 상태 변경이 완료되었습니다.",
+  activeFailure: "코드 상태 변경에 실패했습니다.",
+  loadFailure: "코드북을 불러오지 못했습니다.",
+  groupRequired: "코드유형아이디와 코드유형명은 필수입니다.",
+  groupSaveSuccess: "코드유형 정보를 저장했습니다.",
+  groupSaveFailure: "코드유형 정보 저장에 실패했습니다.",
+  reservedCode: "코드 00은 코드유형 정보 저장용 예약값입니다.",
+  noFilteredRows: "조회 조건에 맞는 코드가 없습니다.",
 };
 
-function matchesSearch(row, searchText) {
-  const keyword = searchText.trim().toLowerCase();
+const ALL_GROUP_CODE = "ALL";
+const CODE_TYPE_METADATA_CODE = "00";
+const DEFAULT_FILTERS = {
+  groupCode: ALL_GROUP_CODE,
+  searchField: "code",
+  searchText: "",
+  activeFilter: "ALL",
+};
+const ALL_GROUP_SENTINELS = new Set([
+  "",
+  "ALL",
+  "all",
+  "전체",
+  "__ALL__",
+]);
+const EMPTY_GROUP_DRAFT = {
+  metadata_row_id: null,
+  group_code: "",
+  group_name: "",
+  description: "",
+  code_change_enabled: "Y",
+  is_active: true,
+};
+
+function buildEmptyGroupDraft() {
+  return { ...EMPTY_GROUP_DRAFT };
+}
+
+function buildEmptyCodeRow(groupCode = "") {
+  return {
+    group_code: groupCode && groupCode !== ALL_GROUP_CODE ? groupCode : "",
+    code: "",
+    code_name: "",
+    code_value: "",
+    description: "",
+    sort_order: 0,
+    is_active: true,
+  };
+}
+
+function buildGroupDraft(groupSummary) {
+  if (!groupSummary) {
+    return buildEmptyGroupDraft();
+  }
+
+  return {
+    metadata_row_id: groupSummary.metadataRowId || null,
+    group_code: groupSummary.groupCode || "",
+    group_name: groupSummary.typeName || groupSummary.groupCode || "",
+    description: groupSummary.description || "",
+    code_change_enabled: "Y",
+    is_active: groupSummary.isActive !== false,
+  };
+}
+
+function isCodeTypeMetadataRow(row) {
+  return String(row?.code || "").trim() === CODE_TYPE_METADATA_CODE;
+}
+
+function matchesSearch(row, filters) {
+  const keyword = filters.searchText.trim().toLowerCase();
 
   if (!keyword) {
     return true;
   }
 
-  return [
-    row.group_code,
-    row.code,
-    row.code_name,
-    row.code_value,
-    row.description,
-  ]
-    .filter(Boolean)
-    .some((value) => String(value).toLowerCase().includes(keyword));
+  const value = row[filters.searchField];
+
+  return String(value || "").toLowerCase().includes(keyword);
 }
 
-function matchesActiveFilter(row, activeFilter) {
-  if (activeFilter === "ACTIVE") {
-    return row.is_active === true;
+function matchesQueryFilters(row, filters) {
+  const isAllGroup = ALL_GROUP_SENTINELS.has(String(filters.groupCode ?? ""));
+
+  if (
+    !isAllGroup &&
+    row.group_code !== filters.groupCode
+  ) {
+    return false;
   }
 
-  if (activeFilter === "INACTIVE") {
-    return row.is_active === false;
+  return matchesSearch(row, filters);
+}
+
+function matchesActiveFilter(isActive, filters) {
+  if (filters.activeFilter === "ACTIVE") {
+    return isActive === true;
+  }
+
+  if (filters.activeFilter === "INACTIVE") {
+    return isActive === false;
   }
 
   return true;
@@ -49,6 +127,10 @@ function buildGroupSummaries(rows) {
     if (!result[groupCode]) {
       result[groupCode] = {
         groupCode,
+        typeName: groupCode,
+        description: "",
+        isActive: true,
+        metadataRowId: null,
         totalCount: 0,
         activeCount: 0,
         inactiveCount: 0,
@@ -59,6 +141,14 @@ function buildGroupSummaries(rows) {
 
     const summary = result[groupCode];
     const sortOrder = Number(row.sort_order ?? 0);
+
+    if (isCodeTypeMetadataRow(row)) {
+      summary.typeName = row.code_name || groupCode;
+      summary.description = row.description || "";
+      summary.isActive = row.is_active !== false;
+      summary.metadataRowId = row.id || null;
+      return result;
+    }
 
     summary.totalCount += 1;
     summary.activeCount += row.is_active ? 1 : 0;
@@ -81,11 +171,13 @@ function buildGroupSummaries(rows) {
 }
 
 export default function CodebookPage() {
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [selectedGroupCode, setSelectedGroupCode] = useState("");
-  const [searchText, setSearchText] = useState("");
-  const [activeFilter, setActiveFilter] = useState("ALL");
-  const [editingRow, setEditingRow] = useState(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [groupDraft, setGroupDraft] = useState(() => buildEmptyGroupDraft());
+  const [groupDetailMode, setGroupDetailMode] = useState("create");
+  const [codeDetailRow, setCodeDetailRow] = useState(() => buildEmptyCodeRow());
+  const [statusMessage, setStatusMessage] = useState("");
+  const [actionErrorMessage, setActionErrorMessage] = useState("");
 
   const rows = useEstimatorStore((state) => state.codebookRows);
   const isBusy = useEstimatorStore((state) => state.isCodebookRowsBusy);
@@ -108,30 +200,15 @@ export default function CodebookPage() {
     refreshCodebookRows();
   }, [refreshCodebookRows]);
 
-  const searchedRows = useMemo(() => {
-    return rows.filter(
-      (row) =>
-        matchesSearch(row, searchText) && matchesActiveFilter(row, activeFilter)
-    );
-  }, [rows, searchText, activeFilter]);
+  const filteredRows = useMemo(() => {
+    return rows.filter((row) => matchesQueryFilters(row, filters));
+  }, [rows, filters]);
 
   const groupSummaries = useMemo(() => {
-    return buildGroupSummaries(searchedRows);
-  }, [searchedRows]);
-
-  useEffect(() => {
-    if (selectedGroupCode) {
-      const hasSelectedGroup = groupSummaries.some(
-        (group) => group.groupCode === selectedGroupCode
-      );
-
-      if (hasSelectedGroup) {
-        return;
-      }
-    }
-
-    setSelectedGroupCode(groupSummaries[0]?.groupCode || "");
-  }, [groupSummaries, selectedGroupCode]);
+    return buildGroupSummaries(filteredRows).filter((group) =>
+      matchesActiveFilter(group.isActive !== false, filters)
+    );
+  }, [filteredRows, filters]);
 
   const selectedGroupSummary = useMemo(() => {
     return (
@@ -140,109 +217,319 @@ export default function CodebookPage() {
     );
   }, [groupSummaries, selectedGroupCode]);
 
-  const selectedGroupRows = useMemo(() => {
-    if (!selectedGroupCode) {
-      return [];
+  useEffect(() => {
+    if (selectedGroupSummary) {
+      setGroupDraft(buildGroupDraft(selectedGroupSummary));
+      setGroupDetailMode("edit");
+      return;
     }
 
-    return searchedRows.filter((row) => row.group_code === selectedGroupCode);
-  }, [searchedRows, selectedGroupCode]);
+    if (!selectedGroupCode) {
+      setGroupDraft(buildEmptyGroupDraft());
+      setGroupDetailMode("create");
+    }
+  }, [selectedGroupCode, selectedGroupSummary]);
 
-  const openCreateForm = () => {
-    setEditingRow(
-      selectedGroupCode
-        ? {
-            group_code: selectedGroupCode,
-            is_active: true,
-          }
-        : null
+  const groupCodeOptions = useMemo(() => {
+    const values = rows
+      .map((row) => row.group_code)
+      .filter(Boolean)
+      .map((value) => String(value));
+
+    return [...new Set(values)].sort((a, b) => a.localeCompare(b));
+  }, [rows]);
+
+  const selectedGroupRows = useMemo(() => {
+    const codeRows = filteredRows.filter(
+      (row) =>
+        !isCodeTypeMetadataRow(row) &&
+        matchesActiveFilter(row.is_active === true, filters)
     );
-    setIsFormOpen(true);
+
+    if (!selectedGroupCode) {
+      return codeRows;
+    }
+
+    return codeRows.filter((row) => row.group_code === selectedGroupCode);
+  }, [filteredRows, filters, selectedGroupCode]);
+
+  const applyFilters = (nextFilters) => {
+    const isAllGroup = ALL_GROUP_SENTINELS.has(
+      String(nextFilters.groupCode ?? "")
+    );
+    const normalizedFilters = {
+      ...nextFilters,
+      groupCode: isAllGroup ? ALL_GROUP_CODE : nextFilters.groupCode,
+    };
+
+    setFilters(normalizedFilters);
+    setCodeDetailRow(buildEmptyCodeRow());
+    setStatusMessage("");
+    setActionErrorMessage("");
+    setSelectedGroupCode(isAllGroup ? "" : nextFilters.groupCode);
+    setGroupDetailMode(isAllGroup ? "create" : "edit");
+  };
+
+  const resetFilters = () => {
+    applyFilters(DEFAULT_FILTERS);
   };
 
   const openEditForm = (row) => {
-    setEditingRow(row);
-    setIsFormOpen(true);
+    setStatusMessage("");
+    setActionErrorMessage("");
+    setCodeDetailRow(row);
   };
 
-  const closeForm = () => {
-    setEditingRow(null);
-    setIsFormOpen(false);
+  const resolveNewCodeGroupCode = (preferredGroupCode = selectedGroupCode) => {
+    const selectedCode = String(preferredGroupCode || "").trim();
+
+    if (selectedCode && selectedCode !== ALL_GROUP_CODE) {
+      return selectedCode;
+    }
+
+    return String(groupDraft.group_code || "").trim();
+  };
+
+  const openCreateCodeForm = (preferredGroupCode = selectedGroupCode) => {
+    setStatusMessage("");
+    setActionErrorMessage("");
+    setCodeDetailRow(buildEmptyCodeRow(resolveNewCodeGroupCode(preferredGroupCode)));
+  };
+
+  const openCreateGroupForm = () => {
+    setStatusMessage("");
+    setActionErrorMessage("");
+    setSelectedGroupCode("");
+    setGroupDetailMode("create");
+    setGroupDraft(buildEmptyGroupDraft());
+    setCodeDetailRow(buildEmptyCodeRow());
+  };
+
+  const handleGroupDraftChange = (nextDraft) => {
+    setGroupDraft(nextDraft);
+
+    if (codeDetailRow?.id) {
+      return;
+    }
+
+    setCodeDetailRow((previousRow) => ({
+      ...buildEmptyCodeRow(),
+      ...(previousRow || {}),
+      group_code: String(nextDraft.group_code || "").trim(),
+    }));
+  };
+
+  const buildCodeTypePayload = (metadataRow = null) => {
+    const nextGroupCode = String(groupDraft.group_code || "").trim();
+    const nextGroupName = String(groupDraft.group_name || "").trim();
+
+    if (!nextGroupCode || !nextGroupName) {
+      return {
+        error: TEXT.groupRequired,
+        payload: null,
+      };
+    }
+
+    return {
+      error: "",
+      payload: {
+        group_code: nextGroupCode,
+        code: CODE_TYPE_METADATA_CODE,
+        code_name: nextGroupName,
+        code_value: CODE_TYPE_METADATA_CODE,
+        description: metadataRow ? metadataRow.description || null : null,
+        sort_order: metadataRow ? metadataRow.sort_order ?? 0 : 0,
+        is_active: groupDraft.is_active !== false,
+      },
+    };
+  };
+
+  const findMetadataRow = (groupCode) =>
+    rows.find(
+      (row) => row.group_code === groupCode && isCodeTypeMetadataRow(row)
+    ) || null;
+
+  const saveGroupDraft = async () => {
+    const draftGroupCode = String(groupDraft.group_code || "").trim();
+    const metadataRow =
+      (groupDraft.metadata_row_id &&
+        rows.find((row) => row.id === groupDraft.metadata_row_id)) ||
+      findMetadataRow(draftGroupCode);
+    const { error, payload } = buildCodeTypePayload(metadataRow);
+
+    setStatusMessage("");
+    if (error) {
+      setActionErrorMessage(error);
+      return false;
+    }
+
+    const result = metadataRow
+      ? await updateCodebookRow(metadataRow.id, payload)
+      : await createCodebookRow(payload);
+
+    if (!result) {
+      setActionErrorMessage(TEXT.groupSaveFailure);
+      return false;
+    }
+
+    setActionErrorMessage("");
+    setSelectedGroupCode(payload.group_code);
+    setGroupDetailMode("edit");
+    setGroupDraft({
+      ...groupDraft,
+      metadata_row_id: metadataRow?.id || groupDraft.metadata_row_id || null,
+      group_code: payload.group_code,
+      group_name: payload.code_name,
+      description: payload.description || "",
+      is_active: payload.is_active,
+    });
+    setCodeDetailRow(buildEmptyCodeRow(payload.group_code));
+    setStatusMessage(TEXT.groupSaveSuccess);
+    return true;
+  };
+
+  const handleSelectGroup = (groupCode) => {
+    setStatusMessage("");
+    setActionErrorMessage("");
+    setSelectedGroupCode(groupCode);
+    setGroupDetailMode("edit");
+    setCodeDetailRow(buildEmptyCodeRow(groupCode));
   };
 
   const handleSubmit = async (payload) => {
-    const result = editingRow?.id
-      ? await updateCodebookRow(editingRow.id, payload)
-      : await createCodebookRow(payload);
+    if (
+      !codeDetailRow?.id &&
+      String(payload.code || "").trim() === CODE_TYPE_METADATA_CODE
+    ) {
+      setStatusMessage("");
+      setActionErrorMessage(TEXT.reservedCode);
+      return false;
+    }
+
+    if (!codeDetailRow?.id) {
+      const result = await createCodebookRow(payload);
+
+      if (result) {
+        setSelectedGroupCode(payload.group_code || "");
+        setGroupDetailMode("edit");
+        setCodeDetailRow(buildEmptyCodeRow(payload.group_code));
+        setStatusMessage(TEXT.createSuccess);
+        setActionErrorMessage("");
+      } else {
+        setActionErrorMessage(TEXT.createFailure);
+      }
+
+      return result;
+    }
+
+    const result = await updateCodebookRow(codeDetailRow.id, payload);
 
     if (result) {
-      closeForm();
+      setStatusMessage(TEXT.saveSuccess);
+      setActionErrorMessage("");
+      setCodeDetailRow(buildEmptyCodeRow(payload.group_code));
+    } else {
+      setActionErrorMessage(TEXT.saveFailure);
     }
 
     return result;
   };
 
   const handleToggleActive = async (row, nextIsActive) => {
-    await setCodebookRowActive(row.id, nextIsActive);
+    setStatusMessage("");
+    setActionErrorMessage("");
+    const result = await setCodebookRowActive(row.id, nextIsActive);
+
+    if (result) {
+      setStatusMessage(TEXT.activeSuccess);
+    } else {
+      setActionErrorMessage(TEXT.activeFailure);
+    }
+
+    return result;
   };
 
   return (
-    <div className="mx-auto max-w-[1360px] space-y-4 p-4">
+    <div className="mx-auto max-w-[1440px] space-y-3 p-3">
       <CodebookSearchBar
-        searchText={searchText}
-        onSearchTextChange={setSearchText}
-        activeFilter={activeFilter}
-        onActiveFilterChange={setActiveFilter}
+        groupCodeOptions={groupCodeOptions}
+        filters={filters}
+        onApplyFilters={applyFilters}
+        onResetFilters={resetFilters}
         onRefresh={refreshCodebookRows}
-        onCreateCode={openCreateForm}
         isBusy={isBusy}
         isSaving={isSaving}
       />
 
-      {errorMessage && (
-        <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
-          {errorMessage}
+      {(errorMessage || actionErrorMessage) && (
+        <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
+          {errorMessage ? TEXT.loadFailure : actionErrorMessage}
         </div>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <CodebookGroupList
-          groups={groupSummaries}
-          selectedGroupCode={selectedGroupCode}
-          onSelectGroup={setSelectedGroupCode}
-          isBusy={isBusy}
-        />
+      {statusMessage && (
+        <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
+          {statusMessage}
+        </div>
+      )}
 
-        <CodebookTable
-          rows={selectedGroupRows}
-          isBusy={isBusy}
-          isSaving={isSaving}
-          selectedRowId={editingRow?.id || null}
-          onEdit={openEditForm}
-          onToggleActive={handleToggleActive}
-          showGroupCode={false}
-        />
-      </div>
+      {!isBusy && !errorMessage && rows.length === 0 && (
+        <div className="rounded-lg border border-slate-200 bg-white p-4 text-center shadow-sm">
+          <p className="text-sm font-bold text-slate-600">{TEXT.emptyRows}</p>
+        </div>
+      )}
 
-      <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <CodebookGroupInfoPanel groupSummary={selectedGroupSummary} />
+      {!isBusy && rows.length > 0 && filteredRows.length === 0 && (
+        <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-500 shadow-sm">
+          {TEXT.noFilteredRows}
+        </div>
+      )}
 
-        <div className="min-w-0">
-          {isFormOpen ? (
+      {!errorMessage && (
+        <>
+          <div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.4fr)]">
+            <CodebookGroupList
+              groups={groupSummaries}
+              selectedGroupCode={selectedGroupCode}
+              onSelectGroup={handleSelectGroup}
+              isBusy={isBusy}
+            />
+
+            <CodebookTable
+              rows={selectedGroupRows}
+              isBusy={isBusy}
+              isSaving={isSaving}
+              selectedRowId={codeDetailRow?.id || null}
+              onEdit={openEditForm}
+              onToggleActive={handleToggleActive}
+            />
+          </div>
+
+          <div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.4fr)]">
+            <CodebookGroupInfoPanel
+              draft={groupDraft}
+              mode={groupDetailMode}
+              isSaving={isSaving}
+              onChange={handleGroupDraftChange}
+              onPrepareCreate={openCreateGroupForm}
+              onSave={saveGroupDraft}
+            />
+
             <CodebookForm
-              key={editingRow?.id || editingRow?.group_code || "create"}
-              initialValue={editingRow}
+              key={`${codeDetailRow?.id || "create"}:${
+                codeDetailRow?.group_code || ""
+              }`}
+              initialValue={codeDetailRow}
               isSaving={isSaving}
               onSubmit={handleSubmit}
-              onCancel={closeForm}
+              onPrepareCreate={() => openCreateCodeForm(selectedGroupCode)}
+              groupCodeOptions={groupCodeOptions}
+              reservedCode={CODE_TYPE_METADATA_CODE}
+              reservedCodeMessage={TEXT.reservedCode}
             />
-          ) : (
-            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-500 shadow-sm">
-              {TEXT.formClosed}
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
