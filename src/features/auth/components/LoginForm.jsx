@@ -18,7 +18,7 @@ export default function LoginForm({ error = null, loading = false, onSubmit }) {
       });
     } catch (submitFailure) {
       setSubmitError(
-        submitFailure?.message || "사용자 ID 또는 비밀번호를 확인하세요."
+        submitFailure?.message || "사용자 ID 또는 비밀번호를 확인해 주세요."
       );
     }
   }

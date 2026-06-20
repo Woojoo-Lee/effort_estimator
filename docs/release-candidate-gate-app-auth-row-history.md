@@ -225,6 +225,16 @@ Implemented after the original RC gate:
   hard-coded auth resolver retention are confirmed.
 - The `common_code` physical schema remains unchanged. The codebook screen
   simplifies only the UI and payload surface for the June MVP.
+- Phase 14-A is a low-risk UI polish pass only: menu labels, login/account
+  wording, access-denied wording, user/codebook/project management text, and
+  visible empty/loading states are normalized without changing save payloads,
+  auth policy, row history, or standard effort calculation behavior.
+- Phase 14-A-R-Manual UI polish smoke is recorded in
+  [UI Polish Smoke Result](./ui-polish-smoke-result.md). The local HTTP entry
+  check and manual browser checks are `PASS` for LoginPage, `admin01`,
+  `sales01`, `viewer01`, user management, codebook management, project
+  management, Standard Effort meta, AccessDenied, and screen breakage /
+  horizontal-scroll review.
 
 ## Release Candidate Decision
 

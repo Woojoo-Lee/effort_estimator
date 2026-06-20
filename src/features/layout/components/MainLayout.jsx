@@ -117,10 +117,10 @@ function AccountBar() {
   const currentUserLabel =
     authSession.user?.display_name ||
     authSession.user?.login_id ||
-    "로그인됨";
+    "로그인 사용자";
 
   return (
-    <div className="relative flex items-center justify-end gap-3 border-b border-slate-200 bg-white/90 px-6 py-3">
+    <div className="relative flex flex-wrap items-center justify-end gap-2 border-b border-slate-200 bg-white/95 px-6 py-3">
       <span
         data-testid="global-auth-user"
         className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"

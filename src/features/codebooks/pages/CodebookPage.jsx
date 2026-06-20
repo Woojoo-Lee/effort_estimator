@@ -98,10 +98,7 @@ function matchesSearch(row, filters) {
 function matchesQueryFilters(row, filters) {
   const isAllGroup = ALL_GROUP_SENTINELS.has(String(filters.groupCode ?? ""));
 
-  if (
-    !isAllGroup &&
-    row.group_code !== filters.groupCode
-  ) {
+  if (!isAllGroup && row.group_code !== filters.groupCode) {
     return false;
   }
 

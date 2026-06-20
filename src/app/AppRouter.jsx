@@ -7,7 +7,6 @@ import ProjectPage from "../features/projects/pages/ProjectPage";
 import StandardEffortMetaPage from "../features/standardEffortMeta/pages/StandardEffortMetaPage";
 import {
   canAccessRoute,
-  getRouteDeniedReason,
   LoginPage,
   UserManagementPage,
   useAuthPermission,
@@ -20,7 +19,7 @@ function AccessDenied() {
     <div className="mx-auto max-w-[960px] p-4">
       <section className="rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
         <h1 className="text-lg font-extrabold text-slate-900">
-          {getRouteDeniedReason()}
+          접근 권한이 없습니다.
         </h1>
         <p className="mt-2 text-sm font-semibold text-slate-500">
           필요한 권한이 없거나 비활성화된 기능입니다.
@@ -43,7 +42,7 @@ export default function AppRouter({ route }) {
     return (
       <div className="mx-auto max-w-[960px] p-4">
         <section className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-500 shadow-sm">
-          Loading session...
+          세션을 확인하는 중입니다.
         </section>
       </div>
     );

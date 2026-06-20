@@ -14,7 +14,9 @@ export default function AppSidebar({ activeRoute }) {
         <div className="text-sm font-extrabold text-slate-900">
           Effort Estimator
         </div>
-        <div className="mt-1 text-xs text-slate-500">업무 관리</div>
+        <div className="mt-1 text-xs font-semibold text-slate-500">
+          표준공수 운영 관리
+        </div>
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
@@ -27,7 +29,7 @@ export default function AppSidebar({ activeRoute }) {
               href={`#${route.path}`}
               className={`block rounded-lg px-3 py-2 text-sm font-semibold transition ${
                 isActive
-                  ? "bg-blue-100 text-blue-700"
+                  ? "bg-blue-100 text-blue-700 shadow-sm"
                   : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >

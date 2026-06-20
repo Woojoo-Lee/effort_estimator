@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 const ROLE_LABELS = {
   admin: "관리자",
   sales: "영업대표",
-  viewer: "조회자",
+  viewer: "조회전용",
 };
 
 const ROLE_OPTIONS = [

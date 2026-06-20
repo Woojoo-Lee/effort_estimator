@@ -8,7 +8,7 @@ const TEXT = {
   groupCode: "코드유형아이디",
   code: "코드아이디",
   codeName: "코드명",
-  active: "사용",
+  active: "사용여부",
   new: "신규",
   save: "저장",
   saving: "저장 중...",
@@ -181,7 +181,7 @@ export default function CodebookForm({
 
         <label className="block">
           <span className="mb-1 block text-xs font-bold text-slate-600">
-            사용여부
+            {TEXT.active}
           </span>
           <select
             value={form.is_active ? "true" : "false"}

@@ -46,7 +46,7 @@ export default function LoginPage() {
             Effort Estimator 로그인
           </h1>
           <p className="mt-1 text-sm font-semibold text-slate-500">
-            발급받은 사용자 ID와 비밀번호로 접속하세요.
+            발급받은 사용자 ID와 비밀번호로 접속해 주세요.
           </p>
         </div>
         <div className="mx-auto w-full max-w-[480px]">

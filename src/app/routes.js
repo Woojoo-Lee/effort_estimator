@@ -12,21 +12,6 @@ const BASE_ROUTES = [
     label: "공수 산정",
     requiredPermissions: [PERMISSIONS.ROUTE_ESTIMATOR_READ],
   },
-  {
-    path: "/codebooks",
-    label: "코드북 관리",
-    requiredPermissions: [PERMISSIONS.ROUTE_CODEBOOKS_READ],
-  },
-  {
-    path: "/item-meta",
-    label: "항목 메타 관리",
-    requiredPermissions: [PERMISSIONS.ROUTE_ITEM_META_READ],
-  },
-  {
-    path: "/projects",
-    label: "프로젝트 관리",
-    requiredPermissions: [PERMISSIONS.ROUTE_PROJECTS_READ],
-  },
 ];
 
 export const STANDARD_EFFORT_META_ROUTE = {
@@ -41,6 +26,24 @@ export const USER_MANAGEMENT_ROUTE = {
   requiredPermissions: [PERMISSIONS.ROUTE_USER_MANAGEMENT_READ],
 };
 
+const ADMIN_SUPPORT_ROUTES = [
+  {
+    path: "/codebooks",
+    label: "코드북 관리",
+    requiredPermissions: [PERMISSIONS.ROUTE_CODEBOOKS_READ],
+  },
+  {
+    path: "/item-meta",
+    label: "항목 메타",
+    requiredPermissions: [PERMISSIONS.ROUTE_ITEM_META_READ],
+  },
+  {
+    path: "/projects",
+    label: "프로젝트 관리",
+    requiredPermissions: [PERMISSIONS.ROUTE_PROJECTS_READ],
+  },
+];
+
 export function isStandardEffortMetaRouteEnabled() {
   return import.meta.env.VITE_FEATURE_STANDARD_EFFORT_META === "true";
 }
@@ -50,7 +53,7 @@ export function getAppRoutes() {
     ? [...BASE_ROUTES, STANDARD_EFFORT_META_ROUTE]
     : BASE_ROUTES;
 
-  return [...routes, USER_MANAGEMENT_ROUTE];
+  return [...routes, USER_MANAGEMENT_ROUTE, ...ADMIN_SUPPORT_ROUTES];
 }
 
 export const APP_ROUTES = getAppRoutes();
