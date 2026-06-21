@@ -1,31 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 const TEXT = {
-  editTitle: "\uCF54\uB4DC \uC218\uC815",
-  createTitle: "\uCF54\uB4DC \uB4F1\uB85D",
-  description:
-    "\uACF5\uD1B5 \uCF54\uB4DC \uC815\uBCF4\uB97C \uC785\uB825\uD569\uB2C8\uB2E4.",
-  requiredMessage:
-    "\uADF8\uB8F9\uCF54\uB4DC, \uCF54\uB4DC, \uCF54\uB4DC\uBA85\uC740 \uD544\uC218\uC785\uB2C8\uB2E4.",
-  groupCode: "\uADF8\uB8F9\uCF54\uB4DC",
-  code: "\uCF54\uB4DC",
-  codeName: "\uCF54\uB4DC\uBA85",
-  codeValue: "\uCF54\uB4DC\uAC12",
-  sortOrder: "\uC815\uB82C\uC21C\uC11C",
-  active: "\uC0AC\uC6A9",
-  descriptionLabel: "\uC124\uBA85",
-  select: "\uC120\uD0DD",
-  cancel: "\uCDE8\uC18C",
-  save: "\uC800\uC7A5",
-  saving: "\uC800\uC7A5 \uC911...",
+  title: "코드 상세",
+  modeEdit: "수정",
+  modeCreate: "신규",
+  requiredMessage: "코드유형아이디, 코드아이디, 코드명은 필수입니다.",
+  groupCode: "코드유형아이디",
+  code: "코드아이디",
+  codeName: "코드명",
+  active: "사용여부",
+  new: "신규",
+  save: "저장",
+  saving: "저장 중...",
+  dirty: "변경됨",
+  reservedCodeMessage: "코드 00은 코드유형 정보 저장용 예약값입니다.",
 };
-
-const GROUP_CODE_OPTIONS = [
-  "SOLUTION",
-  "DIFFICULTY",
-  "COMPLEXITY",
-  "POLICY",
-];
 
 const EMPTY_FORM = {
   group_code: "",
@@ -68,15 +57,35 @@ function normalizePayload(form) {
   };
 }
 
+function isFormDirty(form, initialForm) {
+  return [
+    "group_code",
+    "code",
+    "code_name",
+    "code_value",
+    "sort_order",
+    "is_active",
+    "description",
+  ].some((field) => form[field] !== initialForm[field]);
+}
+
 export default function CodebookForm({
   initialValue = null,
   isSaving = false,
   onSubmit,
-  onCancel,
+  onPrepareCreate,
+  groupCodeOptions = [],
+  reservedCode = "",
+  reservedCodeMessage = TEXT.reservedCodeMessage,
 }) {
   const [form, setForm] = useState(() => buildInitialFormValue(initialValue));
   const [errorMessage, setErrorMessage] = useState("");
   const isEditMode = Boolean(initialValue?.id);
+  const initialForm = useMemo(
+    () => buildInitialFormValue(initialValue),
+    [initialValue]
+  );
+  const isDirty = isFormDirty(form, initialForm);
 
   useEffect(() => {
     setForm(buildInitialFormValue(initialValue));
@@ -98,27 +107,38 @@ export default function CodebookForm({
       return;
     }
 
-    setErrorMessage("");
-    const result = await onSubmit?.(normalizePayload(form));
-
-    if (result === false) {
+    if (!isEditMode && reservedCode && form.code.trim() === reservedCode) {
+      setErrorMessage(reservedCodeMessage);
       return;
     }
+
+    setErrorMessage("");
+    await onSubmit?.(normalizePayload(form));
   };
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="min-w-0 rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
     >
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-2 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-extrabold text-slate-900">
-            {isEditMode ? TEXT.editTitle : TEXT.createTitle}
+          <h2 className="text-sm font-extrabold text-slate-900">
+            {TEXT.title}
           </h2>
-          <p className="mt-1 text-xs font-semibold text-slate-500">
-            {TEXT.description}
-          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-700">
+            선택 코드유형: {form.group_code || "-"}
+          </span>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">
+            {isEditMode ? TEXT.modeEdit : TEXT.modeCreate}
+          </span>
+          {isDirty && (
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-700">
+              {TEXT.dirty}
+            </span>
+          )}
         </div>
       </div>
 
@@ -128,26 +148,13 @@ export default function CodebookForm({
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <label className="block">
-          <span className="mb-1 block text-xs font-bold text-slate-600">
-            {TEXT.groupCode} *
-          </span>
-          <select
-            value={form.group_code}
-            onChange={(event) => updateField("group_code", event.target.value)}
-            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-            disabled={isSaving}
-          >
-            <option value="">{TEXT.select}</option>
-            {GROUP_CODE_OPTIONS.map((groupCode) => (
-              <option key={groupCode} value={groupCode}>
-                {groupCode}
-              </option>
-            ))}
-          </select>
-        </label>
+      <datalist id="codebook-group-code-options">
+        {groupCodeOptions.map((groupCode) => (
+          <option key={groupCode} value={groupCode} />
+        ))}
+      </datalist>
 
+      <div className="grid min-w-0 gap-2 md:grid-cols-[110px_minmax(0,1fr)_90px] md:items-end">
         <label className="block">
           <span className="mb-1 block text-xs font-bold text-slate-600">
             {TEXT.code} *
@@ -155,8 +162,8 @@ export default function CodebookForm({
           <input
             value={form.code}
             onChange={(event) => updateField("code", event.target.value)}
-            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-            disabled={isSaving}
+            className="h-8 w-full min-w-0 rounded-md border border-slate-200 px-2 text-xs font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            disabled={isSaving || isEditMode}
           />
         </label>
 
@@ -167,75 +174,42 @@ export default function CodebookForm({
           <input
             value={form.code_name}
             onChange={(event) => updateField("code_name", event.target.value)}
-            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            className="h-8 w-full min-w-0 rounded-md border border-slate-200 px-2 text-xs font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             disabled={isSaving}
           />
         </label>
 
         <label className="block">
           <span className="mb-1 block text-xs font-bold text-slate-600">
-            {TEXT.codeValue}
-          </span>
-          <input
-            value={form.code_value}
-            onChange={(event) => updateField("code_value", event.target.value)}
-            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-            disabled={isSaving}
-          />
-        </label>
-
-        <label className="block">
-          <span className="mb-1 block text-xs font-bold text-slate-600">
-            {TEXT.sortOrder}
-          </span>
-          <input
-            type="number"
-            value={form.sort_order}
-            onChange={(event) => updateField("sort_order", event.target.value)}
-            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-            disabled={isSaving}
-          />
-        </label>
-
-        <label className="flex items-center gap-2 pt-6">
-          <input
-            type="checkbox"
-            checked={form.is_active}
-            onChange={(event) => updateField("is_active", event.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-blue-600"
-            disabled={isSaving}
-          />
-          <span className="text-sm font-bold text-slate-700">
             {TEXT.active}
           </span>
-        </label>
-
-        <label className="block md:col-span-2 lg:col-span-3">
-          <span className="mb-1 block text-xs font-bold text-slate-600">
-            {TEXT.descriptionLabel}
-          </span>
-          <textarea
-            value={form.description}
-            onChange={(event) => updateField("description", event.target.value)}
-            className="min-h-[76px] w-full resize-y rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          <select
+            value={form.is_active ? "true" : "false"}
+            onChange={(event) =>
+              updateField("is_active", event.target.value === "true")
+            }
+            className="h-8 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             disabled={isSaving}
-          />
+          >
+            <option value="true">사용</option>
+            <option value="false">미사용</option>
+          </select>
         </label>
       </div>
 
-      <div className="mt-5 flex justify-end gap-2">
+      <div className="mt-3 flex justify-end gap-1.5 border-t border-slate-100 pt-2">
         <button
           type="button"
-          onClick={onCancel}
-          className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+          onClick={onPrepareCreate}
+          className="h-8 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
           disabled={isSaving}
         >
-          {TEXT.cancel}
+          {TEXT.new}
         </button>
         <button
           type="submit"
-          className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
-          disabled={isSaving}
+          className="h-8 rounded-md bg-blue-600 px-3 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+          disabled={isSaving || !isDirty}
         >
           {isSaving ? TEXT.saving : TEXT.save}
         </button>

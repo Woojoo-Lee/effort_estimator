@@ -2,6 +2,7 @@ const AUTH_ENDPOINTS = {
   LOGIN: "/api/auth/login",
   SESSION: "/api/auth/session",
   LOGOUT: "/api/auth/logout",
+  CHANGE_PASSWORD: "/api/auth/change-password",
 };
 
 function getFetchImpl(fetchImpl = globalThis.fetch) {
@@ -139,6 +140,25 @@ export async function signOut(fetchImpl) {
   };
 }
 
+export async function changePassword(
+  { currentPassword, newPassword, newPasswordConfirm },
+  fetchImpl
+) {
+  const payload = await requestAuth(AUTH_ENDPOINTS.CHANGE_PASSWORD, {
+    method: "POST",
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+      new_password_confirm: newPasswordConfirm,
+    }),
+  }, fetchImpl);
+
+  return {
+    data: payload?.data || null,
+    error: null,
+  };
+}
+
 export function onAuthStateChange() {
   return () => {};
 }
@@ -149,5 +169,6 @@ export const authSessionRepository = {
   signIn,
   signInWithPassword,
   signOut,
+  changePassword,
   onAuthStateChange,
 };

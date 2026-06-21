@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import EstimatorPage from "../src/features/estimator/pages/EstimatorPage";
@@ -54,10 +54,18 @@ vi.mock("../src/features/projects/components/VersionHistoryModal", () => ({
 }));
 
 vi.mock("../src/features/estimator/components/standard", () => ({
-  StandardEffortSection: ({ projectId, readOnly, actualEffortReadOnly }) => (
+  StandardEffortSection: ({
+    projectId,
+    readOnly,
+    solutionSelectionReadOnly,
+    itemSelectionReadOnly,
+    actualEffortReadOnly,
+  }) => (
     <div
       data-testid="standard-effort-section"
       data-readonly={String(readOnly)}
+      data-solution-readonly={String(solutionSelectionReadOnly)}
+      data-item-readonly={String(itemSelectionReadOnly)}
       data-actual-readonly={String(actualEffortReadOnly)}
     >
       {projectId}
@@ -73,8 +81,8 @@ function createPageModel(projectId = 42, activeTab = "summary", overrides = {}) 
     isVersionsBusy: false,
     handleRestoreVersion: vi.fn(),
     projectMeta: {},
-    status: {},
-    actions: {},
+    status: { actionPermissions: {} },
+    actions: { downloadExcel: vi.fn() },
     estimatorView: {
       activeTab,
       setActiveTab: vi.fn(),
@@ -97,7 +105,10 @@ function createPageModel(projectId = 42, activeTab = "summary", overrides = {}) 
       },
       baseEffortMetaRows: [],
       itemFieldMetaRows: [],
-      standardEffort: {},
+      standardEffort: {
+        lastChange: null,
+        lastChangeLoading: false,
+      },
       standardEffortActions: {},
     },
     projectSelector: {
@@ -108,6 +119,8 @@ function createPageModel(projectId = 42, activeTab = "summary", overrides = {}) 
       dbReady: true,
       isBusy: false,
     },
+    currentProject: null,
+    isCurrentProjectArchived: false,
     ...overrides,
   };
 }
@@ -126,6 +139,7 @@ describe("EstimatorPage standard effort feature flag", () => {
 
     render(<EstimatorPage />);
 
+    expect(screen.getByTestId("header-bar")).toBeTruthy();
     expect(screen.getByTestId("standard-effort-section").textContent).toBe(
       "42"
     );
@@ -143,7 +157,6 @@ describe("EstimatorPage standard effort feature flag", () => {
     render(<EstimatorPage />);
 
     expect(screen.queryByTestId("standard-effort-section")).toBeNull();
-    expect(screen.getByTestId("solution-tabs")).toBeTruthy();
     expect(screen.getByTestId("summary-view")).toBeTruthy();
     expect(screen.getByTestId("right-sidebar")).toBeTruthy();
   });
@@ -157,14 +170,11 @@ describe("EstimatorPage standard effort feature flag", () => {
     render(<EstimatorPage />);
 
     expect(screen.queryByTestId("standard-effort-section")).toBeNull();
-    expect(
-      screen.queryByText("현재 화면은 엑셀 표준공수표 기준의 신규 산정 방식입니다.")
-    ).toBeNull();
     expect(screen.getByTestId("summary-view")).toBeTruthy();
     expect(screen.getByTestId("right-sidebar")).toBeTruthy();
   });
 
-  it("renders standard effort as the primary section and keeps legacy collapsed in standard mode", () => {
+  it("renders standard effort as the primary section without the legacy comparison area in standard mode", () => {
     mockPage.value = createPageModel(42);
     vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "disabled");
     vi.stubEnv("VITE_FEATURE_STANDARD_EFFORT", "true");
@@ -175,41 +185,25 @@ describe("EstimatorPage standard effort feature flag", () => {
     render(<EstimatorPage />);
 
     const standardSection = screen.getByTestId("standard-effort-section");
-    const legacySummary = screen.getByText("기존 산출 화면");
 
+    expect(screen.queryByTestId("header-bar")).toBeNull();
+    expect(screen.getByText("공수 산정")).toBeTruthy();
     expect(
-      screen.getByText("현재 화면은 엑셀 표준공수표 기준의 신규 산정 방식입니다.")
-    ).toBeTruthy();
-    expect(
-      screen.getByText(
-        "기존 산출 화면은 아래 접기 영역에서 비교용으로 확인할 수 있습니다."
-      )
-    ).toBeTruthy();
-    expect(
-      screen.getByText(
-        "상단의 Excel 다운로드 버튼으로 표준공수 결과를 내보낼 수 있습니다."
-      )
-    ).toBeTruthy();
-    expect(
-      screen.queryByText("표준공수 결과 내보내기는 후속 단계에서 제공 예정입니다.")
+      screen.queryByText("현재 화면은 엑셀 표준공수표 기준의 신규 산정 방식입니다.")
     ).toBeNull();
     expect(standardSection.textContent).toBe("42");
-    expect(legacySummary).toBeTruthy();
-    expect(
-      standardSection.compareDocumentPosition(legacySummary) &
-        Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-    expect(
-      screen.getByText(
-        /신규 표준공수 산식 전환 전 비교용 화면입니다.*비교용으로 보존/
-      )
-    ).toBeTruthy();
-    expect(screen.getByTestId("solution-tabs")).toBeTruthy();
-    expect(screen.getByTestId("summary-view")).toBeTruthy();
+    expect(screen.queryByText("기존 산출 화면")).toBeNull();
+    expect(screen.queryByText(/비교용/)).toBeNull();
+    expect(screen.queryByText(/Contact Center Estimation Workspace/)).toBeNull();
+    expect(screen.queryByText(/Internal Planning Use/)).toBeNull();
+    expect(screen.queryByText(/unknown/)).toBeNull();
+    expect(screen.queryByText(/짧|짤|쨌/)).toBeNull();
+    expect(screen.queryByTestId("solution-tabs")).toBeNull();
+    expect(screen.queryByTestId("summary-view")).toBeNull();
     expect(screen.queryByTestId("right-sidebar")).toBeNull();
   });
 
-  it("shows available standard effort export guidance in standard mode with Supabase backend", () => {
+  it("uses the compact standard mode header with Supabase backend", () => {
     mockPage.value = createPageModel(42);
     vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "disabled");
     vi.stubEnv("VITE_FEATURE_STANDARD_EFFORT", "true");
@@ -218,13 +212,12 @@ describe("EstimatorPage standard effort feature flag", () => {
 
     render(<EstimatorPage />);
 
+    expect(screen.queryByTestId("header-bar")).toBeNull();
+    expect(screen.getByText("공수 산정")).toBeTruthy();
     expect(
-      screen.getByText(
+      screen.queryByText(
         "상단의 Excel 다운로드 버튼으로 표준공수 결과를 내보낼 수 있습니다."
       )
-    ).toBeTruthy();
-    expect(
-      screen.queryByText("표준공수 결과 내보내기는 후속 단계에서 제공 예정입니다.")
     ).toBeNull();
   });
 
@@ -293,9 +286,59 @@ describe("EstimatorPage standard effort feature flag", () => {
     expect(screen.getByTestId("standard-effort-section").dataset.readonly).toBe(
       "false"
     );
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.solutionReadonly
+    ).toBe("false");
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.itemReadonly
+    ).toBe("false");
   });
 
-  it("lets sales save standard effort selections while keeping actual effort read-only", async () => {
+  it("keeps sales standard effort selections read-only for another user's project", async () => {
+    const { AuthPermissionProvider, ROLES } = await import(
+      "../src/features/auth"
+    );
+    const page = createPageModel(42);
+    page.projectSelector.projects = [
+      {
+        id: 42,
+        project_name: "Other Project",
+        created_by: "other-user",
+      },
+    ];
+    mockPage.value = page;
+    vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "dev");
+    vi.stubEnv("VITE_FEATURE_STANDARD_EFFORT", "true");
+    vi.stubEnv("VITE_STANDARD_EFFORT_MODE", "standard");
+
+    render(
+      <AuthPermissionProvider
+        env={{
+          VITE_AUTH_PERMISSION_MODE: "dev",
+          VITE_DEV_AUTH_EMAIL: "sales01@example.test",
+          VITE_DEV_AUTH_ROLE_CODES: ROLES.SALES,
+        }}
+      >
+        <EstimatorPage />
+      </AuthPermissionProvider>
+    );
+
+    await screen.findByTestId("standard-effort-section");
+    expect(screen.getByTestId("standard-effort-section").dataset.readonly).toBe(
+      "true"
+    );
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.solutionReadonly
+    ).toBe("true");
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.itemReadonly
+    ).toBe("true");
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.actualReadonly
+    ).toBe("true");
+  });
+
+  it("lets admin edit standard effort selections for ownerless projects", async () => {
     const { AuthPermissionProvider, ROLES } = await import(
       "../src/features/auth"
     );
@@ -308,20 +351,27 @@ describe("EstimatorPage standard effort feature flag", () => {
       <AuthPermissionProvider
         env={{
           VITE_AUTH_PERMISSION_MODE: "dev",
-          VITE_DEV_AUTH_ROLE_CODES: ROLES.SALES,
+          VITE_DEV_AUTH_ROLE_CODES: ROLES.ADMIN,
         }}
       >
         <EstimatorPage />
       </AuthPermissionProvider>
     );
 
-    await screen.findByTestId("standard-effort-section");
-    expect(screen.getByTestId("standard-effort-section").dataset.readonly).toBe(
-      "false"
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("standard-effort-section").dataset.readonly
+      ).toBe("false")
     );
     expect(
+      screen.getByTestId("standard-effort-section").dataset.solutionReadonly
+    ).toBe("false");
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.itemReadonly
+    ).toBe("false");
+    expect(
       screen.getByTestId("standard-effort-section").dataset.actualReadonly
-    ).toBe("true");
+    ).toBe("false");
   });
 
   it("keeps viewer standard effort actions read-only", async () => {
@@ -348,6 +398,12 @@ describe("EstimatorPage standard effort feature flag", () => {
     expect(screen.getByTestId("standard-effort-section").dataset.readonly).toBe(
       "true"
     );
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.solutionReadonly
+    ).toBe("true");
+    expect(
+      screen.getByTestId("standard-effort-section").dataset.itemReadonly
+    ).toBe("true");
     expect(
       screen.getByTestId("standard-effort-section").dataset.actualReadonly
     ).toBe("true");
@@ -381,10 +437,6 @@ describe("EstimatorPage standard effort feature flag", () => {
 
     render(<EstimatorPage />);
 
-    expect(screen.getByText("보관된 프로젝트입니다.")).toBeTruthy();
-    expect(
-      screen.getByText("조회만 가능하며 수정/저장은 제한됩니다.")
-    ).toBeTruthy();
     expect(screen.getByTestId("standard-effort-section").dataset.readonly).toBe(
       "true"
     );
@@ -408,7 +460,6 @@ describe("EstimatorPage standard effort feature flag", () => {
 
     render(<EstimatorPage />);
 
-    expect(screen.getByText("보관된 프로젝트입니다.")).toBeTruthy();
     expect(screen.getByTestId("standard-effort-section").dataset.readonly).toBe(
       "true"
     );

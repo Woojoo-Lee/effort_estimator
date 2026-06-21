@@ -4,6 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 
 export const APP_SESSION_COOKIE = "effort_app_session";
 export const APP_LOGIN_USERS_TABLE = "app_login_users";
+export const DEFAULT_PASSWORD_MIN_LENGTH = 4;
+export const PASSWORD_MIN_LENGTH_FLOOR = 4;
+export const PASSWORD_MIN_LENGTH_CEILING = 128;
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
 const INVALID_CREDENTIALS_MESSAGE =
   "사용자 ID 또는 비밀번호를 확인하세요.";
@@ -134,6 +137,60 @@ export function verifyPasswordHash(password, passwordHash) {
     .toString("base64url");
 
   return safeEqual(actualHash, expectedHash);
+}
+
+export function getPasswordMinLength(env = process.env) {
+  const rawValue = env?.APP_AUTH_PASSWORD_MIN_LENGTH;
+  const parsedValue = Number(rawValue);
+
+  if (!rawValue || !Number.isFinite(parsedValue)) {
+    return DEFAULT_PASSWORD_MIN_LENGTH;
+  }
+
+  const integerValue = Math.trunc(parsedValue);
+
+  if (integerValue < PASSWORD_MIN_LENGTH_FLOOR) {
+    return PASSWORD_MIN_LENGTH_FLOOR;
+  }
+
+  if (integerValue > PASSWORD_MIN_LENGTH_CEILING) {
+    return PASSWORD_MIN_LENGTH_CEILING;
+  }
+
+  return integerValue;
+}
+
+export function validateNewPasswordPolicy(
+  { currentPassword, newPassword, newPasswordConfirm },
+  env = process.env
+) {
+  if (!currentPassword) {
+    return "current_password is required.";
+  }
+
+  if (!newPassword) {
+    return "new_password is required.";
+  }
+
+  const minLength = getPasswordMinLength(env);
+
+  if (newPassword.length < minLength) {
+    return `new_password must be at least ${minLength} characters.`;
+  }
+
+  if (!newPasswordConfirm) {
+    return "new_password_confirm is required.";
+  }
+
+  if (newPassword !== newPasswordConfirm) {
+    return "new_password_confirm does not match.";
+  }
+
+  if (newPassword === currentPassword) {
+    return "new_password must be different from current_password.";
+  }
+
+  return "";
 }
 
 export function sanitizeUser(row = {}) {

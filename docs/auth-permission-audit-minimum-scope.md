@@ -2,8 +2,8 @@
 
 ## 1. Purpose
 
-This document fixes the minimum login, permission, and audit actor scope needed
-to protect the end-of-June delivery schedule.
+This document fixes the minimum login, permission, and row history
+responsibility scope needed to protect the end-of-June delivery schedule.
 
 Internal framework replacement, serverless conversion, production SSO, and full
 Tomcat API cutover are separated into later development. The June target is a
@@ -21,7 +21,7 @@ Plan A is selected for the June delivery:
 - Treat internal PostgreSQL DB conversion as a smoke/stretch track.
 - Exclude user and permission management screens from the required June scope.
 - Use a small set of manually managed users.
-- Add minimum login, role permissions, and audit actor tracking.
+- Add minimum login, role permissions, and row-level responsibility tracking.
 
 ## 3. Role Model
 
@@ -81,16 +81,18 @@ UI policy:
 - Sales and viewer users see the actual effort value but the input is disabled
   or read-only.
 - Save handlers must not run for sales/viewer actual effort edits.
-- Admin actual effort updates write audit events with actor information.
+- Admin actual effort updates write row history with the session `user_id` when
+  available.
 
-Audit event:
+Row history policy:
 
-- `standard_effort.actual_effort.update`
-
-Required actor fields:
-
-- `actor_user_id`
-- `actor_email`
+- Admin `actual_effort_mm` saves update
+  `estimation_project_solution_selection.updated_by` and `updated_at` when a
+  session `user_id` is available.
+- `created_by` remains the first creator and must not be overwritten by update
+  saves.
+- Email, `login_id`, and `display_name` are not written to business table row
+  history columns.
 
 ## 6. Login Method
 
@@ -113,6 +115,7 @@ Server endpoints:
 - `POST /api/auth/login`
 - `GET /api/auth/session`
 - `POST /api/auth/logout`
+- `POST /api/auth/change-password`
 
 Server-only env:
 
@@ -157,6 +160,32 @@ Password hash policy:
 - Invalid user, inactive user, and password mismatch return the same generic
   login error.
 
+Phase 11-PW-0 password reset policy:
+
+- Email-based password recovery is not used.
+- Users request password reset from an admin operator.
+- Admin operators generate a new temporary password, create a PBKDF2 hash with
+  `scripts/generateAppUserPasswordHash.mjs`, and update
+  `app_login_users.password_hash` manually in Supabase SQL Editor.
+- Account locking is handled by setting `app_login_users.active=false`.
+- Real passwords, password hashes, session secrets, service-role keys, and
+  cookie values must not be recorded.
+- See [App Auth Password Reset Policy](./app-auth-password-reset-policy.md).
+
+Phase 13-B logged-in password change:
+
+- Logged-in users can change their own password from the global account area.
+- The endpoint verifies the current session cookie and current password before
+  updating `app_login_users.password_hash`.
+- The user enters current password, new password, and new password confirmation.
+- The June default new-password minimum length is `4` characters. It can be
+  strengthened with server-only `APP_AUTH_PASSWORD_MIN_LENGTH`.
+- A successful change clears the session cookie and returns the user to the
+  LoginPage with a re-login notice.
+- The response does not include plaintext passwords or `password_hash`.
+- This is not email/SMS password recovery and does not replace the
+  admin-manual reset procedure for forgotten passwords.
+
 Phase 11-BR-1-Gate local checks:
 
 - `VITE_AUTH_LOGIN_MODE=disabled` or an unset login mode must keep the existing
@@ -191,14 +220,16 @@ Phase 11-BR-2 preparation:
   only.
 - Keeps login E2E smoke as a Daily Release/runtime step after Vercel env and
   `app_login_users` rows are ready.
+- Release timing, hotfix exceptions, and Production gates follow
+  [Development And Release Policy](./development-release-policy.md).
 
 Phase 11-BR-3 smoke tracking:
 
 - [App Auth Login E2E Smoke Result](./app-auth-login-smoke-result.md) records
   the Supabase `app_login_users`, Vercel env, login UI, and role smoke
   checklist.
-- Current result is `BLOCKED` until the target environment has
-  `app_login_users` rows, server-only Vercel env values, and a Daily Release
+- Production Daily Release smoke remains pending until the target environment
+  has `app_login_users` rows, server-only Vercel env values, and a scheduled
   deployment.
 - Actual password values, password hashes, session secrets, and service-role
   keys remain excluded from source-controlled docs.
@@ -219,28 +250,47 @@ Phase 11-D-Fix-2 permission bridge:
   Standard Effort meta or edit `actual_effort_mm`.
 - `viewer` remains read-only.
 
-## 7. Audit Actor Policy
+Phase 11-D-Fix-3 Standard Effort write guard split:
 
-All save events should include actor identity where available.
+- Standard Effort solution selection, item selection, and `actual_effort_mm`
+  write guards are handled separately.
+- `sales` can trigger solution toggle and item checkbox saves while
+  `actual_effort_mm` remains read-only.
+- `viewer` cannot trigger solution, item, or actual effort writes.
+- `admin` keeps all Standard Effort write paths.
+- Permission-disabled mode preserves the previous unrestricted development
+  behavior.
 
-Target events:
+## 7. Row History Responsibility Policy
 
-- `project.create`
-- `project.update`
-- `standard_effort.solution.toggle`
-- `standard_effort.item.check`
-- `standard_effort.actual_effort.update`
-- `standard_effort_meta.base_effort.update`
-- `standard_effort_meta.coefficient.update`
-- `standard_effort_meta.active.update`
+Phase 11-E narrows the June responsibility tracking scope to business table
+row history only. Detailed event audit logging is explicitly out of scope for
+this phase.
+
+Target save paths:
+
+- Standard Effort solution selection saves.
+- Standard Effort item checkbox saves.
+- Standard Effort `actual_effort_mm` saves.
+- Standard Effort meta base effort saves.
+- Standard Effort meta coefficient saves.
+- Standard Effort meta active toggles.
 
 June policy:
 
-- Frontend/Supabase mode records actor metadata through existing non-blocking
-  audit paths.
-- Audit failure must not block business save success.
-- Actor-less legacy audit rows may remain in the database.
-- New rows should include actor identity after the minimum auth implementation.
+- Insert-only paths may set `created_by` and `updated_by` from the current
+  session `user_id`.
+- Update paths set `updated_by` and `updated_at` only.
+- Upsert paths do not write `created_by`, because conflict updates could
+  overwrite the first creator. Preserving `created_by` across upsert conflicts
+  remains a future DB/service refinement.
+- If no session `user_id` is available, row history fields are omitted and the
+  existing save behavior is preserved.
+- Email, `login_id`, and `display_name` are not written to row history.
+- `app_audit_logs`, `before_json`, `after_json`, and audit metadata actor
+  enrichment are not implemented in Phase 11-E.
+- Project table row history is deferred until `estimation_projects` history
+  columns are confirmed or added by a future migration.
 
 Post-June policy:
 
@@ -286,13 +336,82 @@ boundary; backend/API permission enforcement remains a later operating target.
 
 ### Phase 11-E
 
-- Add audit actor fields to save audit payloads.
-- Verify `actor_email` and `actor_user_id` in SQL smoke.
+- Add business table row history fields for Supabase-mode Standard Effort and
+  Standard Effort meta saves.
+- Verify `created_by`, `created_at`, `updated_by`, and `updated_at` semantics
+  where columns exist.
+- Keep detailed `app_audit_logs` event history out of scope.
+
+Status: implemented for Standard Effort and Standard Effort meta Supabase save
+paths.
+
+### Phase 11-E-R
+
+- Row history smoke documentation is in progress.
+- `actual_effort_mm` save is confirmed as `PASS` for `project_id=7` and WFM
+  `solution_variant_id=d3fd971f-505a-4829-b519-a379b40d034b`; SQL join
+  verification showed `updated_by_login_id=admin01`.
+- Solution toggle save is confirmed as `PASS`; manual SQL join verification
+  showed `updated_by_login_id=admin01`, and the toggled value was restored.
+  Exact row timestamp/id evidence was not captured.
+- Item checkbox save is confirmed as `PASS` for `project_id=7`, WFM
+  `solution_variant_id=d3fd971f-505a-4829-b519-a379b40d034b`, and
+  `item_id=ffcd0c35-4c8f-4040-9942-0ec1f7e9fb5c`; SQL join verification
+  showed `updated_by_login_id=sales01`,
+  `updated_by_display_name=영업대표`, `checked=true`, and
+  `updated_at=2026-06-14 08:18:00.148+00`. Restore status remains
+  `restore confirmation needed` unless separately confirmed.
+- Meta coefficient save/restore is confirmed as `PASS`; manual browser smoke
+  changed and saved a coefficient while logged in as `admin01`, SQL join
+  verification showed `updated_by_login_id=admin01`, and the value was
+  restored. Exact row timestamp/id evidence was not captured.
+- Meta base effort row history smoke remains `PENDING` until a real browser
+  save/restore action and SQL join confirm the expected updater.
+- Meta active toggle row history smoke is optional and remains `SKIP` unless a
+  safe restore check is performed.
+- `updated_by` remains a UUID `user_id`. Operator-readable checks should use a
+  join to `app_login_users` or a future read-only view; do not denormalize
+  `login_id` into business tables in this phase.
+- No password, password hash, session secret, service-role key, cookie value,
+  or detailed audit event payload is documented.
+
+Future improvement candidates:
+
+- Add read-only row history views such as
+  `v_standard_effort_solution_selection_history`.
+- Revisit whether a sequence/int user identifier is needed for operator
+  readability.
+- Consider a denormalized `updated_by_login_id` only after DB ownership and
+  reporting requirements are explicit.
+- Add or confirm project table `created_by` / `updated_by` columns in a future
+  migration before applying project row history.
 
 ### Phase 11-F
 
 - Run browser smoke for `admin`, `sales`, and `viewer`.
 - Update June sign-off/report documents.
+
+Status: documented in
+[Auth, Permission, Row History Sign-Off](./auth-permission-row-history-signoff.md).
+The June sign-off includes ID/password app login, role-based frontend UI
+permissions, minimum row history responsibility tracking, admin-manual password
+reset operation, and the feature-branch/main release policy.
+
+### Phase 11-PW-1
+
+Status: implemented in Phase 13-B.
+
+- Logged-in user password change.
+- Current password verification.
+- New password and confirm-new-password inputs.
+- `/api/auth/change-password`.
+- Server-side-only `password_hash` update.
+- Session clear and re-login after success.
+
+### Phase 11-PW-2
+
+- Add admin user/password management UI.
+- Support account creation, lock/unlock, password reset, and role changes.
 
 ### Separate Stretch Track: Phase 11-DB-0
 
@@ -327,7 +446,12 @@ boundary; backend/API permission enforcement remains a later operating target.
 The updated June completion criteria are:
 
 - Supabase-mode Standard Effort functionality complete.
-- Minimum login, role permission, and audit actor support included.
+- ID/password app login without email included.
+- `admin` / `sales` / `viewer` frontend UI permissions included.
+- Minimum row history responsibility support included.
+- Admin-manual password reset operation included.
+- Feature branch, scheduled release, hotfix, rollback, and secret handling
+  policy included.
 - Internal DB conversion excluded.
 - Tomcat API production cutover excluded.
 - Serverless conversion excluded.

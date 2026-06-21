@@ -6,8 +6,9 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../src/features/estimator/pages/EstimatorPage", () => ({
   default: () => <div>Estimator Screen</div>,
@@ -29,8 +30,11 @@ import AppRouter from "../src/app/AppRouter";
 import {
   AuthPermissionProvider,
   AuthSessionProvider,
+  useAuthSession,
 } from "../src/features/auth";
+import LoginForm from "../src/features/auth/components/LoginForm";
 import LoginPage from "../src/features/auth/pages/LoginPage";
+import MainLayout from "../src/features/layout/components/MainLayout";
 
 function createSession(loginId = "admin01", roleCode = "admin") {
   return {
@@ -54,8 +58,23 @@ function createRepository({ session = null } = {}) {
     }),
     signIn: vi.fn(),
     signOut: vi.fn().mockResolvedValue({ data: null, error: null }),
+    changePassword: vi.fn().mockResolvedValue({
+      data: { reauth_required: true },
+      error: null,
+    }),
     onAuthStateChange: vi.fn(() => ({})),
   };
+}
+
+function createDeferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, resolve, reject };
 }
 
 function renderWithProviders({
@@ -77,73 +96,150 @@ function renderWithProviders({
   };
 }
 
+function TestAuthenticatedShell({ route = "/estimator" }) {
+  const authSession = useAuthSession();
+
+  if (authSession.loading) {
+    return <div>Loading session</div>;
+  }
+
+  if (authSession.requireLogin && !authSession.isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return (
+    <MainLayout activeRoute={route}>
+      <AppRouter route={route} />
+    </MainLayout>
+  );
+}
+
+function renderAppShell({
+  route = "/estimator",
+  authEnv = { VITE_AUTH_LOGIN_MODE: "app" },
+  permissionEnv = { VITE_AUTH_PERMISSION_MODE: "disabled" },
+  repository = createRepository({
+    session: createSession("admin01", "admin"),
+  }),
+} = {}) {
+  return {
+    repository,
+    ...render(
+      <AuthSessionProvider env={authEnv} repository={repository}>
+        <AuthPermissionProvider env={permissionEnv}>
+          <TestAuthenticatedShell route={route} />
+        </AuthPermissionProvider>
+      </AuthSessionProvider>
+    ),
+  };
+}
+
+function getLoginIdInput() {
+  return document.querySelector('input[type="text"]');
+}
+
+function getPasswordInputs() {
+  return Array.from(document.querySelectorAll('input[type="password"]'));
+}
+
+function getSubmitButton() {
+  return document.querySelector('button[type="submit"]');
+}
+
+function submitCurrentForm() {
+  fireEvent.submit(document.querySelector("form"));
+}
+
+function fillLoginForm({ loginId = "sales01", password = "secret" } = {}) {
+  fireEvent.change(getLoginIdInput(), {
+    target: { value: loginId },
+  });
+  fireEvent.change(getPasswordInputs()[0], {
+    target: { value: password },
+  });
+}
+
+function getAccountBarButtons() {
+  const accountBar = screen.getByTestId("global-auth-user").parentElement;
+  return within(accountBar).getAllByRole("button");
+}
+
 describe("LoginPage", () => {
+  beforeEach(() => {
+    vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "disabled");
+  });
+
   afterEach(() => {
     cleanup();
+    vi.unstubAllEnvs();
     window.location.hash = "";
   });
 
   it("renders user ID and password inputs without email wording", () => {
     renderWithProviders({ children: <LoginPage /> });
 
-    expect(screen.getByLabelText("사용자 ID")).toBeTruthy();
-    expect(screen.queryByLabelText("Email")).toBeNull();
-    expect(screen.queryByText(/email/i)).toBeNull();
-    expect(screen.getByLabelText("Password")).toBeTruthy();
-    expect(screen.getByLabelText("Password").type).toBe("password");
+    expect(document.querySelector("h1")?.textContent).toContain(
+      "Effort Estimator"
+    );
+    expect(getLoginIdInput()).toBeTruthy();
+    expect(getPasswordInputs()).toHaveLength(1);
+    expect(getPasswordInputs()[0].type).toBe("password");
+    expect(document.body.textContent.toLowerCase()).not.toContain("email");
+    expect(screen.queryByTestId("global-auth-user")).toBeNull();
+    expect(document.querySelector("aside")).toBeNull();
   });
 
-  it("submits app login credentials and navigates to the default route", async () => {
-    const repository = createRepository();
-    repository.signIn.mockResolvedValue({
-      data: {
-        session: createSession("sales01", "sales"),
-      },
-      error: null,
-    });
+  it("submits app login credentials", async () => {
+    const onSubmit = vi.fn().mockResolvedValue({ data: null, error: null });
 
-    renderWithProviders({ repository, children: <LoginPage /> });
+    render(<LoginForm onSubmit={onSubmit} />);
 
-    const loginButton = await screen.findByRole("button", { name: "로그인" });
-
-    fireEvent.change(screen.getByLabelText("사용자 ID"), {
-      target: { value: "sales01" },
-    });
-    fireEvent.change(screen.getByLabelText("Password"), {
-      target: { value: "secret" },
-    });
-    fireEvent.click(loginButton);
+    fillLoginForm();
+    submitCurrentForm();
 
     await waitFor(() =>
-      expect(repository.signIn).toHaveBeenCalledWith({
+      expect(onSubmit).toHaveBeenCalledWith({
         loginId: "sales01",
         password: "secret",
       })
     );
-    await waitFor(() => expect(window.location.hash).toBe("#/estimator"));
   });
 
-  it("shows an app login error message on sign-in failure", async () => {
-    const repository = createRepository();
-    repository.signIn.mockRejectedValue(
-      new Error("사용자 ID 또는 비밀번호를 확인하세요.")
-    );
+  it("shows login progress and prevents duplicate submit while pending", async () => {
+    const deferred = createDeferred();
+    const onSubmit = vi.fn().mockReturnValue(deferred.promise);
 
-    renderWithProviders({ repository, children: <LoginPage /> });
+    render(<LoginForm onSubmit={onSubmit} />);
 
-    const loginButton = await screen.findByRole("button", { name: "로그인" });
+    fillLoginForm();
+    submitCurrentForm();
 
-    fireEvent.change(screen.getByLabelText("사용자 ID"), {
-      target: { value: "viewer01" },
-    });
-    fireEvent.change(screen.getByLabelText("Password"), {
-      target: { value: "wrong" },
-    });
-    fireEvent.click(loginButton);
+    expect(await screen.findByRole("status")).toBeTruthy();
+    expect(getSubmitButton().disabled).toBe(true);
+    expect(getSubmitButton().getAttribute("aria-busy")).toBe("true");
+    expect(getLoginIdInput().disabled).toBe(true);
+    expect(getPasswordInputs()[0].disabled).toBe(true);
 
-    expect(
-      await screen.findByText("사용자 ID 또는 비밀번호를 확인하세요.")
-    ).toBeTruthy();
+    submitCurrentForm();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+
+    deferred.resolve({ data: null, error: null });
+
+    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+  });
+
+  it("shows an app login error message and re-enables the button on sign-in failure", async () => {
+    const onSubmit = vi.fn().mockRejectedValue(new Error("invalid credentials"));
+
+    render(<LoginForm onSubmit={onSubmit} />);
+
+    fillLoginForm({ loginId: "viewer01", password: "wrong" });
+    submitCurrentForm();
+
+    expect(await screen.findByText("invalid credentials")).toBeTruthy();
+    expect(getSubmitButton().disabled).toBe(false);
+    expect(getLoginIdInput().disabled).toBe(false);
+    expect(getPasswordInputs()[0].disabled).toBe(false);
   });
 
   it("keeps the existing estimator route available when login mode is disabled", () => {
@@ -161,7 +257,7 @@ describe("LoginPage", () => {
       repository: createRepository({ session: null }),
     });
 
-    expect(await screen.findByText("Effort Estimator 로그인")).toBeTruthy();
+    expect(await screen.findByText(/Effort Estimator/)).toBeTruthy();
     expect(document.querySelector("aside")).toBeNull();
   });
 
@@ -174,6 +270,176 @@ describe("LoginPage", () => {
     });
 
     expect(await screen.findByText("Estimator Screen")).toBeTruthy();
+  });
+
+  it("shows the current app user and account buttons on authenticated estimator routes", async () => {
+    renderAppShell({
+      route: "/estimator",
+      repository: createRepository({
+        session: createSession("admin01", "admin"),
+      }),
+    });
+
+    expect(await screen.findByText("Estimator Screen")).toBeTruthy();
+    expect(screen.getByTestId("global-auth-user").textContent).toBe(
+      "Admin User"
+    );
+    expect(getAccountBarButtons()).toHaveLength(2);
+    expect(document.body.textContent.toLowerCase()).not.toContain("email");
+  });
+
+  it("falls back to login_id when display_name is missing", async () => {
+    const session = createSession("sales01", "sales");
+    session.user.display_name = "";
+
+    renderAppShell({
+      route: "/estimator",
+      repository: createRepository({ session }),
+    });
+
+    expect(await screen.findByText("Estimator Screen")).toBeTruthy();
+    expect(screen.getByTestId("global-auth-user").textContent).toBe("sales01");
+  });
+
+  it("shows account buttons on the standard effort meta route", async () => {
+    renderAppShell({
+      route: "/standard-effort-meta",
+      repository: createRepository({
+        session: createSession("admin01", "admin"),
+      }),
+    });
+
+    expect(await screen.findByText("Standard Effort Meta Screen")).toBeTruthy();
+    expect(getAccountBarButtons()).toHaveLength(2);
+  });
+
+  it("opens and closes the password change panel without email wording", async () => {
+    renderAppShell({
+      route: "/estimator",
+      repository: createRepository({
+        session: createSession("admin01", "admin"),
+      }),
+    });
+
+    await screen.findByText("Estimator Screen");
+    fireEvent.click(getAccountBarButtons()[0]);
+
+    expect(getPasswordInputs()).toHaveLength(3);
+    expect(document.body.textContent.toLowerCase()).not.toContain("email");
+
+    const panel = getPasswordInputs()[0].closest("form");
+    fireEvent.click(within(panel).getAllByRole("button")[0]);
+
+    await waitFor(() => expect(getPasswordInputs()).toHaveLength(0));
+  });
+
+  it("shows a local password confirmation error", async () => {
+    const repository = createRepository({
+      session: createSession("sales01", "sales"),
+    });
+
+    renderAppShell({
+      route: "/estimator",
+      repository,
+    });
+
+    await screen.findByText("Estimator Screen");
+    fireEvent.click(getAccountBarButtons()[0]);
+
+    const passwordInputs = getPasswordInputs();
+    fireEvent.change(passwordInputs[0], { target: { value: "current-secret" } });
+    fireEvent.change(passwordInputs[1], { target: { value: "new-secret-123" } });
+    fireEvent.change(passwordInputs[2], {
+      target: { value: "different-secret-123" },
+    });
+    fireEvent.click(getSubmitButton());
+
+    await waitFor(() => expect(repository.changePassword).not.toHaveBeenCalled());
+    expect(getPasswordInputs()).toHaveLength(3);
+  });
+
+  it("shows API password validation errors and keeps the panel open", async () => {
+    const repository = createRepository({
+      session: createSession("sales01", "sales"),
+    });
+    repository.changePassword.mockRejectedValue(
+      new Error("new_password must be at least 4 characters.")
+    );
+
+    renderAppShell({
+      route: "/estimator",
+      repository,
+    });
+
+    await screen.findByText("Estimator Screen");
+    fireEvent.click(getAccountBarButtons()[0]);
+
+    const passwordInputs = getPasswordInputs();
+    fireEvent.change(passwordInputs[0], { target: { value: "current-secret" } });
+    fireEvent.change(passwordInputs[1], { target: { value: "abc" } });
+    fireEvent.change(passwordInputs[2], { target: { value: "abc" } });
+    fireEvent.click(getSubmitButton());
+
+    expect(
+      await screen.findByText("new_password must be at least 4 characters.")
+    ).toBeTruthy();
+    expect(getPasswordInputs()).toHaveLength(3);
+    expect(screen.getByTestId("global-auth-user").textContent).toBe(
+      "Admin User"
+    );
+    expect(screen.queryByTestId("global-auth-user")).toBeTruthy();
+  });
+
+  it("changes password and returns to the full-screen login page", async () => {
+    const repository = createRepository({
+      session: createSession("viewer01", "viewer"),
+    });
+
+    renderAppShell({
+      route: "/estimator",
+      repository,
+    });
+
+    await screen.findByText("Estimator Screen");
+    fireEvent.click(getAccountBarButtons()[0]);
+
+    const passwordInputs = getPasswordInputs();
+    fireEvent.change(passwordInputs[0], { target: { value: "current-secret" } });
+    fireEvent.change(passwordInputs[1], { target: { value: "new-secret-123" } });
+    fireEvent.change(passwordInputs[2], {
+      target: { value: "new-secret-123" },
+    });
+    fireEvent.click(getSubmitButton());
+
+    await waitFor(() =>
+      expect(repository.changePassword).toHaveBeenCalledWith({
+        currentPassword: "current-secret",
+        newPassword: "new-secret-123",
+        newPasswordConfirm: "new-secret-123",
+      })
+    );
+    expect(await screen.findByText(/Effort Estimator/)).toBeTruthy();
+    expect(document.querySelector("aside")).toBeNull();
+    expect(screen.queryByTestId("global-auth-user")).toBeNull();
+  });
+
+  it("returns to the login page after logout", async () => {
+    const repository = createRepository({
+      session: createSession("admin01", "admin"),
+    });
+
+    renderAppShell({
+      route: "/estimator",
+      repository,
+    });
+
+    await screen.findByText("Estimator Screen");
+    fireEvent.click(getAccountBarButtons()[1]);
+
+    await waitFor(() => expect(repository.signOut).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText(/Effort Estimator/)).toBeTruthy();
+    expect(document.querySelector("aside")).toBeNull();
+    expect(screen.queryByTestId("global-auth-user")).toBeNull();
   });
 
   it("shows a disabled login notice outside app login mode", () => {

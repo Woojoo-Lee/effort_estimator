@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { useEstimatorStore } from "../store/useEstimatorStore";
+import { useAuthPermission } from "../features/auth";
 
 export function useHeaderModel(importExportActions, versionActions = {}) {
+  const { authz, user } = useAuthPermission();
   const projectId = useEstimatorStore((s) => s.projectId);
   const projectName = useEstimatorStore((s) => s.projectName);
   const savedAt = useEstimatorStore((s) => s.savedAt);
@@ -44,7 +46,8 @@ export function useHeaderModel(importExportActions, versionActions = {}) {
         createNewProject();
         showToast("새 프로젝트 작성 시작", "blue");
       },
-      handleSaveProject: () => handleSaveProject({ silent: false }),
+      handleSaveProject: () =>
+        handleSaveProject({ silent: false, currentUser: user || authz.user }),
       importJson: importExportActions.importJson,
       downloadJson: importExportActions.downloadJson,
       downloadExcel: importExportActions.downloadExcel,
@@ -61,6 +64,8 @@ export function useHeaderModel(importExportActions, versionActions = {}) {
       createNewProject,
       showToast,
       handleSaveProject,
+      user,
+      authz.user,
       importExportActions.importJson,
       importExportActions.downloadJson,
       importExportActions.downloadExcel,

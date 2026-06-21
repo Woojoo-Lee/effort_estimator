@@ -30,7 +30,8 @@ export default function ProjectForm({
     >
       <label className="min-w-0 flex-1">
         <span className="mb-1 block text-xs font-bold text-slate-500">
-          ?꾨줈?앺듃紐?        </span>
+          프로젝트명
+        </span>
         <SmallInput
           value={draftProjectName}
           onChange={(event) => setDraftProjectName(event.target.value)}

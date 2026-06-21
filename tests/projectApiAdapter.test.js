@@ -679,6 +679,42 @@ describe("projectApiAdapter", () => {
     );
   });
 
+  it("deleteProjectById can include updater metadata without hard delete", async () => {
+    const apiClient = {
+      put: vi.fn(() =>
+        Promise.resolve({
+          row: {
+            id: "00000042",
+            status: "archived",
+          },
+        })
+      ),
+    };
+    const adapter = createProjectApiAdapter({ apiClient });
+
+    const result = await adapter.deleteProjectById("00000042", {
+      currentUser: {
+        user_id: "admin-user",
+        login_id: "admin01",
+        display_name: "관리자",
+      },
+    });
+
+    expect(apiClient.put).toHaveBeenCalledWith("/projects/00000042/archive", {
+      body: {
+        project_id: "00000042",
+        updated_by: "admin-user",
+        updated_by_login_id: "admin01",
+        updated_by_display_name: "관리자",
+      },
+    });
+    expect(apiClient.put.mock.calls[0][1].body).not.toHaveProperty("password");
+    expect(apiClient.put.mock.calls[0][1].body).not.toHaveProperty(
+      "password_hash"
+    );
+    expect(result.data.status).toBe("archived");
+  });
+
   it.each([
     ["data.project", { project: { id: "42", status: "archived" } }],
     ["data.row", { row: { id: "42", status: "archived" } }],
@@ -862,6 +898,44 @@ describe("projectApiAdapter", () => {
     expect(apiClient.put.mock.calls[0][1].body).not.toHaveProperty(
       "actual_effort_mm"
     );
+  });
+
+  it("restoreProjectById can include updater metadata", async () => {
+    const apiClient = {
+      put: vi.fn(() =>
+        Promise.resolve({
+          row: {
+            id: "00000042",
+            status: "active",
+          },
+        })
+      ),
+    };
+    const adapter = createProjectApiAdapter({ apiClient });
+
+    const result = await adapter.restoreProjectById("00000042", {
+      restoreReason: "manual smoke",
+      currentUser: {
+        user_id: "admin-user",
+        login_id: "admin01",
+        display_name: "관리자",
+      },
+    });
+
+    expect(apiClient.put).toHaveBeenCalledWith("/projects/00000042/restore", {
+      body: {
+        project_id: "00000042",
+        updated_by: "admin-user",
+        updated_by_login_id: "admin01",
+        updated_by_display_name: "관리자",
+        restore_reason: "manual smoke",
+      },
+    });
+    expect(apiClient.put.mock.calls[0][1].body).not.toHaveProperty("password");
+    expect(apiClient.put.mock.calls[0][1].body).not.toHaveProperty(
+      "password_hash"
+    );
+    expect(result.data.status).toBe("active");
   });
 
   it.each([

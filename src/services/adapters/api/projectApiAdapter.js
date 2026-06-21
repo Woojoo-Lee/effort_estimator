@@ -461,10 +461,50 @@ function createProjectSaveBody({ projectId, projectName, payload }) {
   return body;
 }
 
+function createProjectActorMetadata(options = {}) {
+  const currentUser = options.currentUser || options.user || {};
+  const updatedBy =
+    currentUser.user_id ||
+    currentUser.userId ||
+    currentUser.id ||
+    currentUser.sub ||
+    options.updated_by ||
+    options.updatedBy ||
+    null;
+  const updatedByLoginId =
+    currentUser.login_id ||
+    currentUser.loginId ||
+    options.updated_by_login_id ||
+    options.updatedByLoginId ||
+    null;
+  const updatedByDisplayName =
+    currentUser.display_name ||
+    currentUser.displayName ||
+    options.updated_by_display_name ||
+    options.updatedByDisplayName ||
+    null;
+
+  return {
+    ...(updatedBy ? { updated_by: updatedBy } : {}),
+    ...(updatedByLoginId ? { updated_by_login_id: updatedByLoginId } : {}),
+    ...(updatedByDisplayName
+      ? { updated_by_display_name: updatedByDisplayName }
+      : {}),
+  };
+}
+
+function createProjectArchiveBody(projectId, options = {}) {
+  return {
+    project_id: projectId,
+    ...createProjectActorMetadata(options),
+  };
+}
+
 function createProjectRestoreBody(projectId, options = {}) {
   const restoreReason = options.restoreReason ?? options.restore_reason;
   const body = {
     project_id: projectId,
+    ...createProjectActorMetadata(options),
   };
 
   if (restoreReason !== undefined && restoreReason !== null && restoreReason !== "") {
@@ -590,13 +630,11 @@ export function createProjectApiAdapter(options = {}) {
         return normalizeProject(data);
       });
     },
-    deleteProjectById(projectId) {
+    deleteProjectById(projectId, options) {
       return toRepositoryResult(async () => {
         assertProjectId(projectId, "deleteProjectById");
         const data = await getClient().put(getProjectArchivePath(projectId), {
-          body: {
-            project_id: projectId,
-          },
+          body: createProjectArchiveBody(projectId, options),
         });
 
         return normalizeProject(data);
@@ -789,8 +827,8 @@ export async function saveProject(input) {
   return defaultAdapter.saveProject(input);
 }
 
-export async function deleteProjectById(projectId) {
-  return defaultAdapter.deleteProjectById(projectId);
+export async function deleteProjectById(projectId, options) {
+  return defaultAdapter.deleteProjectById(projectId, options);
 }
 
 export async function restoreProjectById(projectId, options) {

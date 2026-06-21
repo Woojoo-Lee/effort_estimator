@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const standardEffortRepositoryMock = vi.hoisted(() => ({
   fetchStandardEffortInput: vi.fn(),
+  fetchStandardEffortLastChange: vi.fn(),
   fetchStandardEffortMeta: vi.fn(),
   updateProjectActualEffort: vi.fn(),
   upsertProjectItemSelections: vi.fn(),
@@ -173,12 +174,22 @@ function resetStandardEffortState() {
     standardEffortLoading: false,
     standardEffortError: null,
     standardEffortLoadedProjectId: 42,
+    standardEffortLastChange: null,
+    standardEffortLastChangeLoading: false,
+    standardEffortLastChangeError: "",
   });
 }
 
 describe("standard effort store smoke behavior", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    standardEffortRepositoryMock.fetchStandardEffortLastChange.mockResolvedValue({
+      project_id: 42,
+      updated_at: "2026-06-14T08:18:00.000Z",
+      updated_by_login_id: "admin01",
+      updated_by_display_name: "관리자",
+      source: "project_solution_selection",
+    });
     resetStandardEffortState();
   });
 
@@ -302,6 +313,148 @@ describe("standard effort store smoke behavior", () => {
         actual_effort_mm: 99,
       },
     ]);
+  });
+
+  it("passes row history options to standard effort repository writes", async () => {
+    const options = { currentUser: { user_id: "user-1" } };
+    standardEffortRepositoryMock.upsertProjectSolutionSelections.mockResolvedValue(
+      [
+        {
+          project_id: 42,
+          solution_variant_id: "pbx",
+          enabled: false,
+          actual_effort_mm: 3,
+        },
+      ]
+    );
+    standardEffortRepositoryMock.upsertProjectItemSelections.mockResolvedValue([
+      {
+        project_id: 42,
+        solution_variant_id: "pbx",
+        item_id: "item-a",
+        checked: false,
+      },
+    ]);
+    standardEffortRepositoryMock.updateProjectActualEffort.mockResolvedValue({
+      project_id: 42,
+      solution_variant_id: "pbx",
+      enabled: true,
+      actual_effort_mm: 8,
+    });
+
+    await useEstimatorStore
+      .getState()
+      .saveStandardProjectSolutionSelections(
+        42,
+        [
+          {
+            solution_variant_id: "pbx",
+            enabled: false,
+            actual_effort_mm: 3,
+          },
+        ],
+        options
+      );
+    await useEstimatorStore.getState().saveStandardProjectItemSelections(
+      42,
+      [
+        {
+          solution_variant_id: "pbx",
+          item_id: "item-a",
+          checked: false,
+        },
+      ],
+      options
+    );
+    await useEstimatorStore
+      .getState()
+      .updateStandardActualEffort(42, "pbx", 8, options);
+
+    expect(
+      standardEffortRepositoryMock.upsertProjectSolutionSelections
+    ).toHaveBeenCalledWith(
+      42,
+      [
+        {
+          solution_variant_id: "pbx",
+          enabled: false,
+          actual_effort_mm: 3,
+        },
+      ],
+      undefined,
+      options
+    );
+    expect(
+      standardEffortRepositoryMock.upsertProjectItemSelections
+    ).toHaveBeenCalledWith(
+      42,
+      [
+        {
+          solution_variant_id: "pbx",
+          item_id: "item-a",
+          checked: false,
+        },
+      ],
+      undefined,
+      options
+    );
+    expect(
+      standardEffortRepositoryMock.updateProjectActualEffort
+    ).toHaveBeenCalledWith(42, "pbx", 8, undefined, options);
+  });
+
+  it("refreshes standard effort last-change after standard effort writes", async () => {
+    standardEffortRepositoryMock.upsertProjectSolutionSelections.mockResolvedValue(
+      [
+        {
+          project_id: 42,
+          solution_variant_id: "pbx",
+          enabled: false,
+          actual_effort_mm: 3,
+        },
+      ]
+    );
+    standardEffortRepositoryMock.upsertProjectItemSelections.mockResolvedValue([
+      {
+        project_id: 42,
+        solution_variant_id: "pbx",
+        item_id: "item-a",
+        checked: false,
+      },
+    ]);
+    standardEffortRepositoryMock.updateProjectActualEffort.mockResolvedValue({
+      project_id: 42,
+      solution_variant_id: "pbx",
+      enabled: true,
+      actual_effort_mm: 8,
+    });
+
+    await useEstimatorStore
+      .getState()
+      .saveStandardProjectSolutionSelections(42, [
+        {
+          solution_variant_id: "pbx",
+          enabled: false,
+          actual_effort_mm: 3,
+        },
+      ]);
+    await useEstimatorStore.getState().saveStandardProjectItemSelections(42, [
+      {
+        solution_variant_id: "pbx",
+        item_id: "item-a",
+        checked: false,
+      },
+    ]);
+    await useEstimatorStore
+      .getState()
+      .updateStandardActualEffort(42, "pbx", 8);
+
+    expect(
+      standardEffortRepositoryMock.fetchStandardEffortLastChange
+    ).toHaveBeenCalledTimes(3);
+    expect(
+      standardEffortRepositoryMock.fetchStandardEffortLastChange
+    ).toHaveBeenCalledWith(42);
   });
 
   it("refreshes standard effort even when loadedProjectId already matches", async () => {

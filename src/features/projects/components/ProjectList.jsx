@@ -1,6 +1,7 @@
 ﻿import React, { useState } from "react";
 
 import ActionButton from "../../../shared/ui/ActionButton";
+import { getProjectUpdatedByLabel } from "../lib/projectAccessPolicy";
 
 function formatDate(value) {
   if (!value) {
@@ -26,6 +27,10 @@ function isArchivedProject(project) {
   return project?.status === "archived" || Boolean(project?.archived_at);
 }
 
+function resolveActionValue(value, project) {
+  return typeof value === "function" ? value(project) : value;
+}
+
 export default function ProjectList({
   projects = [],
   currentProjectId,
@@ -37,8 +42,8 @@ export default function ProjectList({
   countLabel = "전체",
   emptyTitle = "프로젝트가 없습니다",
   emptyDescription = "프로젝트명을 입력하고 산정 프로젝트를 시작하세요.",
-  deleteActionLabel = "삭제",
-  deleteConfirmActionLabel = "정말 삭제",
+  deleteActionLabel = "보관",
+  deleteConfirmActionLabel = "보관 처리",
   disableSelectArchived = false,
   hideDeleteForArchived = false,
   restoreProject,
@@ -46,7 +51,7 @@ export default function ProjectList({
   restoreActionLabel = "복원",
   restoreConfirmActionLabel = "복원",
   canDeleteProject = true,
-  deleteDisabledReason = "프로젝트 삭제 권한이 없습니다.",
+  deleteDisabledReason = "프로젝트 보관 권한이 없습니다.",
   canRestoreArchivedProject = true,
   restoreDisabledReason = "프로젝트 복원 권한이 없습니다.",
 }) {
@@ -55,7 +60,7 @@ export default function ProjectList({
     useState(null);
 
   function handleDeleteClick(project) {
-    if (!canDeleteProject) {
+    if (!resolveActionValue(canDeleteProject, project)) {
       return;
     }
 
@@ -64,7 +69,7 @@ export default function ProjectList({
   }
 
   async function handleConfirmDelete(project) {
-    if (!canDeleteProject) {
+    if (!resolveActionValue(canDeleteProject, project)) {
       return;
     }
 
@@ -77,7 +82,7 @@ export default function ProjectList({
   }
 
   function handleRestoreClick(project) {
-    if (!restoreProject || !canRestoreArchivedProject) {
+    if (!restoreProject || !resolveActionValue(canRestoreArchivedProject, project)) {
       return;
     }
 
@@ -86,7 +91,7 @@ export default function ProjectList({
   }
 
   async function handleConfirmRestore(project) {
-    if (!restoreProject || !canRestoreArchivedProject) {
+    if (!restoreProject || !resolveActionValue(canRestoreArchivedProject, project)) {
       return;
     }
 
@@ -133,8 +138,9 @@ export default function ProjectList({
             <tr className="border-b border-slate-100">
               <th className="px-6 py-3">프로젝트명</th>
               <th className="px-4 py-3">수정일</th>
+              <th className="px-4 py-3">수정자</th>
               <th className="px-4 py-3">ID</th>
-              <th className="px-6 py-3 text-right">?묒뾽</th>
+              <th className="px-6 py-3 text-right">작업</th>
             </tr>
           </thead>
           <tbody>
@@ -152,16 +158,30 @@ export default function ProjectList({
               const selectDisabled =
                 disabled || (disableSelectArchived && isArchived);
               const showDelete = !(hideDeleteForArchived && isArchived);
-              const deleteDisabled = disabled || !canDeleteProject;
-              const deleteTitle = canDeleteProject
+              const canDeleteThisProject = Boolean(
+                resolveActionValue(canDeleteProject, project)
+              );
+              const resolvedDeleteDisabledReason = resolveActionValue(
+                deleteDisabledReason,
+                project
+              );
+              const deleteDisabled = disabled || !canDeleteThisProject;
+              const deleteTitle = canDeleteThisProject
                 ? undefined
-                : deleteDisabledReason;
+                : resolvedDeleteDisabledReason;
               const showRestore = Boolean(restoreProject) && isArchived;
+              const canRestoreThisProject = Boolean(
+                resolveActionValue(canRestoreArchivedProject, project)
+              );
+              const resolvedRestoreDisabledReason = resolveActionValue(
+                restoreDisabledReason,
+                project
+              );
               const restoreDisabled =
-                disabled || isRestoring || !canRestoreArchivedProject;
-              const restoreTitle = canRestoreArchivedProject
+                disabled || isRestoring || !canRestoreThisProject;
+              const restoreTitle = canRestoreThisProject
                 ? undefined
-                : restoreDisabledReason;
+                : resolvedRestoreDisabledReason;
 
               return (
                 <tr
@@ -199,6 +219,9 @@ export default function ProjectList({
                   </td>
                   <td className="px-4 py-4 font-semibold text-slate-600">
                     {formatDate(project.updated_at)}
+                  </td>
+                  <td className="max-w-[160px] truncate px-4 py-4 font-semibold text-slate-600">
+                    {getProjectUpdatedByLabel(project)}
                   </td>
                   <td className="max-w-[180px] truncate px-4 py-4 font-mono text-xs text-slate-400">
                     {project.id}
@@ -270,9 +293,9 @@ export default function ProjectList({
                             {isRestoring ? "복원 중..." : restoreActionLabel}
                           </ActionButton>
                         ))}
-                      {showRestore && !canRestoreArchivedProject ? (
+                      {showRestore && !canRestoreThisProject ? (
                         <span className="self-center text-xs font-bold text-slate-400">
-                          프로젝트 복원 권한이 없습니다.
+                          {resolvedRestoreDisabledReason}
                         </span>
                       ) : null}
                     </div>

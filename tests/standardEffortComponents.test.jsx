@@ -32,6 +32,7 @@ import {
   StandardEffortPanel,
   StandardEffortSection,
 } from "../src/features/estimator/components/standard";
+import ProjectSelectorBar from "../src/features/projects/components/ProjectSelectorBar";
 
 const solutionVariants = [
   {
@@ -148,6 +149,83 @@ beforeEach(() => {
   });
 });
 
+describe("ProjectSelectorBar compact standard effort header", () => {
+  it("shows compact project controls without the duplicated selected project card", () => {
+    render(
+      <ProjectSelectorBar
+        projects={[{ id: 42, project_name: "대표 보고 프로젝트" }]}
+        projectId={42}
+        loadProject={vi.fn()}
+        refreshProjects={vi.fn()}
+        dbReady={true}
+        isBusy={false}
+        downloadExcel={vi.fn()}
+        standardEffortLastChange={{
+          project_id: 42,
+          updated_at: "2026-06-14T08:18:00.000Z",
+          updated_by_login_id: "admin01",
+          updated_by_display_name: "관리자",
+          source: "project_solution_selection",
+        }}
+      />
+    );
+
+    expect(screen.getByLabelText("프로젝트 선택")).toBeTruthy();
+    expect(screen.queryByText("DB 프로젝트")).toBeNull();
+    expect(screen.queryByText("현재 선택 프로젝트")).toBeNull();
+    expect(screen.getByRole("button", { name: "새로고침" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Excel 다운로드" })).toBeTruthy();
+    expect(screen.getByText(/공수 산정 수정:/)).toBeTruthy();
+    expect(screen.getByText(/수정자: 관리자/)).toBeTruthy();
+  });
+
+  it("runs refresh and Excel actions from compact icon buttons", () => {
+    const refreshProjects = vi.fn();
+    const downloadExcel = vi.fn();
+
+    render(
+      <ProjectSelectorBar
+        projects={[{ id: 42, project_name: "대표 보고 프로젝트" }]}
+        projectId={42}
+        loadProject={vi.fn()}
+        refreshProjects={refreshProjects}
+        dbReady={true}
+        isBusy={false}
+        downloadExcel={downloadExcel}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "새로고침" }));
+    fireEvent.click(screen.getByRole("button", { name: "Excel 다운로드" }));
+
+    expect(refreshProjects).toHaveBeenCalledTimes(1);
+    expect(downloadExcel).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses login_id fallback without exposing raw updated_by UUID", () => {
+    render(
+      <ProjectSelectorBar
+        projects={[{ id: 42, project_name: "대표 보고 프로젝트" }]}
+        projectId={42}
+        loadProject={vi.fn()}
+        refreshProjects={vi.fn()}
+        dbReady={true}
+        isBusy={false}
+        standardEffortLastChange={{
+          project_id: 42,
+          updated_at: "2026-06-14T08:18:00.000Z",
+          updated_by: "raw-user-uuid",
+          updated_by_login_id: "sales01",
+          source: "project_item_solution_selection",
+        }}
+      />
+    );
+
+    expect(screen.getByText(/수정자: sales01/)).toBeTruthy();
+    expect(screen.queryByText(/raw-user-uuid/)).toBeNull();
+  });
+});
+
 describe("StandardEffortPanel", () => {
   it("keeps the solution selector visible when no solution is selected yet", () => {
     render(
@@ -212,6 +290,7 @@ describe("StandardEffortPanel", () => {
 
   it("keeps solution and item controls writable while actual effort is read-only", () => {
     const onToggleItem = vi.fn();
+    const onToggleSolution = vi.fn();
 
     render(
       <StandardEffortPanel
@@ -220,13 +299,18 @@ describe("StandardEffortPanel", () => {
         projectSolutionSelections={projectSolutionSelections}
         projectItemSelections={projectItemSelections}
         results={results}
+        onToggleSolution={onToggleSolution}
         onToggleItem={onToggleItem}
         readOnly={false}
         actualEffortReadOnly
       />
     );
 
-    expect(screen.getAllByRole("checkbox")[0].disabled).toBe(false);
+    const solutionCheckbox = screen.getAllByRole("checkbox")[0];
+
+    expect(solutionCheckbox.disabled).toBe(false);
+    fireEvent.click(solutionCheckbox);
+    expect(onToggleSolution).toHaveBeenCalledWith("pbx", false);
 
     const checkTable = screen.getByRole("region", {
       name: "표준공수 기능항목 선택",
@@ -238,6 +322,65 @@ describe("StandardEffortPanel", () => {
     expect(onToggleItem).toHaveBeenCalledWith("wfm", "item-c", true);
 
     expect(screen.getByLabelText("PBX 실투입공수").disabled).toBe(true);
+  });
+
+  it("can disable solution and item controls independently", () => {
+    const onToggleSolution = vi.fn();
+    const onToggleItem = vi.fn();
+
+    const { rerender } = render(
+      <StandardEffortPanel
+        solutionVariants={solutionVariants}
+        itemRows={itemRows}
+        projectSolutionSelections={projectSolutionSelections}
+        projectItemSelections={projectItemSelections}
+        results={results}
+        onToggleSolution={onToggleSolution}
+        onToggleItem={onToggleItem}
+        solutionSelectionReadOnly
+        itemSelectionReadOnly={false}
+        actualEffortReadOnly
+      />
+    );
+
+    const solutionCheckbox = screen.getAllByRole("checkbox")[0];
+    const checkTable = screen.getByRole("region", {
+      name: "표준공수 기능항목 선택",
+    });
+    const itemCheckbox = within(checkTable).getByLabelText("WFM 보안 선택");
+
+    expect(solutionCheckbox.disabled).toBe(true);
+    expect(itemCheckbox.disabled).toBe(false);
+
+    fireEvent.click(itemCheckbox);
+
+    expect(onToggleSolution).not.toHaveBeenCalled();
+    expect(onToggleItem).toHaveBeenCalledWith("wfm", "item-c", true);
+
+    rerender(
+      <StandardEffortPanel
+        solutionVariants={solutionVariants}
+        itemRows={itemRows}
+        projectSolutionSelections={projectSolutionSelections}
+        projectItemSelections={projectItemSelections}
+        results={results}
+        onToggleSolution={onToggleSolution}
+        onToggleItem={onToggleItem}
+        solutionSelectionReadOnly={false}
+        itemSelectionReadOnly
+        actualEffortReadOnly
+      />
+    );
+
+    const enabledSolutionCheckbox = screen.getAllByRole("checkbox")[0];
+    const disabledItemCheckbox = within(
+      screen.getByRole("region", {
+        name: "표준공수 기능항목 선택",
+      })
+    ).getByLabelText("WFM 보안 선택");
+
+    expect(enabledSolutionCheckbox.disabled).toBe(false);
+    expect(disabledItemCheckbox.disabled).toBe(true);
   });
 
   it("renders selected variant columns, group headers, summary totals, and calls immediate checkbox handlers", () => {
@@ -650,6 +793,9 @@ describe("StandardEffortSection", () => {
     render(
       <StandardEffortSection
         projectId={42}
+        auditActor={{
+          actorUserId: "user-solution",
+        }}
         standardEffort={{
           meta: {
             solutionVariants: solutionVariants.slice(0, 2),
@@ -678,7 +824,21 @@ describe("StandardEffortSection", () => {
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
 
     expect(await screen.findByText("저장 완료")).toBeTruthy();
-    expect(saveStandardProjectSolutionSelections).toHaveBeenCalled();
+    expect(saveStandardProjectSolutionSelections).toHaveBeenCalledWith(
+      42,
+      [
+        {
+          solution_variant_id: "pbx",
+          enabled: false,
+          actual_effort_mm: 4.5,
+        },
+      ],
+      {
+        currentUser: {
+          user_id: "user-solution",
+        },
+      }
+    );
     expect(auditMocks.createAuditLogSafe).not.toHaveBeenCalled();
   });
 
@@ -885,6 +1045,69 @@ describe("StandardEffortSection", () => {
     consoleError.mockRestore();
   });
 
+  it("keeps item checkbox save available when only actual effort is read-only", async () => {
+    const saveStandardProjectItemSelections = vi.fn().mockResolvedValue(true);
+    const updateStandardActualEffort = vi.fn().mockResolvedValue(true);
+
+    render(
+      <StandardEffortSection
+        projectId={42}
+        actualEffortReadOnly
+        standardEffort={{
+          meta: {
+            solutionVariants: solutionVariants.slice(0, 2),
+            itemRows: itemRows.slice(0, 1),
+          },
+          projectSolutionSelections: [
+            {
+              solution_variant_id: "pbx",
+              enabled: true,
+              actual_effort_mm: 4.5,
+            },
+          ],
+          projectItemSelections: [
+            {
+              solution_variant_id: "pbx",
+              item_id: "item-a",
+              checked: false,
+            },
+          ],
+          results: results.slice(0, 1),
+          loadedProjectId: 42,
+        }}
+        standardEffortActions={{
+          loadProjectStandardEffort: vi.fn(),
+          saveStandardProjectSolutionSelections: vi.fn(),
+          saveStandardProjectItemSelections,
+          updateStandardActualEffort,
+        }}
+      />
+    );
+
+    const itemCheckbox = screen.getByLabelText("PBX 업종 금융_증권 선택");
+    const actualInput = screen.getByLabelText("PBX 실투입공수");
+
+    expect(itemCheckbox.disabled).toBe(false);
+    expect(actualInput.disabled).toBe(true);
+
+    fireEvent.click(itemCheckbox);
+
+    await screen.findByText("저장 완료");
+    expect(saveStandardProjectItemSelections).toHaveBeenCalledWith(42, [
+      {
+        solution_variant_id: "pbx",
+        item_id: "item-a",
+        checked: true,
+      },
+    ]);
+
+    fireEvent.change(actualInput, {
+      target: { value: "9.25" },
+    });
+    fireEvent.blur(actualInput);
+    expect(updateStandardActualEffort).not.toHaveBeenCalled();
+  });
+
   it("records item check audit after a successful item toggle", async () => {
     const saveStandardProjectItemSelections = vi.fn().mockResolvedValue(true);
 
@@ -930,6 +1153,21 @@ describe("StandardEffortSection", () => {
     fireEvent.click(screen.getByLabelText("PBX 업종 금융_증권 선택"));
 
     await screen.findByText("저장 완료");
+    expect(saveStandardProjectItemSelections).toHaveBeenCalledWith(
+      42,
+      [
+        {
+          solution_variant_id: "pbx",
+          item_id: "item-a",
+          checked: true,
+        },
+      ],
+      {
+        currentUser: {
+          user_id: "user-1",
+        },
+      }
+    );
     expect(auditMocks.createAuditLogSafe).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: "standard_effort.item.check",
@@ -1127,6 +1365,9 @@ describe("StandardEffortSection", () => {
     render(
       <StandardEffortSection
         projectId={"42"}
+        auditActor={{
+          actorUserId: "user-2",
+        }}
         standardEffort={{
           meta: {
             solutionVariants: solutionVariants.slice(0, 2),
@@ -1172,7 +1413,12 @@ describe("StandardEffortSection", () => {
     expect(updateStandardActualEffort).toHaveBeenCalledWith(
       "42",
       "pbx",
-      "9.25"
+      "9.25",
+      {
+        currentUser: {
+          user_id: "user-2",
+        },
+      }
     );
     expect(auditMocks.createAuditLogSafe).toHaveBeenCalledWith(
       expect.objectContaining({

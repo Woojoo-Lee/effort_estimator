@@ -55,8 +55,8 @@ function ReadOnlyNotice({
 
   return (
     <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-      현재 계정은 표준공수 메타를 조회할 수 있지만 일부 수정 권한이
-      제한되어 있습니다.
+      현재 계정은 표준공수 메타를 조회할 수 있지만 일부 수정 권한은 제한되어
+      있습니다.
     </div>
   );
 }
@@ -109,8 +109,8 @@ function StandardEffortMetaContent({
               표준공수 메타 관리
             </h1>
             <p className="mt-2 text-sm font-semibold text-slate-500">
-              엑셀 표준공수표 기준의 솔루션 기본공수(M/M), 기능항목,
-              항목별 계수를 조회합니다.
+              표준공수 산출 기준이 되는 솔루션별 기본공수(M/M), 기능항목,
+              항목별 계수를 관리합니다.
             </p>
           </div>
 

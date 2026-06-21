@@ -7,6 +7,7 @@ import {
   toNumberOrZero,
 } from "../../../shared/lib/standardEffortMapper";
 import { calculateStandardEffort } from "../../../shared/lib/standardEffortMath";
+import { mergeUpdateHistoryFields } from "../../../features/auth/lib/rowHistoryActor";
 
 const TABLES = {
   solutions: "estimation_solution",
@@ -478,6 +479,10 @@ function readUpdatedRow(data, message) {
   return row;
 }
 
+function getHistoryActor(options = {}) {
+  return options.currentUser || options.actor || options.sessionUser || null;
+}
+
 export async function fetchStandardEffortMetaAdmin(client) {
   const db = getClient(client);
   const [
@@ -551,7 +556,8 @@ export async function fetchStandardEffortMetaAdmin(client) {
 export async function upsertStandardBaseEffortRows(
   solutionVariantId,
   phaseRows,
-  client
+  client,
+  options = {}
 ) {
   if (!solutionVariantId) {
     throw new Error("solutionVariantId가 필요합니다.");
@@ -561,9 +567,16 @@ export async function upsertStandardBaseEffortRows(
     throw new Error("phaseRows는 배열이어야 합니다.");
   }
 
-  const rows = phaseRows.map((row) =>
-    normalizeBaseEffortPayload(solutionVariantId, row)
-  );
+  const historyActor = getHistoryActor(options);
+  const rows = phaseRows.map((row) => {
+    const normalizedRow = normalizeBaseEffortPayload(solutionVariantId, row);
+
+    return mergeUpdateHistoryFields(
+      normalizedRow,
+      historyActor,
+      normalizedRow.updated_at
+    );
+  });
 
   if (rows.length === 0) {
     return [];
@@ -582,7 +595,8 @@ export async function upsertStandardBaseEffortRows(
 export async function upsertStandardCoefficientRows(
   itemId,
   coefficientRows,
-  client
+  client,
+  options = {}
 ) {
   if (!itemId) {
     throw new Error("itemId가 필요합니다.");
@@ -592,9 +606,16 @@ export async function upsertStandardCoefficientRows(
     throw new Error("coefficientRows는 배열이어야 합니다.");
   }
 
-  const rows = coefficientRows.map((row) =>
-    normalizeCoefficientPayload(itemId, row)
-  );
+  const historyActor = getHistoryActor(options);
+  const rows = coefficientRows.map((row) => {
+    const normalizedRow = normalizeCoefficientPayload(itemId, row);
+
+    return mergeUpdateHistoryFields(
+      normalizedRow,
+      historyActor,
+      normalizedRow.updated_at
+    );
+  });
 
   if (rows.length === 0) {
     return [];
@@ -613,7 +634,8 @@ export async function upsertStandardCoefficientRows(
 export async function updateStandardSolutionVariantActive(
   solutionVariantId,
   active,
-  client
+  client,
+  options = {}
 ) {
   if (!solutionVariantId) {
     throw new Error("solutionVariantId가 필요합니다.");
@@ -621,10 +643,15 @@ export async function updateStandardSolutionVariantActive(
 
   assertBooleanActive(active);
 
-  const payload = {
-    active,
-    updated_at: new Date().toISOString(),
-  };
+  const updatedAt = new Date().toISOString();
+  const payload = mergeUpdateHistoryFields(
+    {
+      active,
+      updated_at: updatedAt,
+    },
+    getHistoryActor(options),
+    updatedAt
+  );
   const { data, error } = await getClient(client)
     .from(TABLES.solutionVariants)
     .update(payload)
@@ -638,17 +665,27 @@ export async function updateStandardSolutionVariantActive(
   );
 }
 
-export async function updateStandardItemActive(itemId, active, client) {
+export async function updateStandardItemActive(
+  itemId,
+  active,
+  client,
+  options = {}
+) {
   if (!itemId) {
     throw new Error("itemId가 필요합니다.");
   }
 
   assertBooleanActive(active);
 
-  const payload = {
-    active,
-    updated_at: new Date().toISOString(),
-  };
+  const updatedAt = new Date().toISOString();
+  const payload = mergeUpdateHistoryFields(
+    {
+      active,
+      updated_at: updatedAt,
+    },
+    getHistoryActor(options),
+    updatedAt
+  );
   const { data, error } = await getClient(client)
     .from(TABLES.items)
     .update(payload)

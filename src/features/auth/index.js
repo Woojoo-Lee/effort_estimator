@@ -33,6 +33,7 @@ export {
 } from "./services/authPermissionRepository";
 export {
   authSessionRepository,
+  changePassword,
   getAuthSession,
   getCurrentAuthUser,
   onAuthStateChange,
@@ -40,6 +41,11 @@ export {
   signInWithPassword,
   signOut,
 } from "./services/authSessionRepository";
+export {
+  authUserAdminRepository,
+  fetchAuthUsers,
+  updateAuthUser,
+} from "./services/authUserAdminRepository";
 export { useAuthPermissionState } from "./hooks/useAuthPermissionState";
 export { useAuthSession } from "./hooks/useAuthSession";
 export {
@@ -52,10 +58,19 @@ export {
   createAuthSessionFallback,
 } from "./context/AuthSessionProvider";
 export { default as LoginForm } from "./components/LoginForm";
+export { default as UserManagementTable } from "./components/UserManagementTable";
 export { default as LoginPage } from "./pages/LoginPage";
+export { default as UserManagementPage } from "./pages/UserManagementPage";
 export {
   canAccessRoute,
   filterRoutesByAuthz,
   getRouteDeniedReason,
   isAuthPermissionEnabled,
 } from "./lib/routeAuthz";
+export {
+  buildCreateHistoryFields,
+  buildRowHistoryActor,
+  buildUpdateHistoryFields,
+  mergeCreateHistoryFields,
+  mergeUpdateHistoryFields,
+} from "./lib/rowHistoryActor";

@@ -26,15 +26,149 @@ export function toPayload({
   };
 }
 
-export async function fetchProjects() {
+function getCurrentUserId(currentUser = {}) {
+  return (
+    currentUser.user_id ||
+    currentUser.userId ||
+    currentUser.id ||
+    currentUser.sub ||
+    null
+  );
+}
+
+function getCurrentUserLoginId(currentUser = {}) {
+  return currentUser.login_id || currentUser.loginId || null;
+}
+
+function getCurrentUserDisplayName(currentUser = {}) {
+  return currentUser.display_name || currentUser.displayName || null;
+}
+
+function mergeUpdatedByMetadata(payload = {}, options = {}) {
+  const currentUser = options.currentUser || options.user || {};
+  const currentUserId = getCurrentUserId(currentUser);
+  const loginId = getCurrentUserLoginId(currentUser);
+  const displayName = getCurrentUserDisplayName(currentUser);
+
+  return {
+    ...payload,
+    ...(currentUserId ? { updated_by: currentUserId } : {}),
+    ...(loginId ? { updated_by_login_id: loginId } : {}),
+    ...(displayName ? { updated_by_display_name: displayName } : {}),
+  };
+}
+
+function getProjectLifecycleStatus(project = {}) {
+  const payload =
+    project.payload && typeof project.payload === "object"
+      ? project.payload
+      : {};
+  const status = project.status || payload.status;
+  const archivedAt = project.archived_at || payload.archived_at;
+
+  if (status === "archived" || archivedAt) {
+    return "archived";
+  }
+
+  return "active";
+}
+
+function normalizeProjectLifecycle(project = {}) {
+  const payload =
+    project.payload && typeof project.payload === "object"
+      ? project.payload
+      : {};
+  const status = getProjectLifecycleStatus(project);
+
+  return {
+    ...project,
+    status,
+    archived_at: project.archived_at ?? payload.archived_at ?? null,
+    archived_by: project.archived_by ?? payload.archived_by ?? null,
+    archive_reason: project.archive_reason ?? payload.archive_reason ?? null,
+  };
+}
+
+function filterProjectsByStatus(projects = [], options = {}) {
+  const normalizedProjects = projects.map(normalizeProjectLifecycle);
+
+  if (options.includeArchived === true) {
+    return normalizedProjects;
+  }
+
+  const status = options.status || "active";
+
+  if (status === "archived" || status === "active") {
+    return normalizedProjects.filter(
+      (project) => getProjectLifecycleStatus(project) === status
+    );
+  }
+
+  return normalizedProjects;
+}
+
+function createArchivePayload(project = {}, options = {}) {
+  const payload =
+    project.payload && typeof project.payload === "object"
+      ? project.payload
+      : {};
+  const archivedAt = new Date().toISOString();
+  const archivedBy = getCurrentUserId(options.currentUser || options.user);
+
+  return mergeUpdatedByMetadata({
+    ...payload,
+    status: "archived",
+    archived_at: archivedAt,
+    archived_by: archivedBy,
+    archive_reason: options.archiveReason || options.archive_reason || null,
+  }, options);
+}
+
+function createRestorePayload(project = {}, options = {}) {
+  const payload =
+    project.payload && typeof project.payload === "object"
+      ? project.payload
+      : {};
+  const restoredBy = getCurrentUserId(options.currentUser || options.user);
+
+  return mergeUpdatedByMetadata({
+    ...payload,
+    status: "active",
+    archived_at: null,
+    archived_by: null,
+    archive_reason: null,
+    restored_at: new Date().toISOString(),
+    restored_by: restoredBy,
+  }, options);
+}
+
+async function updateProjectPayload(projectId, payload) {
+  return await supabase
+    .from(TABLE_NAME)
+    .update({ payload })
+    .eq("id", projectId)
+    .select("id, project_name, payload, updated_at")
+    .single();
+}
+
+export async function fetchProjects(options = {}) {
   if (!supabase) {
     return { data: null, error: new Error("Supabase client not initialized.") };
   }
 
-  return await supabase
+  const { data, error } = await supabase
     .from(TABLE_NAME)
-    .select("id, project_name, updated_at")
+    .select("id, project_name, payload, updated_at")
     .order("updated_at", { ascending: false });
+
+  if (error) {
+    return { data, error };
+  }
+
+  return {
+    data: filterProjectsByStatus(data || [], options),
+    error: null,
+  };
 }
 
 export async function fetchProjectById(id) {
@@ -42,11 +176,16 @@ export async function fetchProjectById(id) {
     return { data: null, error: new Error("Supabase client not initialized.") };
   }
 
-  return await supabase
+  const { data, error } = await supabase
     .from(TABLE_NAME)
     .select("id, project_name, payload, updated_at")
     .eq("id", id)
     .single();
+
+  return {
+    data: data ? normalizeProjectLifecycle(data) : data,
+    error,
+  };
 }
 
 export async function saveProject({ projectId, projectName, payload }) {
@@ -60,35 +199,72 @@ export async function saveProject({ projectId, projectName, payload }) {
   };
 
   if (projectId) {
-    return await supabase
+    const { data, error } = await supabase
       .from(TABLE_NAME)
       .update(rowData)
       .eq("id", projectId)
-      .select("id, updated_at")
+      .select("id, project_name, payload, updated_at")
       .single();
+
+    return {
+      data: data ? normalizeProjectLifecycle(data) : data,
+      error,
+    };
   }
 
-  return await supabase
+  const { data, error } = await supabase
     .from(TABLE_NAME)
     .insert(rowData)
-    .select("id, updated_at")
+    .select("id, project_name, payload, updated_at")
     .single();
+
+  return {
+    data: data ? normalizeProjectLifecycle(data) : data,
+    error,
+  };
 }
 
-export async function deleteProjectById(projectId) {
+export async function deleteProjectById(projectId, options = {}) {
   if (!supabase) {
     return { data: null, error: new Error("Supabase client not initialized.") };
   }
 
-  return await supabase.from(TABLE_NAME).delete().eq("id", projectId);
+  const { data: project, error: fetchError } = await fetchProjectById(projectId);
+
+  if (fetchError) {
+    return { data: null, error: fetchError };
+  }
+
+  const { data, error } = await updateProjectPayload(
+    projectId,
+    createArchivePayload(project, options)
+  );
+
+  return {
+    data: data ? normalizeProjectLifecycle(data) : data,
+    error,
+  };
 }
 
-export async function restoreProjectById() {
+export async function restoreProjectById(projectId, options = {}) {
+  if (!supabase) {
+    return { data: null, error: new Error("Supabase client not initialized.") };
+  }
+
+  const { data: project, error: fetchError } = await fetchProjectById(projectId);
+
+  if (fetchError) {
+    return { data: null, error: fetchError };
+  }
+
+  const { data, error } = await updateProjectPayload(
+    projectId,
+    createRestorePayload(project, options)
+  );
+
   return {
-    data: null,
-    error: new Error(
-      "project Supabase adapter method restoreProjectById is not supported. Archive/restore is API backend only."
-    ),
+    data: data ? normalizeProjectLifecycle(data) : data,
+    error,
   };
 }
 

@@ -10,9 +10,9 @@ import { StandardEffortSection } from "../components/standard";
 import VersionHistoryModal from "../../projects/components/VersionHistoryModal";
 
 import { useAutoSave } from "../../../hooks/useAutoSave";
-import { getAppVersion } from "../../../shared/lib/appVersion";
 import { useAppPageModel } from "../../../app/useAppPageModel";
 import { PERMISSIONS, isAuthPermissionEnabled, useAuthPermission } from "../../auth";
+import { canManageProject } from "../../projects/lib/projectAccessPolicy";
 import { resolveStandardEffortMode } from "../lib/standardEffortMode";
 
 function isArchivedProject(project) {
@@ -116,9 +116,40 @@ function ArchivedProjectNotice() {
   );
 }
 
+function ProjectSelectionNotice() {
+  return (
+    <div className="mt-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm">
+      <p className="font-extrabold">프로젝트를 선택해 주세요.</p>
+      <p className="mt-1 font-semibold text-slate-500">
+        공수 산정 화면에서는 기존 프로젝트 선택과 표준공수 저장만 수행합니다.
+        신규 프로젝트 생성과 기본 정보 수정은 프로젝트 관리 화면에서 진행해
+        주세요.
+      </p>
+    </div>
+  );
+}
+
+function EstimatorTitleBar() {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <h1 className="text-xl font-bold text-slate-800">공수 산정</h1>
+    </div>
+  );
+}
+
+function CompactProjectSelectionNotice() {
+  return (
+    <div className="mt-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold text-slate-700 shadow-sm">
+      프로젝트를 선택해 주세요.
+    </div>
+  );
+}
+
 function StandardEffortBlock({
   page,
   readOnly = false,
+  solutionSelectionReadOnly = readOnly,
+  itemSelectionReadOnly = readOnly,
   actualEffortReadOnly = readOnly,
   auditActor,
 }) {
@@ -128,6 +159,8 @@ function StandardEffortBlock({
       standardEffort={page.estimatorView.standardEffort}
       standardEffortActions={page.estimatorView.standardEffortActions}
       readOnly={readOnly}
+      solutionSelectionReadOnly={solutionSelectionReadOnly}
+      itemSelectionReadOnly={itemSelectionReadOnly}
       actualEffortReadOnly={actualEffortReadOnly}
       auditActor={auditActor}
     />
@@ -135,17 +168,34 @@ function StandardEffortBlock({
 }
 
 export default function EstimatorPage() {
-  const appVersion = getAppVersion();
   const page = useAppPageModel();
   const { authz, user, devOnly } = useAuthPermission();
   const standardEffortMode = resolveStandardEffortMode(import.meta.env);
-  const isStandardExportAvailable =
-    standardEffortMode.isStandardMode;
+  const projectLifecycleEnabled = !standardEffortMode.isStandardMode;
   const isAuthzEnabled = isAuthPermissionEnabled(import.meta.env);
-  const canWriteStandardEffortSelection =
+  const currentProject =
+    page.currentProject ||
+    page.projectSelector.projects.find(
+      (project) => String(project.id) === String(page.projectSelector.projectId || "")
+    ) ||
+    null;
+  const currentActor = user || authz.user || null;
+  const canManageCurrentProject =
+    !isAuthzEnabled ||
+    !page.projectSelector.projectId ||
+    canManageProject(currentProject || {}, {
+      authz,
+      user: currentActor,
+    });
+  const canWriteSolutionSelection =
     !isAuthzEnabled ||
     authz.hasAnyPermission([
       PERMISSIONS.STANDARD_EFFORT_SOLUTION_WRITE,
+      PERMISSIONS.STANDARD_EFFORT_SELECTION_WRITE,
+    ]);
+  const canWriteItemSelection =
+    !isAuthzEnabled ||
+    authz.hasAnyPermission([
       PERMISSIONS.STANDARD_EFFORT_ITEM_WRITE,
       PERMISSIONS.STANDARD_EFFORT_SELECTION_WRITE,
     ]);
@@ -160,40 +210,53 @@ export default function EstimatorPage() {
       PERMISSIONS.PROJECT_WRITE_ALL,
     ]);
   const standardEffortReadOnly =
-    isAuthzEnabled && !canWriteStandardEffortSelection;
-  const actualEffortReadOnly = isAuthzEnabled && !canWriteActualEffort;
-  const legacyEstimatorReadOnly = isAuthzEnabled && !canWriteProject;
-  const currentProject =
-    page.currentProject ||
-    page.projectSelector.projects.find(
-      (project) => String(project.id) === String(page.projectSelector.projectId || "")
-    ) ||
-    null;
+    isAuthzEnabled &&
+    ((!canWriteSolutionSelection && !canWriteItemSelection) ||
+      !canManageCurrentProject);
+  const solutionSelectionReadOnly =
+    isAuthzEnabled && (!canWriteSolutionSelection || !canManageCurrentProject);
+  const itemSelectionReadOnly =
+    isAuthzEnabled && (!canWriteItemSelection || !canManageCurrentProject);
+  const actualEffortReadOnly =
+    isAuthzEnabled && (!canWriteActualEffort || !canManageCurrentProject);
+  const legacyEstimatorReadOnly =
+    isAuthzEnabled && (!canWriteProject || !canManageCurrentProject);
   const isArchivedCurrentProject =
     page.isCurrentProjectArchived || isArchivedProject(currentProject);
   const standardEffortEffectiveReadOnly =
     standardEffortReadOnly || isArchivedCurrentProject;
+  const solutionSelectionEffectiveReadOnly =
+    solutionSelectionReadOnly || isArchivedCurrentProject;
+  const itemSelectionEffectiveReadOnly =
+    itemSelectionReadOnly || isArchivedCurrentProject;
   const actualEffortEffectiveReadOnly =
     actualEffortReadOnly || isArchivedCurrentProject;
   const legacyEstimatorEffectiveReadOnly =
-    legacyEstimatorReadOnly || isArchivedCurrentProject;
+    legacyEstimatorReadOnly ||
+    isArchivedCurrentProject ||
+    standardEffortMode.isStandardMode;
   const auditActor = {
     actorUserId: user?.user_id || authz.user?.user_id || null,
     actorEmail: user?.email || authz.user?.email || null,
     devOnly: Boolean(devOnly),
   };
 
-  useAutoSave();
+  useAutoSave({ enabled: projectLifecycleEnabled });
 
   return (
     <>
       <div className="mx-auto w-full max-w-[1680px] p-4">
         <div className="space-y-3">
-          <HeaderBar
-            projectMeta={page.projectMeta}
-            status={page.status}
-            actions={page.actions}
-          />
+          {projectLifecycleEnabled ? (
+            <HeaderBar
+              projectMeta={page.projectMeta}
+              status={page.status}
+              actions={page.actions}
+              projectLifecycleEnabled={projectLifecycleEnabled}
+            />
+          ) : (
+            <EstimatorTitleBar />
+          )}
 
           <ProjectSelectorBar
             projects={page.projectSelector.projects}
@@ -202,6 +265,17 @@ export default function EstimatorPage() {
             refreshProjects={page.projectSelector.refreshProjects}
             dbReady={page.projectSelector.dbReady}
             isBusy={page.projectSelector.isBusy}
+            downloadExcel={page.actions.downloadExcel}
+            canDownloadExcel={
+              page.status.actionPermissions?.canExport !== false
+            }
+            showExcelButton={!projectLifecycleEnabled}
+            standardEffortLastChange={
+              page.estimatorView.standardEffort.lastChange
+            }
+            standardEffortLastChangeLoading={
+              page.estimatorView.standardEffort.lastChangeLoading
+            }
           />
 
           {!standardEffortMode.isStandardMode &&
@@ -211,41 +285,20 @@ export default function EstimatorPage() {
         </div>
 
         {isArchivedCurrentProject ? <ArchivedProjectNotice /> : null}
+        {standardEffortMode.isStandardMode && !page.projectSelector.projectId ? (
+          <CompactProjectSelectionNotice />
+        ) : null}
 
         {standardEffortMode.isStandardMode &&
         standardEffortMode.showStandardEstimator ? (
-          <>
-            <StandardModeNotice
-              isStandardExportAvailable={isStandardExportAvailable}
-            />
-            <StandardEffortBlock
-              page={page}
-              readOnly={standardEffortEffectiveReadOnly}
-              actualEffortReadOnly={actualEffortEffectiveReadOnly}
-              auditActor={auditActor}
-            />
-
-            <details className="mt-3 rounded-lg border border-slate-200 bg-white p-4">
-              <summary className="cursor-pointer text-sm font-extrabold text-slate-800">
-                기존 산출 화면
-              </summary>
-              <p className="mt-2 text-xs font-semibold text-slate-500">
-                신규 표준공수 산식 전환 전 비교용 화면입니다. 이 영역은
-                숨김이 아니라 비교용으로 보존되어 있으며 필요 시 펼쳐 확인할
-                수 있습니다.
-              </p>
-              <div className="mt-3 space-y-3">
-                <LegacyEstimatorHeader page={page} />
-                <LegacyEstimatorBody
-                  page={page}
-                  readOnly={legacyEstimatorEffectiveReadOnly}
-                  hideRightSidebar={
-                    standardEffortMode.shouldHideLegacyRightSidebar
-                  }
-                />
-              </div>
-            </details>
-          </>
+          <StandardEffortBlock
+            page={page}
+            readOnly={standardEffortEffectiveReadOnly}
+            solutionSelectionReadOnly={solutionSelectionEffectiveReadOnly}
+            itemSelectionReadOnly={itemSelectionEffectiveReadOnly}
+            actualEffortReadOnly={actualEffortEffectiveReadOnly}
+            auditActor={auditActor}
+          />
         ) : (
           <>
             {standardEffortMode.showLegacyEstimator ? (
@@ -259,17 +312,14 @@ export default function EstimatorPage() {
               <StandardEffortBlock
                 page={page}
                 readOnly={standardEffortEffectiveReadOnly}
+                solutionSelectionReadOnly={solutionSelectionEffectiveReadOnly}
+                itemSelectionReadOnly={itemSelectionEffectiveReadOnly}
                 actualEffortReadOnly={actualEffortEffectiveReadOnly}
                 auditActor={auditActor}
               />
             ) : null}
           </>
         )}
-
-        <div className="pt-3 text-center text-xs text-slate-400">
-          짤 2026 Contact Center Estimation Workspace 쨌 Internal Planning Use 쨌{" "}
-          {appVersion}
-        </div>
       </div>
 
       <VersionHistoryModal

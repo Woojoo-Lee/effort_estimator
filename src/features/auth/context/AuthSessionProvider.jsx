@@ -12,6 +12,9 @@ import {
 } from "../lib/authLoginMode";
 import { authSessionRepository } from "../services/authSessionRepository";
 
+export const PASSWORD_CHANGE_SUCCESS_NOTICE =
+  "비밀번호가 변경되었습니다. 다시 로그인해 주세요.";
+
 function normalizeAuthUser(user) {
   if (!user) {
     return null;
@@ -49,6 +52,7 @@ function buildState({
   policy,
   loading = false,
   error = null,
+  notice = "",
   session = null,
   user = null,
 }) {
@@ -60,6 +64,7 @@ function buildState({
     requireLogin: policy.requireLogin,
     loading,
     error,
+    notice,
     session,
     user: normalizedUser,
     isAuthenticated: Boolean(session || normalizedUser),
@@ -91,6 +96,7 @@ export function createAuthSessionFallback() {
     refresh: async () => ({ data: null, error: null }),
     signIn: async () => ({ data: null, error: null }),
     signOut: async () => ({ data: null, error: null }),
+    changePassword: async () => ({ data: null, error: null }),
   };
 }
 
@@ -114,13 +120,14 @@ export function AuthSessionProvider({
     }
 
     setState((current) => ({
-      ...current,
-      loginMode: policy.mode,
-      mode: policy.mode,
-      requireLogin: policy.requireLogin,
-      loading: true,
-      error: null,
-    }));
+        ...current,
+        loginMode: policy.mode,
+        mode: policy.mode,
+        requireLogin: policy.requireLogin,
+        loading: true,
+        error: null,
+        notice: "",
+      }));
 
     try {
       const result = await repository.getAuthSession();
@@ -157,6 +164,7 @@ export function AuthSessionProvider({
         ...current,
         loading: true,
         error: null,
+        notice: "",
       }));
 
       try {
@@ -197,10 +205,11 @@ export function AuthSessionProvider({
     }
 
     setState((current) => ({
-      ...current,
-      loading: true,
-      error: null,
-    }));
+        ...current,
+        loading: true,
+        error: null,
+        notice: "",
+      }));
 
     try {
       const result = await repository.signOut();
@@ -222,6 +231,51 @@ export function AuthSessionProvider({
       throw error;
     }
   }, [policy, repository]);
+
+  const changePassword = useCallback(
+    async ({ currentPassword, newPassword, newPasswordConfirm }) => {
+      if (!policy.requireLogin) {
+        return { data: null, error: null };
+      }
+
+      setState((current) => ({
+        ...current,
+        error: null,
+        notice: "",
+      }));
+
+      try {
+        if (typeof repository.changePassword !== "function") {
+          throw new Error("Password change is not configured.");
+        }
+
+        const result = await repository.changePassword({
+          currentPassword,
+          newPassword,
+          newPasswordConfirm,
+        });
+
+        if (result?.error) {
+          throw result.error;
+        }
+
+        const nextState = buildState({
+          policy,
+          notice: PASSWORD_CHANGE_SUCCESS_NOTICE,
+        });
+        setState(nextState);
+
+        return { data: result?.data || null, error: null };
+      } catch (error) {
+        setState((current) => ({
+          ...current,
+          error,
+        }));
+        throw error;
+      }
+    },
+    [policy, repository]
+  );
 
   useEffect(() => {
     let active = true;
@@ -264,8 +318,9 @@ export function AuthSessionProvider({
       refresh,
       signIn,
       signOut,
+      changePassword,
     }),
-    [refresh, signIn, signOut, state]
+    [changePassword, refresh, signIn, signOut, state]
   );
 
   return (

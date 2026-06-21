@@ -81,6 +81,9 @@ describe("standard effort repository adapter boundary", () => {
     STANDARD_EFFORT_REPOSITORY_METHODS.forEach((methodName) => {
       expect(typeof standardEffortRepository[methodName]).toBe("function");
     });
+    expect(typeof standardEffortRepository.fetchStandardEffortLastChange).toBe(
+      "function"
+    );
   });
 
   it("selects the Supabase adapter by default", () => {
@@ -321,6 +324,111 @@ describe("standard effort repository adapter boundary", () => {
     });
   });
 
+  it("adds row history updater to Supabase solution and item selection writes when a user is provided", async () => {
+    useFixedSystemTime();
+    const solutionClient = createSupabaseUpsertClient();
+    const itemClient = createSupabaseUpsertClient();
+
+    await standardEffortRepository.upsertProjectSolutionSelections(
+      "42",
+      [
+        {
+          solution_variant_id: "pbx",
+          enabled: true,
+          actual_effort_mm: 3.5,
+        },
+      ],
+      solutionClient.client,
+      { currentUser: { user_id: "user-1", email: "ignored@example.com" } }
+    );
+    await standardEffortRepository.upsertProjectItemSelections(
+      "42",
+      [
+        {
+          solution_variant_id: "pbx",
+          item_id: "item-a",
+          checked: true,
+        },
+      ],
+      itemClient.client,
+      { currentUser: { user_id: "user-1" } }
+    );
+
+    expect(solutionClient.upsert.mock.calls[0][0][0]).toMatchObject({
+      project_id: "42",
+      solution_variant_id: "pbx",
+      updated_at: FIXED_NOW_ISO,
+      updated_by: "user-1",
+    });
+    expect(solutionClient.upsert.mock.calls[0][0][0]).not.toHaveProperty(
+      "created_by"
+    );
+    expect(solutionClient.upsert.mock.calls[0][0][0]).not.toHaveProperty(
+      "email"
+    );
+    expect(itemClient.upsert.mock.calls[0][0][0]).toMatchObject({
+      project_id: "42",
+      solution_variant_id: "pbx",
+      item_id: "item-a",
+      updated_at: FIXED_NOW_ISO,
+      updated_by: "user-1",
+    });
+    expect(itemClient.upsert.mock.calls[0][0][0]).not.toHaveProperty(
+      "created_by"
+    );
+  });
+
+  it("adds row history fields to actual effort update and insert fallback when a user is provided", async () => {
+    useFixedSystemTime();
+    const updateClient = createSupabaseActualEffortClient([
+      {
+        project_id: "42",
+        solution_variant_id: "pbx",
+        enabled: true,
+        actual_effort_mm: 4.5,
+      },
+    ]);
+    const insertClient = createSupabaseActualEffortClient([], {
+      project_id: "42",
+      solution_variant_id: "pbx",
+      enabled: true,
+      actual_effort_mm: 0,
+    });
+
+    await standardEffortRepository.updateProjectActualEffort(
+      "42",
+      "pbx",
+      "4.5",
+      updateClient.client,
+      { currentUser: { user_id: "user-1" } }
+    );
+    await standardEffortRepository.updateProjectActualEffort(
+      "42",
+      "pbx",
+      "",
+      insertClient.client,
+      { currentUser: { user_id: "user-1" } }
+    );
+
+    expect(updateClient.update).toHaveBeenCalledWith({
+      actual_effort_mm: 4.5,
+      updated_at: FIXED_NOW_ISO,
+      updated_by: "user-1",
+    });
+    expect(updateClient.update.mock.calls[0][0]).not.toHaveProperty(
+      "created_by"
+    );
+    expect(insertClient.insert).toHaveBeenCalledWith({
+      project_id: "42",
+      solution_variant_id: "pbx",
+      enabled: true,
+      actual_effort_mm: 0,
+      updated_at: FIXED_NOW_ISO,
+      created_by: "user-1",
+      updated_by: "user-1",
+    });
+  });
+
 
   it("uses the API adapter read path through the facade in api mode", async () => {
     vi.stubEnv("VITE_DATA_BACKEND", "api");
@@ -357,6 +465,53 @@ describe("standard effort repository adapter boundary", () => {
     expect(fetchImpl.mock.calls[0][0]).toBe(
       "https://api.example.com/standard-effort/meta"
     );
+  });
+
+  it("fetches standard effort last-change through the local app endpoint", async () => {
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            ok: true,
+            data: {
+              project_id: "42",
+              updated_at: "2026-06-14T08:18:00.000Z",
+              updated_by: "user-1",
+              updated_by_login_id: "sales01",
+              updated_by_display_name: "영업대표",
+              source: "project_item_solution_selection",
+              password_hash: "should-not-leak",
+            },
+          }),
+      })
+    );
+
+    const result = await standardEffortRepository.fetchStandardEffortLastChange(
+      42,
+      fetchImpl
+    );
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "/api/standard-effort/last-change?project_id=42",
+      {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+    expect(result).toEqual({
+      project_id: "42",
+      updated_at: "2026-06-14T08:18:00.000Z",
+      updated_by: "user-1",
+      updated_by_login_id: "sales01",
+      updated_by_display_name: "영업대표",
+      source: "project_item_solution_selection",
+    });
+    expect(JSON.stringify(result)).not.toContain("password_hash");
   });
 
   it("uses the API adapter solution write path through the facade in api mode", async () => {

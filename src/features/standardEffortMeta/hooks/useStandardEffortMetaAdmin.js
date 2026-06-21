@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   buildStandardEffortMetaSummary,
@@ -17,6 +17,7 @@ import {
   resolveFrontendAuditPolicy,
   shouldWriteFrontendAudit,
 } from "../../audit";
+import { buildRowHistoryActor } from "../../auth/lib/rowHistoryActor";
 
 const EMPTY_META = {
   solutions: [],
@@ -296,6 +297,11 @@ function updateItemActiveInMeta(meta = EMPTY_META, itemId, active) {
 
 export default function useStandardEffortMetaAdmin(options = {}) {
   const { auditActor = {}, auditEnabled = true } = options;
+  const rowHistoryOptions = useMemo(() => {
+    const currentUser = buildRowHistoryActor(auditActor);
+
+    return currentUser ? { currentUser } : null;
+  }, [auditActor?.actorUserId]);
   const [meta, setMeta] = useState(EMPTY_META);
   const [summary, setSummary] = useState(() =>
     buildStandardEffortMetaSummary(EMPTY_META)
@@ -527,10 +533,14 @@ export default function useStandardEffortMetaAdmin(options = {}) {
           draftRow,
           meta
         );
-        const savedRows = await upsertStandardBaseEffortRows(
-          solutionVariantId,
-          phaseRows
-        );
+        const savedRows = rowHistoryOptions
+          ? await upsertStandardBaseEffortRows(
+              solutionVariantId,
+              phaseRows,
+              undefined,
+              rowHistoryOptions
+            )
+          : await upsertStandardBaseEffortRows(solutionVariantId, phaseRows);
         const savedDraftRow = buildBaseEffortDrafts({
           solutionVariants: [
             {
@@ -605,7 +615,13 @@ export default function useStandardEffortMetaAdmin(options = {}) {
         return false;
       }
     },
-    [baseEffortDrafts, baseEffortOriginalDrafts, meta, recordAudit]
+    [
+      baseEffortDrafts,
+      baseEffortOriginalDrafts,
+      meta,
+      recordAudit,
+      rowHistoryOptions,
+    ]
   );
 
   const updateCoefficientDraft = useCallback(
@@ -692,10 +708,14 @@ export default function useStandardEffortMetaAdmin(options = {}) {
           draftRow,
           meta
         );
-        const savedRows = await upsertStandardCoefficientRows(
-          itemId,
-          coefficientRows
-        );
+        const savedRows = rowHistoryOptions
+          ? await upsertStandardCoefficientRows(
+              itemId,
+              coefficientRows,
+              undefined,
+              rowHistoryOptions
+            )
+          : await upsertStandardCoefficientRows(itemId, coefficientRows);
         const savedDraftRow = buildCoefficientDrafts({
           itemRows: [
             {
@@ -770,7 +790,13 @@ export default function useStandardEffortMetaAdmin(options = {}) {
         return false;
       }
     },
-    [coefficientDrafts, coefficientOriginalDrafts, meta, recordAudit]
+    [
+      coefficientDrafts,
+      coefficientOriginalDrafts,
+      meta,
+      recordAudit,
+      rowHistoryOptions,
+    ]
   );
 
   const toggleSolutionVariantActive = useCallback(
@@ -804,10 +830,14 @@ export default function useStandardEffortMetaAdmin(options = {}) {
       });
 
       try {
-        const savedVariant = await updateStandardSolutionVariantActive(
-          solutionVariantId,
-          active
-        );
+        const savedVariant = rowHistoryOptions
+          ? await updateStandardSolutionVariantActive(
+              solutionVariantId,
+              active,
+              undefined,
+              rowHistoryOptions
+            )
+          : await updateStandardSolutionVariantActive(solutionVariantId, active);
         const savedActive = savedVariant.active !== false;
 
         setMeta((prev) => {
@@ -873,7 +903,7 @@ export default function useStandardEffortMetaAdmin(options = {}) {
         return false;
       }
     },
-    [meta.solutionVariants, recordAudit]
+    [meta.solutionVariants, recordAudit, rowHistoryOptions]
   );
 
   const toggleStandardItemActive = useCallback(
@@ -903,7 +933,14 @@ export default function useStandardEffortMetaAdmin(options = {}) {
       });
 
       try {
-        const savedItem = await updateStandardItemActive(itemId, active);
+        const savedItem = rowHistoryOptions
+          ? await updateStandardItemActive(
+              itemId,
+              active,
+              undefined,
+              rowHistoryOptions
+            )
+          : await updateStandardItemActive(itemId, active);
         const savedActive = savedItem.active !== false;
 
         setMeta((prev) => {
@@ -960,7 +997,7 @@ export default function useStandardEffortMetaAdmin(options = {}) {
         return false;
       }
     },
-    [meta.itemRows, recordAudit]
+    [meta.itemRows, recordAudit, rowHistoryOptions]
   );
 
   return {

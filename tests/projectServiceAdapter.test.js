@@ -301,6 +301,158 @@ describe("project service adapter boundary", () => {
     });
   });
 
+  it("adds current user owner metadata to new project payloads through the facade", async () => {
+    vi.stubEnv("VITE_DATA_BACKEND", "api");
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
+    const payload = { activeTab: "pbx", itemsBySolution: { pbx: [] } };
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            ok: true,
+            data: {
+              project: {
+                id: "42",
+                project_name: "Project A",
+                payload: {
+                  ...payload,
+                  owner_user_id: "user-1",
+                  created_by: "user-1",
+                  updated_by: "user-1",
+                  updated_by_login_id: "sales01",
+                  updated_by_display_name: "영업대표",
+                },
+              },
+            },
+          }),
+        headers: { get: () => null },
+      })
+    );
+    vi.stubGlobal("fetch", fetchImpl);
+
+    const result = await projectService.saveProject(
+      {
+        projectName: "Project A",
+        payload,
+      },
+      {
+        currentUser: {
+          user_id: "user-1",
+          login_id: "sales01",
+          display_name: "영업대표",
+        },
+      }
+    );
+
+    const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
+
+    expect(body).toEqual({
+      project_name: "Project A",
+      payload: {
+        ...payload,
+        owner_user_id: "user-1",
+        created_by: "user-1",
+        updated_by: "user-1",
+        updated_by_login_id: "sales01",
+        updated_by_display_name: "영업대표",
+      },
+    });
+    expect(result.data).toEqual({
+      id: "42",
+      project_name: "Project A",
+      owner_user_id: "user-1",
+      ownerUserId: "user-1",
+      created_by: "user-1",
+      createdBy: "user-1",
+      created_by_user_id: "user-1",
+      createdByUserId: "user-1",
+      updated_by: "user-1",
+      updatedBy: "user-1",
+      updated_by_login_id: "sales01",
+      updatedByLoginId: "sales01",
+      updated_by_display_name: "영업대표",
+      updatedByDisplayName: "영업대표",
+      payload: {
+        ...payload,
+        owner_user_id: "user-1",
+        created_by: "user-1",
+        updated_by: "user-1",
+        updated_by_login_id: "sales01",
+        updated_by_display_name: "영업대표",
+      },
+    });
+  });
+
+  it("adds current user updater metadata to existing project payloads through the facade", async () => {
+    vi.stubEnv("VITE_DATA_BACKEND", "api");
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
+    const payload = { activeTab: "pbx", itemsBySolution: { pbx: [] } };
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            ok: true,
+            data: {
+              project: {
+                id: "42",
+                project_name: "Project A",
+                payload: {
+                  ...payload,
+                  updated_by: "admin-user",
+                  updated_by_login_id: "admin01",
+                  updated_by_display_name: "관리자",
+                },
+              },
+            },
+          }),
+        headers: { get: () => null },
+      })
+    );
+    vi.stubGlobal("fetch", fetchImpl);
+
+    const result = await projectService.saveProject(
+      {
+        projectId: "42",
+        projectName: "Project A",
+        payload,
+      },
+      {
+        currentUser: {
+          user_id: "admin-user",
+          login_id: "admin01",
+          display_name: "관리자",
+        },
+      }
+    );
+
+    const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
+
+    expect(body).toEqual({
+      project_id: "42",
+      project_name: "Project A",
+      payload: {
+        ...payload,
+        updated_by: "admin-user",
+        updated_by_login_id: "admin01",
+        updated_by_display_name: "관리자",
+      },
+    });
+    expect(result.data).toEqual(
+      expect.objectContaining({
+        updated_by: "admin-user",
+        updatedBy: "admin-user",
+        updated_by_login_id: "admin01",
+        updatedByLoginId: "admin01",
+        updated_by_display_name: "관리자",
+        updatedByDisplayName: "관리자",
+      })
+    );
+  });
+
   it("uses the API adapter archive path through the facade in api mode", async () => {
     vi.stubEnv("VITE_DATA_BACKEND", "api");
     vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
@@ -339,6 +491,45 @@ describe("project service adapter boundary", () => {
     expect(fetchImpl.mock.calls[0][1].method).not.toBe("DELETE");
     expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).toEqual({
       project_id: "42",
+    });
+  });
+
+  it("passes updater metadata to the API archive path through the facade", async () => {
+    vi.stubEnv("VITE_DATA_BACKEND", "api");
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            ok: true,
+            data: {
+              project: {
+                id: "42",
+                status: "archived",
+              },
+            },
+          }),
+        headers: { get: () => null },
+      })
+    );
+    vi.stubGlobal("fetch", fetchImpl);
+
+    const result = await projectService.deleteProjectById("42", {
+      currentUser: {
+        user_id: "admin-user",
+        login_id: "admin01",
+        display_name: "관리자",
+      },
+    });
+
+    expect(result.error).toBeNull();
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).toEqual({
+      project_id: "42",
+      updated_by: "admin-user",
+      updated_by_login_id: "admin01",
+      updated_by_display_name: "관리자",
     });
   });
 
@@ -383,6 +574,47 @@ describe("project service adapter boundary", () => {
     expect(fetchImpl.mock.calls[0][1].method).toBe("PUT");
     expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).toEqual({
       project_id: "42",
+      restore_reason: "user request",
+    });
+  });
+
+  it("passes updater metadata to the API restore path through the facade", async () => {
+    vi.stubEnv("VITE_DATA_BACKEND", "api");
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            ok: true,
+            data: {
+              project: {
+                id: "42",
+                status: "active",
+              },
+            },
+          }),
+        headers: { get: () => null },
+      })
+    );
+    vi.stubGlobal("fetch", fetchImpl);
+
+    const result = await projectService.restoreProjectById("42", {
+      restoreReason: "user request",
+      currentUser: {
+        user_id: "admin-user",
+        login_id: "admin01",
+        display_name: "관리자",
+      },
+    });
+
+    expect(result.error).toBeNull();
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).toEqual({
+      project_id: "42",
+      updated_by: "admin-user",
+      updated_by_login_id: "admin01",
+      updated_by_display_name: "관리자",
       restore_reason: "user request",
     });
   });
@@ -762,16 +994,6 @@ describe("project service adapter boundary", () => {
 
     expect(fetchImpl.mock.calls.map((call) => call[0])).toEqual(
       calls.map(([, path]) => `https://api.example.com${path}`)
-    );
-  });
-
-  it("returns the Supabase restore unsupported result through the facade in default mode", async () => {
-    const result = await projectService.restoreProjectById("42");
-
-    expect(result.data).toBeNull();
-    expect(result.error).toBeInstanceOf(Error);
-    expect(result.error.message).toBe(
-      "project Supabase adapter method restoreProjectById is not supported. Archive/restore is API backend only."
     );
   });
 

@@ -1,83 +1,96 @@
 import React from "react";
 
-const TEXT = {
-  empty: "\uC120\uD0DD\uB41C \uADF8\uB8F9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
-  title: "\uADF8\uB8F9 \uC694\uC57D",
-  subtitle:
-    "\uD604\uC7AC common_code \uAD6C\uC870\uC5D0\uC11C\uB294 \uADF8\uB8F9 \uC0C1\uC138 \uC815\uBCF4\uB97C \uBCC4\uB3C4\uB85C \uC800\uC7A5\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
-  groupCode: "\uADF8\uB8F9\uCF54\uB4DC",
-  totalCount: "\uC804\uCCB4 \uCF54\uB4DC \uC218",
-  activeCount: "\uC0AC\uC6A9 \uCF54\uB4DC \uC218",
-  inactiveCount: "\uBBF8\uC0AC\uC6A9 \uCF54\uB4DC \uC218",
-  minSortOrder: "\uCD5C\uC18C \uC815\uB82C\uC21C\uC11C",
-  maxSortOrder: "\uCD5C\uB300 \uC815\uB82C\uC21C\uC11C",
-  emptyValue: "-",
-};
+export default function CodebookGroupInfoPanel({
+  draft,
+  mode = "create",
+  isSaving = false,
+  onChange,
+  onPrepareCreate,
+  onSave,
+}) {
+  const isCreateMode = mode === "create";
 
-function formatValue(value) {
-  return value ?? TEXT.emptyValue;
-}
-
-export default function CodebookGroupInfoPanel({ groupSummary }) {
-  if (!groupSummary) {
-    return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm font-semibold text-slate-500 shadow-sm">
-        {TEXT.empty}
-      </div>
-    );
-  }
-
-  const items = [
-    {
-      label: TEXT.groupCode,
-      value: formatValue(groupSummary.groupCode),
-    },
-    {
-      label: TEXT.totalCount,
-      value: formatValue(groupSummary.totalCount),
-    },
-    {
-      label: TEXT.activeCount,
-      value: formatValue(groupSummary.activeCount),
-    },
-    {
-      label: TEXT.inactiveCount,
-      value: formatValue(groupSummary.inactiveCount),
-    },
-    {
-      label: TEXT.minSortOrder,
-      value: formatValue(groupSummary.minSortOrder),
-    },
-    {
-      label: TEXT.maxSortOrder,
-      value: formatValue(groupSummary.maxSortOrder),
-    },
-  ];
+  const updateField = (field, value) => {
+    onChange?.({
+      ...draft,
+      [field]: value,
+    });
+  };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-4">
-        <h2 className="text-sm font-extrabold text-slate-900">
-          {TEXT.title}
-        </h2>
-        <p className="mt-1 text-xs font-semibold text-slate-500">
-          {TEXT.subtitle}
-        </p>
+    <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-extrabold text-slate-900">
+            코드유형 상세
+          </h2>
+        </div>
+        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">
+          {isCreateMode ? "신규" : "수정"}
+        </span>
       </div>
 
-      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {items.map((item) => (
-          <div
-            key={item.label}
-            className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
+      <div className="grid min-w-0 gap-2 md:grid-cols-[140px_minmax(0,1fr)_90px] md:items-end">
+        <label className="block">
+          <span className="mb-1 block text-xs font-bold text-slate-600">
+            코드유형아이디
+          </span>
+          <input
+            value={draft.group_code}
+            onChange={(event) => updateField("group_code", event.target.value)}
+            className="h-8 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            disabled={isSaving}
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-xs font-bold text-slate-600">
+            코드유형명
+          </span>
+          <input
+            value={draft.group_name}
+            onChange={(event) => updateField("group_name", event.target.value)}
+            className="h-8 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            disabled={isSaving}
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-xs font-bold text-slate-600">
+            사용여부
+          </span>
+          <select
+            value={draft.is_active === false ? "false" : "true"}
+            onChange={(event) =>
+              updateField("is_active", event.target.value === "true")
+            }
+            className="h-8 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            disabled={isSaving}
           >
-            <dt className="text-xs font-bold text-slate-500">{item.label}</dt>
-            <dd className="mt-1 break-words text-sm font-extrabold text-slate-800">
-              {item.value}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </div>
+            <option value="true">사용</option>
+            <option value="false">미사용</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="mt-3 flex justify-end gap-1.5 border-t border-slate-100 pt-2">
+        <button
+          type="button"
+          onClick={() => onPrepareCreate?.()}
+          className="h-8 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
+          disabled={isSaving}
+        >
+          신규
+        </button>
+        <button
+          type="button"
+          onClick={() => onSave?.()}
+          className="h-8 rounded-md bg-blue-600 px-3 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+          disabled={isSaving}
+        >
+          저장
+        </button>
+      </div>
+    </section>
   );
 }
