@@ -138,6 +138,9 @@ describe("route and sidebar guards", () => {
       </AuthPermissionProvider>
     );
 
+    expect(screen.getByText("표준 공수 운영 관리")).toBeTruthy();
+    expect(screen.queryByText("Effort Estimator")).toBeNull();
+
     const hrefs = [...document.querySelectorAll("a")].map((link) =>
       link.getAttribute("href")
     );

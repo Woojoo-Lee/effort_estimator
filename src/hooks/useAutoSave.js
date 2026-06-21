@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 import { useEstimatorStore } from "../store/useEstimatorStore";
+import { useAuthPermission } from "../features/auth";
 
 const AUTO_SAVE_DELAY = 2500;
 
-export function useAutoSave() {
+export function useAutoSave({ enabled = true } = {}) {
+  const { authz, user } = useAuthPermission();
   const isDirty = useEstimatorStore((s) => s.isDirty);
   const dbReady = useEstimatorStore((s) => s.dbReady);
   const isBusy = useEstimatorStore((s) => s.isBusy);
@@ -12,7 +14,7 @@ export function useAutoSave() {
   const timerRef = useRef(null);
 
   useEffect(() => {
-    if (!dbReady || !isDirty || isBusy) {
+    if (!enabled || !dbReady || !isDirty || isBusy) {
       return;
     }
 
@@ -21,7 +23,7 @@ export function useAutoSave() {
     }
 
     timerRef.current = setTimeout(() => {
-      handleSaveProject();
+      handleSaveProject({ currentUser: user || authz.user });
     }, AUTO_SAVE_DELAY);
 
     return () => {
@@ -29,5 +31,5 @@ export function useAutoSave() {
         clearTimeout(timerRef.current);
       }
     };
-  }, [dbReady, isDirty, isBusy, handleSaveProject]);
+  }, [authz.user, dbReady, enabled, isDirty, isBusy, handleSaveProject, user]);
 }

@@ -10,6 +10,7 @@ import {
   PERMISSIONS,
   useAuthPermission,
 } from "../features/auth";
+import { canManageProject } from "../features/projects/lib/projectAccessPolicy";
 
 function isArchivedProject(project) {
   return project?.status === "archived" || Boolean(project?.archived_at);
@@ -17,7 +18,7 @@ function isArchivedProject(project) {
 
 export function useAppPageModel() {
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
-  const { authz } = useAuthPermission();
+  const { authz, user } = useAuthPermission();
 
   const projectId = useEstimatorStore((s) => s.projectId);
   const activeTab = useEstimatorStore((s) => s.activeTab);
@@ -157,13 +158,21 @@ export function useAppPageModel() {
     versionActions
   );
   const authPermissionEnabled = isAuthPermissionEnabled(import.meta.env);
+  const canManageCurrentProject =
+    !authPermissionEnabled ||
+    !projectId ||
+    canManageProject(currentProject || {}, {
+      authz,
+      user: user || authz.user,
+    });
   const canWriteProject =
     !authPermissionEnabled ||
-    authz.hasAnyPermission([
-      PERMISSIONS.PROJECT_WRITE_OWN,
-      PERMISSIONS.PROJECT_WRITE_ASSIGNED,
-      PERMISSIONS.PROJECT_WRITE_ALL,
-    ]);
+    (canManageCurrentProject &&
+      authz.hasAnyPermission([
+        PERMISSIONS.PROJECT_WRITE_OWN,
+        PERMISSIONS.PROJECT_WRITE_ASSIGNED,
+        PERMISSIONS.PROJECT_WRITE_ALL,
+      ]));
   const canExport =
     !authPermissionEnabled ||
     authz.hasAnyPermission([

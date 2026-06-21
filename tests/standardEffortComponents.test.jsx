@@ -32,6 +32,7 @@ import {
   StandardEffortPanel,
   StandardEffortSection,
 } from "../src/features/estimator/components/standard";
+import ProjectSelectorBar from "../src/features/projects/components/ProjectSelectorBar";
 
 const solutionVariants = [
   {
@@ -145,6 +146,83 @@ beforeEach(() => {
     ok: true,
     data: { audit_log_id: "audit-log-id" },
     error: null,
+  });
+});
+
+describe("ProjectSelectorBar compact standard effort header", () => {
+  it("shows compact project controls without the duplicated selected project card", () => {
+    render(
+      <ProjectSelectorBar
+        projects={[{ id: 42, project_name: "대표 보고 프로젝트" }]}
+        projectId={42}
+        loadProject={vi.fn()}
+        refreshProjects={vi.fn()}
+        dbReady={true}
+        isBusy={false}
+        downloadExcel={vi.fn()}
+        standardEffortLastChange={{
+          project_id: 42,
+          updated_at: "2026-06-14T08:18:00.000Z",
+          updated_by_login_id: "admin01",
+          updated_by_display_name: "관리자",
+          source: "project_solution_selection",
+        }}
+      />
+    );
+
+    expect(screen.getByLabelText("프로젝트 선택")).toBeTruthy();
+    expect(screen.queryByText("DB 프로젝트")).toBeNull();
+    expect(screen.queryByText("현재 선택 프로젝트")).toBeNull();
+    expect(screen.getByRole("button", { name: "새로고침" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Excel 다운로드" })).toBeTruthy();
+    expect(screen.getByText(/공수 산정 수정:/)).toBeTruthy();
+    expect(screen.getByText(/수정자: 관리자/)).toBeTruthy();
+  });
+
+  it("runs refresh and Excel actions from compact icon buttons", () => {
+    const refreshProjects = vi.fn();
+    const downloadExcel = vi.fn();
+
+    render(
+      <ProjectSelectorBar
+        projects={[{ id: 42, project_name: "대표 보고 프로젝트" }]}
+        projectId={42}
+        loadProject={vi.fn()}
+        refreshProjects={refreshProjects}
+        dbReady={true}
+        isBusy={false}
+        downloadExcel={downloadExcel}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "새로고침" }));
+    fireEvent.click(screen.getByRole("button", { name: "Excel 다운로드" }));
+
+    expect(refreshProjects).toHaveBeenCalledTimes(1);
+    expect(downloadExcel).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses login_id fallback without exposing raw updated_by UUID", () => {
+    render(
+      <ProjectSelectorBar
+        projects={[{ id: 42, project_name: "대표 보고 프로젝트" }]}
+        projectId={42}
+        loadProject={vi.fn()}
+        refreshProjects={vi.fn()}
+        dbReady={true}
+        isBusy={false}
+        standardEffortLastChange={{
+          project_id: 42,
+          updated_at: "2026-06-14T08:18:00.000Z",
+          updated_by: "raw-user-uuid",
+          updated_by_login_id: "sales01",
+          source: "project_item_solution_selection",
+        }}
+      />
+    );
+
+    expect(screen.getByText(/수정자: sales01/)).toBeTruthy();
+    expect(screen.queryByText(/raw-user-uuid/)).toBeNull();
   });
 });
 

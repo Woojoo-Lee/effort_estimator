@@ -162,6 +162,7 @@ export function AuthSessionProvider({
 
       setState((current) => ({
         ...current,
+        loading: true,
         error: null,
         notice: "",
       }));
@@ -189,6 +190,7 @@ export function AuthSessionProvider({
       } catch (error) {
         setState((current) => ({
           ...current,
+          loading: false,
           error,
         }));
         throw error;

@@ -26,6 +26,7 @@ import {
 } from "../features/codebooks/services/codebookAdminRepository";
 import {
   fetchStandardEffortInput,
+  fetchStandardEffortLastChange,
   fetchStandardEffortMeta,
   updateProjectActualEffort,
   upsertProjectItemSelections,
@@ -189,6 +190,9 @@ export const useEstimatorStore = create(
         standardEffortLoading: false,
         standardEffortError: null,
         standardEffortLoadedProjectId: null,
+        standardEffortLastChange: null,
+        standardEffortLastChangeLoading: false,
+        standardEffortLastChangeError: "",
 
         saveStatus: "idle",
         lastSaveError: "",
@@ -524,6 +528,7 @@ export const useEstimatorStore = create(
               standardEffortError: null,
             });
 
+            await get().loadStandardEffortLastChange(projectId);
             return true;
           } catch (error) {
             console.error(error);
@@ -541,6 +546,46 @@ export const useEstimatorStore = create(
 
         refreshProjectStandardEffort: async (projectId) => {
           return get().loadProjectStandardEffort(projectId);
+        },
+
+        loadStandardEffortLastChange: async (projectId) => {
+          if (!projectId) {
+            set({
+              standardEffortLastChange: null,
+              standardEffortLastChangeLoading: false,
+              standardEffortLastChangeError: "",
+            });
+            return null;
+          }
+
+          set({
+            standardEffortLastChangeLoading: true,
+            standardEffortLastChangeError: "",
+          });
+
+          try {
+            const lastChange = await fetchStandardEffortLastChange(projectId);
+
+            set({
+              standardEffortLastChange: lastChange,
+              standardEffortLastChangeLoading: false,
+              standardEffortLastChangeError: "",
+            });
+
+            return lastChange;
+          } catch (error) {
+            console.error(error);
+            set({
+              standardEffortLastChange: null,
+              standardEffortLastChangeLoading: false,
+              standardEffortLastChangeError: getErrorMessage(
+                error,
+                "공수 산정 수정 정보를 불러오지 못했습니다."
+              ),
+            });
+
+            return null;
+          }
         },
 
         recalculateStandardEffort: (projectId) => {
@@ -654,6 +699,7 @@ export const useEstimatorStore = create(
               standardEffortError: null,
             });
 
+            await get().loadStandardEffortLastChange(projectId);
             return true;
           } catch (error) {
             console.error(error);
@@ -713,6 +759,7 @@ export const useEstimatorStore = create(
               standardEffortError: null,
             });
 
+            await get().loadStandardEffortLastChange(projectId);
             return true;
           } catch (error) {
             console.error(error);
@@ -774,6 +821,7 @@ export const useEstimatorStore = create(
               standardEffortError: null,
             });
 
+            await get().loadStandardEffortLastChange(projectId);
             return true;
           } catch (error) {
             console.error(error);
@@ -971,7 +1019,7 @@ export const useEstimatorStore = create(
           set({ isBusy: false, isProjectsBusy: false });
         },
 
-        createProjectFromDraft: async () => {
+        createProjectFromDraft: async (options = {}) => {
           const state = get();
           const projectName = state.draftProjectName.trim();
 
@@ -1017,11 +1065,14 @@ export const useEstimatorStore = create(
             lastSaveError: "",
           });
 
-          const { data, error } = await saveProject({
-            projectId: null,
-            projectName,
-            payload,
-          });
+          const { data, error } = await saveProject(
+            {
+              projectId: null,
+              projectName,
+              payload,
+            },
+            options
+          );
 
           if (error || !data?.id) {
             console.error(error);
@@ -1057,7 +1108,7 @@ export const useEstimatorStore = create(
           return true;
         },
 
-        handleSaveProject: async ({ silent = false } = {}) => {
+        handleSaveProject: async ({ silent = false, currentUser = null } = {}) => {
           const state = get();
 
           if (!state.dbReady) {
@@ -1089,11 +1140,14 @@ export const useEstimatorStore = create(
           const isUpdate = Boolean(state.projectId);
           const payload = buildProjectPayload(state, label);
 
-          const { data, error } = await saveProject({
-            projectId: state.projectId,
-            projectName: state.projectName,
-            payload,
-          });
+          const { data, error } = await saveProject(
+            {
+              projectId: state.projectId,
+              projectName: state.projectName,
+              payload,
+            },
+            { currentUser }
+          );
 
           if (error || !data?.id) {
             console.error(error);
@@ -1240,7 +1294,7 @@ export const useEstimatorStore = create(
           return true;
         },
 
-        deleteProject: async (projectId) => {
+        deleteProject: async (projectId, options = {}) => {
           const state = get();
 
           if (!state.dbReady) {
@@ -1258,7 +1312,7 @@ export const useEstimatorStore = create(
             lastProjectsError: "",
           });
 
-          const { error } = await deleteProjectById(projectId);
+          const { error } = await deleteProjectById(projectId, options);
 
           if (error) {
             console.error(error);
@@ -1286,6 +1340,11 @@ export const useEstimatorStore = create(
                 versions: [],
                 saveStatus: "idle",
                 lastSaveError: "",
+                standardProjectSolutionSelections: [],
+                standardProjectItemSelections: [],
+                standardEffortResults: [],
+                standardEffortLoadedProjectId: null,
+                standardEffortLastChange: null,
               }
             );
           }

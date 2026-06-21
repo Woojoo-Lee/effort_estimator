@@ -6,16 +6,24 @@ import {
   isAuthPermissionEnabled,
   useAuthPermission,
 } from "../../auth";
-import { isApiBackend, resolveDataBackend } from "../../../services/dataBackend";
 import {
   fetchProjects,
   restoreProjectById,
 } from "../../../services/projectService";
 import ProjectForm from "../components/ProjectForm";
 import ProjectList from "../components/ProjectList";
+import {
+  canManageProject,
+  getAuthUserId,
+  getProjectManageDisabledReason,
+  getProjectOwnerUserId,
+  isOwnedByUser,
+} from "../lib/projectAccessPolicy";
+
+export { getProjectOwnerUserId, isOwnedByUser };
 
 export default function ProjectPage() {
-  const { authz } = useAuthPermission();
+  const { authz, user } = useAuthPermission();
   const projects = useEstimatorStore((state) => state.projects);
   const projectId = useEstimatorStore((state) => state.projectId);
   const projectName = useEstimatorStore((state) => state.projectName);
@@ -45,7 +53,6 @@ export default function ProjectPage() {
   const [archivedSuccessMessage, setArchivedSuccessMessage] = useState("");
   const [restoringProjectId, setRestoringProjectId] = useState(null);
 
-  const isApiMode = isApiBackend(resolveDataBackend());
   const authPermissionEnabled = isAuthPermissionEnabled(import.meta.env);
   const canCreateProject =
     !authPermissionEnabled ||
@@ -56,23 +63,97 @@ export default function ProjectPage() {
       PERMISSIONS.PROJECT_WRITE_ALL,
     ]);
   const canArchiveProject =
-    isApiMode &&
-    (!authPermissionEnabled ||
-      authz.hasAnyPermission([
-        PERMISSIONS.PROJECT_ARCHIVE,
-        PERMISSIONS.PROJECT_WRITE_ALL,
-      ]));
-  const archiveDisabledReason = isApiMode
-    ? "프로젝트 보관 권한이 없습니다."
-    : "프로젝트 보관은 API 모드에서만 사용할 수 있습니다.";
+    !authPermissionEnabled ||
+    authz.hasAnyPermission([
+      PERMISSIONS.PROJECT_ARCHIVE,
+      PERMISSIONS.PROJECT_WRITE_OWN,
+      PERMISSIONS.PROJECT_WRITE_ASSIGNED,
+      PERMISSIONS.PROJECT_WRITE_ALL,
+    ]);
+  const archiveDisabledReason = "프로젝트 보관 권한이 없습니다.";
   const canRestoreArchivedProject =
     !authPermissionEnabled ||
     authz.hasAnyPermission([
       PERMISSIONS.PROJECT_RESTORE,
+      PERMISSIONS.PROJECT_WRITE_OWN,
+      PERMISSIONS.PROJECT_WRITE_ASSIGNED,
       PERMISSIONS.PROJECT_WRITE_ALL,
     ]);
+  const currentUser = user || authz.user || null;
+  const currentUserId = getAuthUserId(currentUser);
+  const restoreDisabledReasonBase = "프로젝트 복원 권한이 없습니다.";
+  const archiveOwnerDisabledReason = "등록자 본인만 보관할 수 있습니다.";
+  const restoreOwnerDisabledReason = "등록자 본인만 복원할 수 있습니다.";
+  const missingArchiveOwnerDisabledReason =
+    "등록자 정보를 확인할 수 없어 보관할 수 없습니다.";
+  const missingRestoreOwnerDisabledReason =
+    "등록자 정보를 확인할 수 없어 복원할 수 없습니다.";
+  const getArchiveActionDisabledReason = (project) => {
+    if (!canArchiveProject) {
+      return archiveDisabledReason;
+    }
+
+    if (!authPermissionEnabled) {
+      if (!getProjectOwnerUserId(project)) {
+        return missingArchiveOwnerDisabledReason;
+      }
+
+      if (!isOwnedByUser(project, currentUserId)) {
+        return archiveOwnerDisabledReason;
+      }
+
+      return "";
+    }
+
+    return (
+      getProjectManageDisabledReason(project, {
+        authz,
+        user: currentUser,
+        missingOwnerReason: missingArchiveOwnerDisabledReason,
+        otherOwnerReason: archiveOwnerDisabledReason,
+        noPermissionReason: archiveDisabledReason,
+      }) || archiveDisabledReason
+    );
+  };
+  const getRestoreActionDisabledReason = (project) => {
+    if (!canRestoreArchivedProject) {
+      return restoreDisabledReasonBase;
+    }
+
+    if (!authPermissionEnabled) {
+      if (!getProjectOwnerUserId(project)) {
+        return missingRestoreOwnerDisabledReason;
+      }
+
+      if (!isOwnedByUser(project, currentUserId)) {
+        return restoreOwnerDisabledReason;
+      }
+
+      return "";
+    }
+
+    return (
+      getProjectManageDisabledReason(project, {
+        authz,
+        user: currentUser,
+        missingOwnerReason: missingRestoreOwnerDisabledReason,
+        otherOwnerReason: restoreOwnerDisabledReason,
+        noPermissionReason: restoreDisabledReasonBase,
+      }) || restoreDisabledReasonBase
+    );
+  };
+  const canArchiveProjectRow = (project) =>
+    canArchiveProject &&
+    (authPermissionEnabled
+      ? canManageProject(project, { authz, user: currentUser })
+      : isOwnedByUser(project, currentUserId));
+  const canRestoreArchivedProjectRow = (project) =>
+    canRestoreArchivedProject &&
+    (authPermissionEnabled
+      ? canManageProject(project, { authz, user: currentUser })
+      : isOwnedByUser(project, currentUserId));
   const isBusy = isProjectsBusy || isProjectActionBusy;
-  const isArchiveView = isApiMode && showArchivedProjects;
+  const isArchiveView = showArchivedProjects;
   const displayedProjects = isArchiveView ? archivedProjects : projects;
   const displayedProjectsBusy = isArchiveView
     ? isBusy || archivedLoading
@@ -85,6 +166,14 @@ export default function ProjectPage() {
   useEffect(() => {
     refreshProjects();
   }, [refreshProjects]);
+
+  async function handleCreateProjectFromDraft() {
+    return createProjectFromDraft({ currentUser });
+  }
+
+  async function handleArchiveProject(projectId) {
+    return deleteProject(projectId, { currentUser });
+  }
 
   async function loadArchivedProjects() {
     setArchivedLoading(true);
@@ -127,7 +216,7 @@ export default function ProjectPage() {
     setArchivedSuccessMessage("");
 
     try {
-      const { error } = await restoreProjectById(project.id);
+      const { error } = await restoreProjectById(project.id, { currentUser });
 
       if (error) {
         throw error;
@@ -194,7 +283,7 @@ export default function ProjectPage() {
         <ProjectForm
           draftProjectName={draftProjectName}
           setDraftProjectName={setDraftProjectName}
-          createProjectFromDraft={createProjectFromDraft}
+          createProjectFromDraft={handleCreateProjectFromDraft}
           disabled={isBusy}
           canCreateProject={canCreateProject}
           createDisabledReason="프로젝트 생성 권한이 없습니다."
@@ -206,28 +295,26 @@ export default function ProjectPage() {
           </div>
         )}
 
-        {isApiMode && (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4">
-            <div>
-              <div className="text-sm font-extrabold text-slate-900">
-                {isArchiveView ? "보관 프로젝트" : "활성 프로젝트"}
-              </div>
-              <div className="mt-1 text-xs font-semibold text-slate-400">
-                {isArchiveView
-                  ? `보관 ${archivedProjects.length}건`
-                  : `활성 ${projects.length}건`}
-              </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4">
+          <div>
+            <div className="text-sm font-extrabold text-slate-900">
+              {isArchiveView ? "보관 프로젝트" : "활성 프로젝트"}
             </div>
-            <button
-              type="button"
-              onClick={handleArchiveViewToggle}
-              disabled={isBusy || archivedLoading}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
-            >
-              {isArchiveView ? "활성 프로젝트 보기" : "보관 프로젝트 보기"}
-            </button>
+            <div className="mt-1 text-xs font-semibold text-slate-400">
+              {isArchiveView
+                ? `보관 ${archivedProjects.length}건`
+                : `활성 ${projects.length}건`}
+            </div>
           </div>
-        )}
+          <button
+            type="button"
+            onClick={handleArchiveViewToggle}
+            disabled={isBusy || archivedLoading}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+          >
+            {isArchiveView ? "활성 프로젝트 보기" : "보관 프로젝트 보기"}
+          </button>
+        </div>
 
         {archivedError && isArchiveView && (
           <div className="mx-6 mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
@@ -245,7 +332,7 @@ export default function ProjectPage() {
           projects={displayedProjects}
           currentProjectId={projectId}
           selectProject={selectProject}
-          deleteProject={deleteProject}
+          deleteProject={handleArchiveProject}
           refreshProjects={isArchiveView ? loadArchivedProjects : refreshProjects}
           disabled={displayedProjectsBusy}
           listTitle={isArchiveView ? "보관 프로젝트 목록" : "프로젝트 목록"}
@@ -264,10 +351,10 @@ export default function ProjectPage() {
           hideDeleteForArchived={isArchiveView}
           restoreProject={isArchiveView ? handleRestoreProject : undefined}
           restoringProjectId={restoringProjectId}
-          canDeleteProject={canArchiveProject}
-          deleteDisabledReason={archiveDisabledReason}
-          canRestoreArchivedProject={canRestoreArchivedProject}
-          restoreDisabledReason="프로젝트 복원 권한이 없습니다."
+          canDeleteProject={canArchiveProjectRow}
+          deleteDisabledReason={getArchiveActionDisabledReason}
+          canRestoreArchivedProject={canRestoreArchivedProjectRow}
+          restoreDisabledReason={getRestoreActionDisabledReason}
         />
       </div>
     </div>

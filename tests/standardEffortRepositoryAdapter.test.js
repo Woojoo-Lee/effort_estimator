@@ -81,6 +81,9 @@ describe("standard effort repository adapter boundary", () => {
     STANDARD_EFFORT_REPOSITORY_METHODS.forEach((methodName) => {
       expect(typeof standardEffortRepository[methodName]).toBe("function");
     });
+    expect(typeof standardEffortRepository.fetchStandardEffortLastChange).toBe(
+      "function"
+    );
   });
 
   it("selects the Supabase adapter by default", () => {
@@ -462,6 +465,53 @@ describe("standard effort repository adapter boundary", () => {
     expect(fetchImpl.mock.calls[0][0]).toBe(
       "https://api.example.com/standard-effort/meta"
     );
+  });
+
+  it("fetches standard effort last-change through the local app endpoint", async () => {
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            ok: true,
+            data: {
+              project_id: "42",
+              updated_at: "2026-06-14T08:18:00.000Z",
+              updated_by: "user-1",
+              updated_by_login_id: "sales01",
+              updated_by_display_name: "영업대표",
+              source: "project_item_solution_selection",
+              password_hash: "should-not-leak",
+            },
+          }),
+      })
+    );
+
+    const result = await standardEffortRepository.fetchStandardEffortLastChange(
+      42,
+      fetchImpl
+    );
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "/api/standard-effort/last-change?project_id=42",
+      {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+    expect(result).toEqual({
+      project_id: "42",
+      updated_at: "2026-06-14T08:18:00.000Z",
+      updated_by: "user-1",
+      updated_by_login_id: "sales01",
+      updated_by_display_name: "영업대표",
+      source: "project_item_solution_selection",
+    });
+    expect(JSON.stringify(result)).not.toContain("password_hash");
   });
 
   it("uses the API adapter solution write path through the facade in api mode", async () => {

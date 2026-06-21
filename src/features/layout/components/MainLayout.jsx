@@ -2,6 +2,21 @@ import React, { useState } from "react";
 import AppSidebar from "./AppSidebar";
 import { useAuthSession } from "../../auth";
 
+const TEXT = {
+  passwordChange: "\uBE44\uBC00\uBC88\uD638 \uBCC0\uACBD",
+  currentPassword: "\uD604\uC7AC \uBE44\uBC00\uBC88\uD638",
+  newPassword: "\uC0C8 \uBE44\uBC00\uBC88\uD638",
+  newPasswordConfirm: "\uC0C8 \uBE44\uBC00\uBC88\uD638 \uD655\uC778",
+  mismatch:
+    "\uC0C8 \uBE44\uBC00\uBC88\uD638 \uD655\uC778\uC774 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+  failure:
+    "\uBE44\uBC00\uBC88\uD638 \uBCC0\uACBD\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.",
+  cancel: "\uCDE8\uC18C",
+  change: "\uBCC0\uACBD",
+  fallbackUser: "\uB85C\uADF8\uC778 \uC0AC\uC6A9\uC790",
+  logout: "\uB85C\uADF8\uC544\uC6C3",
+};
+
 function PasswordChangePanel({ authSession, onClose }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -14,7 +29,7 @@ function PasswordChangePanel({ authSession, onClose }) {
     setError("");
 
     if (newPassword !== newPasswordConfirm) {
-      setError("새 비밀번호 확인이 일치하지 않습니다.");
+      setError(TEXT.mismatch);
       return;
     }
 
@@ -26,7 +41,7 @@ function PasswordChangePanel({ authSession, onClose }) {
         newPasswordConfirm,
       });
     } catch (changeError) {
-      setError(changeError?.message || "비밀번호 변경에 실패했습니다.");
+      setError(changeError?.message || TEXT.failure);
       setIsSubmitting(false);
     }
   }
@@ -37,13 +52,13 @@ function PasswordChangePanel({ authSession, onClose }) {
       onSubmit={handleSubmit}
     >
       <div className="text-sm font-extrabold text-slate-900">
-        비밀번호 변경
+        {TEXT.passwordChange}
       </div>
       <div className="mt-3 space-y-3">
         <label className="block text-xs font-bold text-slate-600">
-          현재 비밀번호
+          {TEXT.currentPassword}
           <input
-            aria-label="현재 비밀번호"
+            aria-label={TEXT.currentPassword}
             autoComplete="current-password"
             className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             type="password"
@@ -52,9 +67,9 @@ function PasswordChangePanel({ authSession, onClose }) {
           />
         </label>
         <label className="block text-xs font-bold text-slate-600">
-          새 비밀번호
+          {TEXT.newPassword}
           <input
-            aria-label="새 비밀번호"
+            aria-label={TEXT.newPassword}
             autoComplete="new-password"
             className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             type="password"
@@ -63,9 +78,9 @@ function PasswordChangePanel({ authSession, onClose }) {
           />
         </label>
         <label className="block text-xs font-bold text-slate-600">
-          새 비밀번호 확인
+          {TEXT.newPasswordConfirm}
           <input
-            aria-label="새 비밀번호 확인"
+            aria-label={TEXT.newPasswordConfirm}
             autoComplete="new-password"
             className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             type="password"
@@ -86,7 +101,7 @@ function PasswordChangePanel({ authSession, onClose }) {
           disabled={isSubmitting || authSession.loading}
           className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          취소
+          {TEXT.cancel}
         </button>
         <button
           type="submit"
@@ -99,7 +114,7 @@ function PasswordChangePanel({ authSession, onClose }) {
           }
           className="h-9 rounded-lg bg-blue-600 px-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
         >
-          변경
+          {TEXT.change}
         </button>
       </div>
     </form>
@@ -117,7 +132,7 @@ function AccountBar() {
   const currentUserLabel =
     authSession.user?.display_name ||
     authSession.user?.login_id ||
-    "로그인 사용자";
+    TEXT.fallbackUser;
 
   return (
     <div className="relative flex flex-wrap items-center justify-end gap-2 border-b border-slate-200 bg-white/95 px-6 py-3">
@@ -133,7 +148,7 @@ function AccountBar() {
         disabled={authSession.loading}
         className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        비밀번호 변경
+        {TEXT.passwordChange}
       </button>
       <button
         type="button"
@@ -141,7 +156,7 @@ function AccountBar() {
         disabled={authSession.loading}
         className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        로그아웃
+        {TEXT.logout}
       </button>
       {isPasswordPanelOpen ? (
         <PasswordChangePanel

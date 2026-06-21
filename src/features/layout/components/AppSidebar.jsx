@@ -12,7 +12,7 @@ export default function AppSidebar({ activeRoute }) {
     <aside className="flex min-h-screen w-[220px] shrink-0 flex-col border-r border-slate-200 bg-white">
       <div className="border-b border-slate-100 px-5 py-5">
         <div className="text-sm font-extrabold text-slate-900">
-          Effort Estimator
+          표준 공수 운영 관리
         </div>
         <div className="mt-1 text-xs font-semibold text-slate-500">
           표준공수 운영 관리

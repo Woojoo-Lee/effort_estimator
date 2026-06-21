@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import HeaderBar from "../src/features/layout/components/HeaderBar";
 
-function createHeaderProps(actionPermissions) {
+function createHeaderProps(actionPermissions, overrides = {}) {
   return {
     projectMeta: {
       projectId: 123,
@@ -27,11 +27,12 @@ function createHeaderProps(actionPermissions) {
       showPrint: vi.fn(),
       openVersionHistory: vi.fn(),
     },
+    ...overrides,
   };
 }
 
-function renderHeader(actionPermissions) {
-  const props = createHeaderProps(actionPermissions);
+function renderHeader(actionPermissions, overrides) {
+  const props = createHeaderProps(actionPermissions, overrides);
 
   render(<HeaderBar {...props} />);
 
@@ -41,19 +42,20 @@ function renderHeader(actionPermissions) {
 describe("HeaderBar action permissions", () => {
   afterEach(() => {
     cleanup();
+    window.location.hash = "";
   });
 
   it("keeps actions enabled when no permission skeleton is provided", () => {
     renderHeader();
 
-    const buttons = screen.getAllByRole("button");
-
     expect(screen.getByDisplayValue("Project Alpha").disabled).toBe(false);
-    expect(buttons[0].disabled).toBe(false);
-    expect(buttons[2].disabled).toBe(false);
-    expect(buttons[3].disabled).toBe(false);
-    expect(buttons[4].disabled).toBe(false);
-    expect(buttons[5].disabled).toBe(false);
+    expect(screen.getByRole("button", { name: "신규" }).disabled).toBe(false);
+    expect(screen.getByRole("button", { name: "저장" }).disabled).toBe(false);
+    expect(
+      screen.getByRole("button", { name: "Excel 다운로드" }).disabled
+    ).toBe(false);
+    expect(screen.getByRole("button", { name: "초기화" }).disabled).toBe(false);
+    expect(screen.getByRole("button", { name: "인쇄" }).disabled).toBe(false);
   });
 
   it("disables project write and export actions without permissions", () => {
@@ -64,17 +66,19 @@ describe("HeaderBar action permissions", () => {
       isProjectReadOnly: true,
     });
 
-    const buttons = screen.getAllByRole("button");
-
     expect(screen.getByDisplayValue("Project Alpha").disabled).toBe(true);
-    expect(buttons[0].disabled).toBe(true);
-    expect(buttons[1].disabled).toBe(false);
-    expect(buttons[2].disabled).toBe(true);
-    expect(buttons[3].disabled).toBe(true);
-    expect(buttons[4].disabled).toBe(true);
-    expect(buttons[5].disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "신규" }).disabled).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "버전 보기" }).disabled
+    ).toBe(false);
+    expect(screen.getByRole("button", { name: "저장" }).disabled).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "Excel 다운로드" }).disabled
+    ).toBe(true);
+    expect(screen.getByRole("button", { name: "초기화" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "인쇄" }).disabled).toBe(true);
 
-    buttons.forEach((button) => fireEvent.click(button));
+    screen.getAllByRole("button").forEach((button) => fireEvent.click(button));
 
     expect(props.actions.createNewProject).not.toHaveBeenCalled();
     expect(props.actions.handleSaveProject).not.toHaveBeenCalled();
@@ -92,14 +96,8 @@ describe("HeaderBar action permissions", () => {
       isProjectReadOnly: false,
     });
 
-    const buttons = screen.getAllByRole("button");
-
-    expect(buttons[2].disabled).toBe(false);
-    expect(buttons[3].disabled).toBe(true);
-    expect(buttons[5].disabled).toBe(true);
-
-    fireEvent.click(buttons[2]);
-    fireEvent.click(buttons[3]);
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "Excel 다운로드" }));
 
     expect(props.actions.handleSaveProject).toHaveBeenCalledTimes(1);
     expect(props.actions.downloadExcel).not.toHaveBeenCalled();
@@ -114,17 +112,19 @@ describe("HeaderBar action permissions", () => {
       isProjectReadOnly: true,
     });
 
-    const buttons = screen.getAllByRole("button");
-
     expect(screen.getByDisplayValue("Project Alpha").disabled).toBe(true);
-    expect(buttons[0].disabled).toBe(false);
-    expect(buttons[1].disabled).toBe(false);
-    expect(buttons[2].disabled).toBe(true);
-    expect(buttons[3].disabled).toBe(false);
-    expect(buttons[4].disabled).toBe(true);
-    expect(buttons[5].disabled).toBe(false);
+    expect(screen.getByRole("button", { name: "신규" }).disabled).toBe(false);
+    expect(
+      screen.getByRole("button", { name: "버전 보기" }).disabled
+    ).toBe(false);
+    expect(screen.getByRole("button", { name: "저장" }).disabled).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "Excel 다운로드" }).disabled
+    ).toBe(false);
+    expect(screen.getByRole("button", { name: "초기화" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "인쇄" }).disabled).toBe(false);
 
-    buttons.forEach((button) => fireEvent.click(button));
+    screen.getAllByRole("button").forEach((button) => fireEvent.click(button));
 
     expect(props.actions.createNewProject).toHaveBeenCalledTimes(1);
     expect(props.actions.openVersionHistory).toHaveBeenCalledTimes(1);
@@ -132,6 +132,26 @@ describe("HeaderBar action permissions", () => {
     expect(props.actions.downloadExcel).toHaveBeenCalledTimes(1);
     expect(props.actions.resetAll).not.toHaveBeenCalled();
     expect(props.actions.showPrint).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides project creation and project save controls in selection-only mode", () => {
+    const props = renderHeader(undefined, {
+      projectLifecycleEnabled: false,
+    });
+
+    expect(screen.queryByDisplayValue("Project Alpha")).toBeNull();
+    expect(screen.queryByRole("button", { name: "신규" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "저장" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "초기화" })).toBeNull();
+    expect(screen.getByText("Project Alpha")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "프로젝트 관리" }));
+    fireEvent.click(screen.getByRole("button", { name: "Excel 다운로드" }));
+
+    expect(window.location.hash).toBe("#/projects");
+    expect(props.actions.createNewProject).not.toHaveBeenCalled();
+    expect(props.actions.handleSaveProject).not.toHaveBeenCalled();
+    expect(props.actions.downloadExcel).toHaveBeenCalledTimes(1);
   });
 
   it("keeps account controls out of the estimator header", () => {

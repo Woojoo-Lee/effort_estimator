@@ -14,6 +14,7 @@ import logoutHandler from "../api/auth/logout.js";
 import sessionHandler from "../api/auth/session.js";
 import changePasswordHandler from "../api/auth/change-password.js";
 import usersHandler from "../api/auth/users.js";
+import standardEffortLastChangeHandler from "../api/standard-effort/last-change.js";
 import {
   APP_LOGIN_USERS_TABLE,
   APP_SESSION_COOKIE,
@@ -155,6 +156,74 @@ function createUserAdminPatchClient({ currentUser, updatedUser }) {
     from: vi.fn(() => {
       fromCallCount += 1;
       return fromCallCount === 1 ? currentQuery : updateQuery;
+    }),
+  };
+}
+
+function createStandardEffortLastChangeClient({
+  currentUser,
+  solutionRow = null,
+  itemRow = null,
+  updaterUser = null,
+}) {
+  let loginUsersCallCount = 0;
+  const currentQuery = {
+    select: vi.fn(() => currentQuery),
+    eq: vi.fn(() => currentQuery),
+    maybeSingle: vi.fn().mockResolvedValue({
+      data: currentUser,
+      error: null,
+    }),
+  };
+  const updaterQuery = {
+    select: vi.fn(() => updaterQuery),
+    eq: vi.fn(() => updaterQuery),
+    maybeSingle: vi.fn().mockResolvedValue({
+      data: updaterUser,
+      error: null,
+    }),
+  };
+  const solutionQuery = {
+    select: vi.fn(() => solutionQuery),
+    eq: vi.fn(() => solutionQuery),
+    order: vi.fn(() => solutionQuery),
+    limit: vi.fn(() => solutionQuery),
+    maybeSingle: vi.fn().mockResolvedValue({
+      data: solutionRow,
+      error: null,
+    }),
+  };
+  const itemQuery = {
+    select: vi.fn(() => itemQuery),
+    eq: vi.fn(() => itemQuery),
+    order: vi.fn(() => itemQuery),
+    limit: vi.fn(() => itemQuery),
+    maybeSingle: vi.fn().mockResolvedValue({
+      data: itemRow,
+      error: null,
+    }),
+  };
+
+  return {
+    currentQuery,
+    updaterQuery,
+    solutionQuery,
+    itemQuery,
+    from: vi.fn((table) => {
+      if (table === APP_LOGIN_USERS_TABLE) {
+        loginUsersCallCount += 1;
+        return loginUsersCallCount === 1 ? currentQuery : updaterQuery;
+      }
+
+      if (table === "estimation_project_solution_selection") {
+        return solutionQuery;
+      }
+
+      if (table === "estimation_project_item_solution_selection") {
+        return itemQuery;
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
     }),
   };
 }
@@ -973,5 +1042,124 @@ describe("app auth Vercel functions", () => {
 
     expect(res.statusCode).toBe(404);
     expect(readResponseBody(res).error.code).toBe("NOT_FOUND");
+  });
+
+  it("rejects standard effort last-change without a session cookie", async () => {
+    const req = {
+      method: "GET",
+      url: "/api/standard-effort/last-change?project_id=7",
+      headers: {},
+    };
+    const res = createResponse();
+
+    await standardEffortLastChangeHandler(req, res);
+
+    expect(res.statusCode).toBe(401);
+    expect(readResponseBody(res).error.code).toBe("INVALID_CREDENTIALS");
+  });
+
+  it("requires project_id for standard effort last-change", async () => {
+    const req = {
+      method: "GET",
+      url: "/api/standard-effort/last-change",
+      headers: {},
+    };
+    const res = createResponse();
+
+    await standardEffortLastChangeHandler(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(readResponseBody(res).error.message).toBe(
+      "project_id is required."
+    );
+  });
+
+  it("returns the latest standard effort last-change with sanitized updater fields", async () => {
+    const currentUser = createUser({
+      user_id: "viewer-user",
+      role_code: "viewer",
+    });
+    supabaseMocks.client = createStandardEffortLastChangeClient({
+      currentUser,
+      solutionRow: {
+        project_id: 7,
+        updated_at: "2026-06-14T08:17:00.000Z",
+        updated_by: "admin-user",
+      },
+      itemRow: {
+        project_id: 7,
+        updated_at: "2026-06-14T08:18:00.000Z",
+        updated_by: "sales-user",
+      },
+      updaterUser: {
+        user_id: "sales-user",
+        login_id: "sales01",
+        display_name: "영업대표",
+        password_hash: "should-not-leak",
+        email: "should-not-exist@example.test",
+      },
+    });
+    const req = {
+      method: "GET",
+      url: "/api/standard-effort/last-change?project_id=7",
+      headers: {
+        cookie: createSessionCookie(currentUser),
+      },
+    };
+    const res = createResponse();
+
+    await standardEffortLastChangeHandler(req, res);
+
+    const body = readResponseBody(res);
+
+    expect(res.statusCode).toBe(200);
+    expect(body.data).toEqual({
+      project_id: 7,
+      updated_at: "2026-06-14T08:18:00.000Z",
+      updated_by: "sales-user",
+      updated_by_login_id: "sales01",
+      updated_by_display_name: "영업대표",
+      source: "project_item_solution_selection",
+    });
+    expect(supabaseMocks.client.solutionQuery.eq).toHaveBeenCalledWith(
+      "project_id",
+      "7"
+    );
+    expect(supabaseMocks.client.itemQuery.eq).toHaveBeenCalledWith(
+      "project_id",
+      "7"
+    );
+    expect(JSON.stringify(body)).not.toContain("password_hash");
+    expect(JSON.stringify(body)).not.toContain("email");
+  });
+
+  it("returns an empty standard effort last-change payload when no selection rows exist", async () => {
+    const currentUser = createUser({
+      user_id: "viewer-user",
+      role_code: "viewer",
+    });
+    supabaseMocks.client = createStandardEffortLastChangeClient({
+      currentUser,
+    });
+    const req = {
+      method: "GET",
+      url: "/api/standard-effort/last-change?project_id=7",
+      headers: {
+        cookie: createSessionCookie(currentUser),
+      },
+    };
+    const res = createResponse();
+
+    await standardEffortLastChangeHandler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(readResponseBody(res).data).toEqual({
+      project_id: "7",
+      updated_at: null,
+      updated_by: null,
+      updated_by_login_id: null,
+      updated_by_display_name: null,
+      source: null,
+    });
   });
 });

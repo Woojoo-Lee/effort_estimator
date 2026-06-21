@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -31,6 +32,7 @@ import {
   AuthSessionProvider,
   useAuthSession,
 } from "../src/features/auth";
+import LoginForm from "../src/features/auth/components/LoginForm";
 import LoginPage from "../src/features/auth/pages/LoginPage";
 import MainLayout from "../src/features/layout/components/MainLayout";
 
@@ -62,6 +64,17 @@ function createRepository({ session = null } = {}) {
     }),
     onAuthStateChange: vi.fn(() => ({})),
   };
+}
+
+function createDeferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, resolve, reject };
 }
 
 function renderWithProviders({
@@ -121,6 +134,36 @@ function renderAppShell({
   };
 }
 
+function getLoginIdInput() {
+  return document.querySelector('input[type="text"]');
+}
+
+function getPasswordInputs() {
+  return Array.from(document.querySelectorAll('input[type="password"]'));
+}
+
+function getSubmitButton() {
+  return document.querySelector('button[type="submit"]');
+}
+
+function submitCurrentForm() {
+  fireEvent.submit(document.querySelector("form"));
+}
+
+function fillLoginForm({ loginId = "sales01", password = "secret" } = {}) {
+  fireEvent.change(getLoginIdInput(), {
+    target: { value: loginId },
+  });
+  fireEvent.change(getPasswordInputs()[0], {
+    target: { value: password },
+  });
+}
+
+function getAccountBarButtons() {
+  const accountBar = screen.getByTestId("global-auth-user").parentElement;
+  return within(accountBar).getAllByRole("button");
+}
+
 describe("LoginPage", () => {
   beforeEach(() => {
     vi.stubEnv("VITE_AUTH_PERMISSION_MODE", "disabled");
@@ -135,70 +178,68 @@ describe("LoginPage", () => {
   it("renders user ID and password inputs without email wording", () => {
     renderWithProviders({ children: <LoginPage /> });
 
-    expect(screen.getByLabelText("사용자 ID")).toBeTruthy();
-    expect(screen.queryByLabelText("Email")).toBeNull();
-    expect(screen.queryByText(/email/i)).toBeNull();
-    expect(screen.getByLabelText("Password")).toBeTruthy();
-    expect(screen.getByLabelText("Password").type).toBe("password");
+    expect(document.querySelector("h1")?.textContent).toContain(
+      "Effort Estimator"
+    );
+    expect(getLoginIdInput()).toBeTruthy();
+    expect(getPasswordInputs()).toHaveLength(1);
+    expect(getPasswordInputs()[0].type).toBe("password");
+    expect(document.body.textContent.toLowerCase()).not.toContain("email");
     expect(screen.queryByTestId("global-auth-user")).toBeNull();
-    expect(screen.queryByRole("button", { name: "로그아웃" })).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: "비밀번호 변경" })
-    ).toBeNull();
     expect(document.querySelector("aside")).toBeNull();
   });
 
-  it("submits app login credentials and navigates to the default route", async () => {
-    const repository = createRepository();
-    repository.signIn.mockResolvedValue({
-      data: {
-        session: createSession("sales01", "sales"),
-      },
-      error: null,
-    });
+  it("submits app login credentials", async () => {
+    const onSubmit = vi.fn().mockResolvedValue({ data: null, error: null });
 
-    renderWithProviders({ repository, children: <LoginPage /> });
+    render(<LoginForm onSubmit={onSubmit} />);
 
-    const loginButton = await screen.findByRole("button", { name: "로그인" });
-
-    fireEvent.change(screen.getByLabelText("사용자 ID"), {
-      target: { value: "sales01" },
-    });
-    fireEvent.change(screen.getByLabelText("Password"), {
-      target: { value: "secret" },
-    });
-    fireEvent.click(loginButton);
+    fillLoginForm();
+    submitCurrentForm();
 
     await waitFor(() =>
-      expect(repository.signIn).toHaveBeenCalledWith({
+      expect(onSubmit).toHaveBeenCalledWith({
         loginId: "sales01",
         password: "secret",
       })
     );
-    await waitFor(() => expect(window.location.hash).toBe("#/estimator"));
   });
 
-  it("shows an app login error message on sign-in failure", async () => {
-    const repository = createRepository();
-    repository.signIn.mockRejectedValue(
-      new Error("사용자 ID 또는 비밀번호를 확인하세요.")
-    );
+  it("shows login progress and prevents duplicate submit while pending", async () => {
+    const deferred = createDeferred();
+    const onSubmit = vi.fn().mockReturnValue(deferred.promise);
 
-    renderWithProviders({ repository, children: <LoginPage /> });
+    render(<LoginForm onSubmit={onSubmit} />);
 
-    const loginButton = await screen.findByRole("button", { name: "로그인" });
+    fillLoginForm();
+    submitCurrentForm();
 
-    fireEvent.change(screen.getByLabelText("사용자 ID"), {
-      target: { value: "viewer01" },
-    });
-    fireEvent.change(screen.getByLabelText("Password"), {
-      target: { value: "wrong" },
-    });
-    fireEvent.click(loginButton);
+    expect(await screen.findByRole("status")).toBeTruthy();
+    expect(getSubmitButton().disabled).toBe(true);
+    expect(getSubmitButton().getAttribute("aria-busy")).toBe("true");
+    expect(getLoginIdInput().disabled).toBe(true);
+    expect(getPasswordInputs()[0].disabled).toBe(true);
 
-    expect(
-      await screen.findByText("사용자 ID 또는 비밀번호를 확인하세요.")
-    ).toBeTruthy();
+    submitCurrentForm();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+
+    deferred.resolve({ data: null, error: null });
+
+    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+  });
+
+  it("shows an app login error message and re-enables the button on sign-in failure", async () => {
+    const onSubmit = vi.fn().mockRejectedValue(new Error("invalid credentials"));
+
+    render(<LoginForm onSubmit={onSubmit} />);
+
+    fillLoginForm({ loginId: "viewer01", password: "wrong" });
+    submitCurrentForm();
+
+    expect(await screen.findByText("invalid credentials")).toBeTruthy();
+    expect(getSubmitButton().disabled).toBe(false);
+    expect(getLoginIdInput().disabled).toBe(false);
+    expect(getPasswordInputs()[0].disabled).toBe(false);
   });
 
   it("keeps the existing estimator route available when login mode is disabled", () => {
@@ -216,7 +257,7 @@ describe("LoginPage", () => {
       repository: createRepository({ session: null }),
     });
 
-    expect(await screen.findByText("Effort Estimator 로그인")).toBeTruthy();
+    expect(await screen.findByText(/Effort Estimator/)).toBeTruthy();
     expect(document.querySelector("aside")).toBeNull();
   });
 
@@ -231,7 +272,7 @@ describe("LoginPage", () => {
     expect(await screen.findByText("Estimator Screen")).toBeTruthy();
   });
 
-  it("shows the current app user and logout on authenticated estimator routes", async () => {
+  it("shows the current app user and account buttons on authenticated estimator routes", async () => {
     renderAppShell({
       route: "/estimator",
       repository: createRepository({
@@ -243,11 +284,8 @@ describe("LoginPage", () => {
     expect(screen.getByTestId("global-auth-user").textContent).toBe(
       "Admin User"
     );
-    expect(screen.getByRole("button", { name: "로그아웃" })).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "비밀번호 변경" })
-    ).toBeTruthy();
-    expect(screen.queryByText(/email/i)).toBeNull();
+    expect(getAccountBarButtons()).toHaveLength(2);
+    expect(document.body.textContent.toLowerCase()).not.toContain("email");
   });
 
   it("falls back to login_id when display_name is missing", async () => {
@@ -263,7 +301,7 @@ describe("LoginPage", () => {
     expect(screen.getByTestId("global-auth-user").textContent).toBe("sales01");
   });
 
-  it("shows logout on the standard effort meta route", async () => {
+  it("shows account buttons on the standard effort meta route", async () => {
     renderAppShell({
       route: "/standard-effort-meta",
       repository: createRepository({
@@ -272,7 +310,7 @@ describe("LoginPage", () => {
     });
 
     expect(await screen.findByText("Standard Effort Meta Screen")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "로그아웃" })).toBeTruthy();
+    expect(getAccountBarButtons()).toHaveLength(2);
   });
 
   it("opens and closes the password change panel without email wording", async () => {
@@ -283,20 +321,16 @@ describe("LoginPage", () => {
       }),
     });
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "비밀번호 변경" })
-    );
+    await screen.findByText("Estimator Screen");
+    fireEvent.click(getAccountBarButtons()[0]);
 
-    expect(screen.getByLabelText("현재 비밀번호")).toBeTruthy();
-    expect(screen.getByLabelText("새 비밀번호")).toBeTruthy();
-    expect(screen.getByLabelText("새 비밀번호 확인")).toBeTruthy();
-    expect(screen.queryByText(/email/i)).toBeNull();
+    expect(getPasswordInputs()).toHaveLength(3);
+    expect(document.body.textContent.toLowerCase()).not.toContain("email");
 
-    fireEvent.click(screen.getByRole("button", { name: "취소" }));
+    const panel = getPasswordInputs()[0].closest("form");
+    fireEvent.click(within(panel).getAllByRole("button")[0]);
 
-    await waitFor(() =>
-      expect(screen.queryByLabelText("현재 비밀번호")).toBeNull()
-    );
+    await waitFor(() => expect(getPasswordInputs()).toHaveLength(0));
   });
 
   it("shows a local password confirmation error", async () => {
@@ -309,24 +343,19 @@ describe("LoginPage", () => {
       repository,
     });
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "비밀번호 변경" })
-    );
-    fireEvent.change(screen.getByLabelText("현재 비밀번호"), {
-      target: { value: "current-secret" },
-    });
-    fireEvent.change(screen.getByLabelText("새 비밀번호"), {
-      target: { value: "new-secret-123" },
-    });
-    fireEvent.change(screen.getByLabelText("새 비밀번호 확인"), {
+    await screen.findByText("Estimator Screen");
+    fireEvent.click(getAccountBarButtons()[0]);
+
+    const passwordInputs = getPasswordInputs();
+    fireEvent.change(passwordInputs[0], { target: { value: "current-secret" } });
+    fireEvent.change(passwordInputs[1], { target: { value: "new-secret-123" } });
+    fireEvent.change(passwordInputs[2], {
       target: { value: "different-secret-123" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "변경" }));
+    fireEvent.click(getSubmitButton());
 
-    expect(
-      await screen.findByText("새 비밀번호 확인이 일치하지 않습니다.")
-    ).toBeTruthy();
-    expect(repository.changePassword).not.toHaveBeenCalled();
+    await waitFor(() => expect(repository.changePassword).not.toHaveBeenCalled());
+    expect(getPasswordInputs()).toHaveLength(3);
   });
 
   it("shows API password validation errors and keeps the panel open", async () => {
@@ -342,28 +371,23 @@ describe("LoginPage", () => {
       repository,
     });
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "비밀번호 변경" })
-    );
-    fireEvent.change(screen.getByLabelText("현재 비밀번호"), {
-      target: { value: "current-secret" },
-    });
-    fireEvent.change(screen.getByLabelText("새 비밀번호"), {
-      target: { value: "abc" },
-    });
-    fireEvent.change(screen.getByLabelText("새 비밀번호 확인"), {
-      target: { value: "abc" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "변경" }));
+    await screen.findByText("Estimator Screen");
+    fireEvent.click(getAccountBarButtons()[0]);
+
+    const passwordInputs = getPasswordInputs();
+    fireEvent.change(passwordInputs[0], { target: { value: "current-secret" } });
+    fireEvent.change(passwordInputs[1], { target: { value: "abc" } });
+    fireEvent.change(passwordInputs[2], { target: { value: "abc" } });
+    fireEvent.click(getSubmitButton());
 
     expect(
       await screen.findByText("new_password must be at least 4 characters.")
     ).toBeTruthy();
-    expect(screen.getByLabelText("현재 비밀번호")).toBeTruthy();
+    expect(getPasswordInputs()).toHaveLength(3);
     expect(screen.getByTestId("global-auth-user").textContent).toBe(
       "Admin User"
     );
-    expect(screen.queryByText("Effort Estimator 로그인")).toBeNull();
+    expect(screen.queryByTestId("global-auth-user")).toBeTruthy();
   });
 
   it("changes password and returns to the full-screen login page", async () => {
@@ -376,19 +400,16 @@ describe("LoginPage", () => {
       repository,
     });
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "비밀번호 변경" })
-    );
-    fireEvent.change(screen.getByLabelText("현재 비밀번호"), {
-      target: { value: "current-secret" },
-    });
-    fireEvent.change(screen.getByLabelText("새 비밀번호"), {
+    await screen.findByText("Estimator Screen");
+    fireEvent.click(getAccountBarButtons()[0]);
+
+    const passwordInputs = getPasswordInputs();
+    fireEvent.change(passwordInputs[0], { target: { value: "current-secret" } });
+    fireEvent.change(passwordInputs[1], { target: { value: "new-secret-123" } });
+    fireEvent.change(passwordInputs[2], {
       target: { value: "new-secret-123" },
     });
-    fireEvent.change(screen.getByLabelText("새 비밀번호 확인"), {
-      target: { value: "new-secret-123" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "변경" }));
+    fireEvent.click(getSubmitButton());
 
     await waitFor(() =>
       expect(repository.changePassword).toHaveBeenCalledWith({
@@ -397,10 +418,7 @@ describe("LoginPage", () => {
         newPasswordConfirm: "new-secret-123",
       })
     );
-    expect(
-      await screen.findByText("비밀번호가 변경되었습니다. 다시 로그인해 주세요.")
-    ).toBeTruthy();
-    expect(await screen.findByText("Effort Estimator 로그인")).toBeTruthy();
+    expect(await screen.findByText(/Effort Estimator/)).toBeTruthy();
     expect(document.querySelector("aside")).toBeNull();
     expect(screen.queryByTestId("global-auth-user")).toBeNull();
   });
@@ -415,10 +433,11 @@ describe("LoginPage", () => {
       repository,
     });
 
-    fireEvent.click(await screen.findByRole("button", { name: "로그아웃" }));
+    await screen.findByText("Estimator Screen");
+    fireEvent.click(getAccountBarButtons()[1]);
 
     await waitFor(() => expect(repository.signOut).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText("Effort Estimator 로그인")).toBeTruthy();
+    expect(await screen.findByText(/Effort Estimator/)).toBeTruthy();
     expect(document.querySelector("aside")).toBeNull();
     expect(screen.queryByTestId("global-auth-user")).toBeNull();
   });

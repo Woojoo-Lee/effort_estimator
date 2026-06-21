@@ -191,3 +191,18 @@ against the deployed URL:
 
 Record only PASS/PARTIAL/FAIL evidence. Do not record real passwords, password
 hashes, cookies, session secrets, service-role keys, or DB passwords.
+
+## Related Phase 14-B Smoke
+
+Project lifecycle responsibility was checked separately after this UI polish
+smoke.
+
+- Document:
+  [Project Management Responsibility Smoke Result](./project-management-responsibility-smoke-result.md)
+- Status: `PASS`
+- Confirmed: login progress, estimation-screen project lifecycle blocking,
+  Standard Effort save paths, Project Management create/edit, updater column,
+  admin all-project archive/restore, sales own-project archive/restore, sales
+  non-owner restrictions, admin all-project Standard Effort edit, sales
+  own-only Standard Effort edit, viewer read-only behavior, hard-delete wording
+  absence, and sales/viewer regression.

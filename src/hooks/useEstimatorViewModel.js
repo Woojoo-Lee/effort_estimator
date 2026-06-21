@@ -70,6 +70,15 @@ export function useEstimatorViewModel() {
   const standardEffortLoadedProjectId = useEstimatorStore(
     (s) => s.standardEffortLoadedProjectId
   );
+  const standardEffortLastChange = useEstimatorStore(
+    (s) => s.standardEffortLastChange
+  );
+  const standardEffortLastChangeLoading = useEstimatorStore(
+    (s) => s.standardEffortLastChangeLoading
+  );
+  const standardEffortLastChangeError = useEstimatorStore(
+    (s) => s.standardEffortLastChangeError
+  );
 
   const setActiveTab = useEstimatorStore((s) => s.setActiveTab);
   const setScaleFactor = useEstimatorStore((s) => s.setScaleFactor);
@@ -108,6 +117,9 @@ export function useEstimatorViewModel() {
   const updateStandardActualEffort = useEstimatorStore(
     (s) => s.updateStandardActualEffort
   );
+  const loadStandardEffortLastChange = useEstimatorStore(
+    (s) => s.loadStandardEffortLastChange
+  );
 
   const derived = useEstimatorDerivedState({
     itemsBySolution,
@@ -135,6 +147,9 @@ export function useEstimatorViewModel() {
       loading: standardEffortLoading,
       error: standardEffortError,
       loadedProjectId: standardEffortLoadedProjectId,
+      lastChange: standardEffortLastChange,
+      lastChangeLoading: standardEffortLastChangeLoading,
+      lastChangeError: standardEffortLastChangeError,
       totals: standardEffortTotals,
     }),
     [
@@ -145,6 +160,9 @@ export function useEstimatorViewModel() {
       standardEffortLoading,
       standardEffortError,
       standardEffortLoadedProjectId,
+      standardEffortLastChange,
+      standardEffortLastChangeLoading,
+      standardEffortLastChangeError,
       standardEffortTotals,
     ]
   );
@@ -160,6 +178,7 @@ export function useEstimatorViewModel() {
       saveStandardProjectSolutionSelections,
       saveStandardProjectItemSelections,
       updateStandardActualEffort,
+      loadStandardEffortLastChange,
     }),
     [
       loadStandardEffortMeta,
@@ -171,6 +190,7 @@ export function useEstimatorViewModel() {
       saveStandardProjectSolutionSelections,
       saveStandardProjectItemSelections,
       updateStandardActualEffort,
+      loadStandardEffortLastChange,
     ]
   );
 

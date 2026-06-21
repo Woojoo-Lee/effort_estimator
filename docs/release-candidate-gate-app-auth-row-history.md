@@ -235,6 +235,17 @@ Implemented after the original RC gate:
   `sales01`, `viewer01`, user management, codebook management, project
   management, Standard Effort meta, AccessDenied, and screen breakage /
   horizontal-scroll review.
+- Phase 14-B separates project lifecycle responsibility from the estimation
+  screen. Manual browser smoke is recorded in
+  [Project Management Responsibility Smoke Result](./project-management-responsibility-smoke-result.md).
+  The Phase 14-B-Fix-4-R smoke is `PASS`: the Project Management updater
+  column is visible, updater display-name / login-id fallback works, admin can
+  archive/restore own, other-owned, and owner-unknown projects, sales can
+  archive/restore only projects registered by the current sales user, sales
+  non-owner archive/restore is disabled, admin can edit Standard Effort values
+  on all projects, sales can save solution/item only on own projects,
+  `actual_effort_mm` remains read-only for sales, viewer remains read-only, and
+  hard-delete wording is absent.
 
 ## Release Candidate Decision
 
@@ -250,6 +261,8 @@ Rationale:
   `viewer01`.
 - Remaining row history `PENDING` / `SKIP` items are documented and do not block
   this release candidate.
+- Phase 14-B-Fix-4-R confirms the admin all-project / sales own-project
+  archive/restore and estimation edit policy as `PASS`.
 
 Release condition:
 
