@@ -139,11 +139,14 @@ Database rollback policy:
 
 - Current Production branch: `main`.
 - Current Production baseline noted for Phase 12-A: `53b23cf`.
-- Current feature branch: `feature/app-auth-row-history`.
-- Row history and password reset policy changes are being prepared on the
-  feature branch.
-- Production inclusion should be decided during the next scheduled release
-  window.
+- The June first feature scope based on `feature/app-auth-row-history` has been
+  reflected in Production.
+- Production login passed after Vercel Production env correction and redeploy.
+- The June Production handoff is tracked in
+  [Production Release Sign-Off 2026-06](./production-release-signoff-2026-06.md).
+- Repeat Production smoke with
+  [Production Smoke Checklist](./production-smoke-checklist.md) after redeploys
+  or hotfixes.
 
 ## Next Work Candidates
 

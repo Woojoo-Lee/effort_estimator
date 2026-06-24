@@ -74,6 +74,17 @@ See [Release Candidate Gate: App Auth Row History](./release-candidate-gate-app-
 for the current `feature/app-auth-row-history` release candidate gate status,
 which is `PASS` after local Vercel dev smoke.
 
+See [Production Release Sign-Off 2026-06](./production-release-signoff-2026-06.md)
+for the June first Production handoff state, Production login recovery note,
+operating smoke summary, known non-blocking items, and rollback criteria.
+
+See [Production Smoke Checklist](./production-smoke-checklist.md) for the
+repeatable Production smoke checklist after redeploys, env corrections, or
+hotfixes.
+
+See [Executive Demo Scenario 2026-06](./executive-demo-scenario-2026-06.md)
+for the representative executive demo flow.
+
 ## Frontend Login Rollout
 
 `VITE_AUTH_LOGIN_MODE` controls the minimum frontend login/session skeleton.

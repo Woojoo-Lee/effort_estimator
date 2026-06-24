@@ -128,6 +128,11 @@ Priority order:
 - Branch: `feature/app-auth-row-history`.
 - RC gate: `PASS`.
 - Local Vercel dev smoke: `PASS`.
+- Production handoff: `PASS` after Vercel Production env correction and
+  redeploy.
+- Production sign-off:
+  [Production Release Sign-Off 2026-06](./production-release-signoff-2026-06.md).
+- Production smoke checklist:
+  [Production Smoke Checklist](./production-smoke-checklist.md).
 - `meta base effort` row history smoke: `PENDING`, not release-blocking.
 - Active toggle row history smoke: `SKIP`, not release-blocking.
-- `main` / Vercel Production deployment: not performed in this phase.
