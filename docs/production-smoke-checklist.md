@@ -42,11 +42,14 @@ Login as `admin01`.
 - Password change entry is visible.
 - `공수 산정` is accessible.
 - Project can be selected.
+- `공수 저장` button is visible.
 - Refresh button is visible.
 - Excel download button is visible.
-- Standard Effort solution toggle is editable.
-- Standard Effort item checkbox is editable.
-- `actual_effort_mm` is editable.
+- Standard Effort solution toggle is editable as a local draft change.
+- Standard Effort item checkbox is editable as a local draft change.
+- `actual_effort_mm` is editable as a local draft change.
+- `저장되지 않은 변경사항이 있습니다.` appears before explicit save.
+- `공수 저장` persists the draft and clears the dirty state.
 - Standard Effort last updated time/updater is visible when data exists.
 - `표준공수 메타` is accessible.
 - `사용자 관리` is accessible.
@@ -60,6 +63,7 @@ Login as `sales01`.
 
 - `공수 산정` is accessible.
 - Sales-owned project solution/item selection is editable.
+- Sales-owned project solution/item selection requires `공수 저장` to persist.
 - Non-owned project solution/item selection is read-only.
 - `actual_effort_mm` is read-only.
 - `표준공수 메타` is hidden or blocked.
@@ -88,7 +92,12 @@ Login as `viewer01`.
 - Confirm item checkbox table is visible.
 - Confirm `standard_effort_mm`, `actual_effort_mm`, and `gap_mm` are visible
   where expected.
-- Save a safe solution/item change only when a restore path is ready.
+- Make a safe solution/item draft change only when a restore path is ready.
+- Confirm the dirty message appears before save.
+- Click `공수 저장`.
+- Confirm saved values persist and the dirty message clears.
+- Confirm `공수 산정 내용을 저장했습니다.` is shown without the dirty message
+  after a successful save.
 - Confirm refresh keeps saved values.
 - Confirm Excel download works.
 

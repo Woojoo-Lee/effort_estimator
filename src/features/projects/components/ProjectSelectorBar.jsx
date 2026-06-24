@@ -15,6 +15,9 @@ const TEXT = {
   effortUpdater: "수정자",
   loading: "불러오는 중...",
   none: "-",
+  saveEffort: "공수 저장",
+  savingEffort: "저장 중...",
+  unsavedEffort: "저장되지 않은 변경사항이 있습니다.",
 };
 
 function formatDateTime(value) {
@@ -66,6 +69,13 @@ export default function ProjectSelectorBar({
   showExcelButton = Boolean(downloadExcel),
   standardEffortLastChange = null,
   standardEffortLastChangeLoading = false,
+  showStandardEffortSaveButton = false,
+  onSaveStandardEffort,
+  canSaveStandardEffort = true,
+  standardEffortDirty = false,
+  standardEffortSaving = false,
+  standardEffortSaveError = "",
+  standardEffortSaveMessage = "",
 }) {
   const [selectedId, setSelectedId] = useState(projectId ? String(projectId) : "");
   const selectableProjects = useMemo(
@@ -116,8 +126,50 @@ export default function ProjectSelectorBar({
     downloadExcel();
   }
 
+  function handleSaveStandardEffort() {
+    if (!onSaveStandardEffort || saveEffortDisabled) {
+      return;
+    }
+
+    onSaveStandardEffort();
+  }
+
   const excelDisabled =
     !downloadExcel || !canDownloadExcel || !projectId || isBusy;
+  const saveEffortDisabled =
+    !projectId ||
+    !onSaveStandardEffort ||
+    !canSaveStandardEffort ||
+    !standardEffortDirty ||
+    standardEffortSaving ||
+    isBusy;
+  const saveMessages = standardEffortSaving
+    ? [
+        {
+          text: standardEffortSaveMessage || TEXT.savingEffort,
+          className: "text-sky-600",
+        },
+      ]
+    : [
+        standardEffortSaveError
+          ? {
+              text: standardEffortSaveError,
+              className: "text-rose-600",
+            }
+          : null,
+        standardEffortDirty
+          ? {
+              text: TEXT.unsavedEffort,
+              className: "text-amber-600",
+            }
+          : null,
+        !standardEffortSaveError && !standardEffortDirty && standardEffortSaveMessage
+          ? {
+              text: standardEffortSaveMessage,
+              className: "text-emerald-600",
+            }
+          : null,
+      ].filter(Boolean);
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -147,6 +199,19 @@ export default function ProjectSelectorBar({
         </label>
 
         <div className="flex shrink-0 items-center gap-2">
+          {showStandardEffortSaveButton ? (
+            <ActionButton
+              type="button"
+              onClick={handleSaveStandardEffort}
+              disabled={saveEffortDisabled}
+              aria-label={TEXT.saveEffort}
+              title={TEXT.saveEffort}
+              className="h-10 px-4"
+            >
+              {standardEffortSaving ? TEXT.savingEffort : TEXT.saveEffort}
+            </ActionButton>
+          ) : null}
+
           <ActionButton
             type="button"
             onClick={handleRefresh}
@@ -195,6 +260,16 @@ export default function ProjectSelectorBar({
           {TEXT.countUnit}
         </div>
       </div>
+
+      {showStandardEffortSaveButton && saveMessages.length > 0 ? (
+        <div className="mt-2 flex flex-col gap-1 text-xs font-extrabold">
+          {saveMessages.map((message) => (
+            <div key={message.text} className={message.className}>
+              {message.text}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {isSelectedArchived ? (
         <div className="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">

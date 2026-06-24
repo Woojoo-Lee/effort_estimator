@@ -264,6 +264,30 @@ Rationale:
 - Phase 14-B-Fix-4-R confirms the admin all-project / sales own-project
   archive/restore and estimation edit policy as `PASS`.
 
+## Phase 15-HF-1 Explicit Standard Effort Save
+
+Hotfix scope:
+
+- Add `공수 저장` to the compact estimation header beside project selection.
+- Stop immediate persistence from solution toggle, item checkbox, and
+  `actual_effort_mm` edit/blur/Enter.
+- Keep those edits as local draft changes until `공수 저장` is clicked.
+- Persist solution selections, item selections, and `actual_effort_mm` together
+  from the explicit save action.
+- Keep dirty draft state on save failure.
+- Clear dirty state and refresh last updated/updater on save success.
+- Phase 15-HF-1-Fix-1 ensures the dirty warning is removed after successful
+  explicit save, so it does not appear together with the success message.
+- Keep admin/sales/viewer permission policy unchanged.
+- Keep Project Management as the only project create/edit/archive/restore
+  surface.
+
+Gate note:
+
+- Re-run targeted/full test/build and manual browser smoke before hotfix release.
+- Manual smoke should confirm row history updates only after `공수 저장`, not
+  after individual checkbox/input changes.
+
 Release condition:
 
 - This branch can be treated as the next scheduled release candidate.

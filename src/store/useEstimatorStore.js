@@ -128,6 +128,22 @@ function mergeByKey(existingRows = [], nextRows = [], getKey) {
   return [...rowByKey.values()];
 }
 
+function isSameProjectId(left, right) {
+  if (!left || !right) {
+    return false;
+  }
+
+  return String(left) === String(right);
+}
+
+function isRowForProject(row = {}, projectId) {
+  if (!row.project_id || !projectId) {
+    return true;
+  }
+
+  return isSameProjectId(row.project_id, projectId);
+}
+
 function getProjectScopedSolutionSelectionKey(row = {}, projectId) {
   return `${row.project_id ?? projectId ?? ""}:${row.solution_variant_id}`;
 }
@@ -136,6 +152,24 @@ function getProjectScopedItemSelectionKey(row = {}, projectId) {
   return `${row.project_id ?? projectId ?? ""}:${row.solution_variant_id}:${
     row.item_id
   }`;
+}
+
+function normalizeSolutionSelectionsForStore(rows = [], projectId) {
+  return rows.map((row) =>
+    normalizeProjectSolutionSelection({
+      ...row,
+      project_id: row.project_id ?? projectId,
+    })
+  );
+}
+
+function normalizeItemSelectionsForStore(rows = [], projectId) {
+  return rows.map((row) =>
+    normalizeProjectItemSelection({
+      ...row,
+      project_id: row.project_id ?? projectId,
+    })
+  );
 }
 
 export const useEstimatorStore = create(
@@ -193,6 +227,10 @@ export const useEstimatorStore = create(
         standardEffortLastChange: null,
         standardEffortLastChangeLoading: false,
         standardEffortLastChangeError: "",
+        standardEffortDirty: false,
+        standardEffortSaving: false,
+        standardEffortSaveError: "",
+        standardEffortSaveMessage: "",
 
         saveStatus: "idle",
         lastSaveError: "",
@@ -496,6 +534,10 @@ export const useEstimatorStore = create(
               standardEffortError: "projectId가 없습니다.",
               standardEffortResults: [],
               standardEffortLoadedProjectId: null,
+              standardEffortDirty: false,
+              standardEffortSaving: false,
+              standardEffortSaveError: "",
+              standardEffortSaveMessage: "",
             });
             return false;
           }
@@ -526,6 +568,10 @@ export const useEstimatorStore = create(
               standardEffortLoadedProjectId: projectId,
               standardEffortLoading: false,
               standardEffortError: null,
+              standardEffortDirty: false,
+              standardEffortSaving: false,
+              standardEffortSaveError: "",
+              standardEffortSaveMessage: "",
             });
 
             await get().loadStandardEffortLastChange(projectId);
@@ -627,6 +673,9 @@ export const useEstimatorStore = create(
             standardProjectSolutionSelections: nextSelections,
             standardEffortResults,
             standardEffortLoadedProjectId: projectId,
+            standardEffortDirty: true,
+            standardEffortSaveError: "",
+            standardEffortSaveMessage: "저장되지 않은 변경사항이 있습니다.",
           });
         },
 
@@ -651,7 +700,139 @@ export const useEstimatorStore = create(
             standardProjectItemSelections: nextSelections,
             standardEffortResults,
             standardEffortLoadedProjectId: projectId,
+            standardEffortDirty: true,
+            standardEffortSaveError: "",
+            standardEffortSaveMessage: "저장되지 않은 변경사항이 있습니다.",
           });
+        },
+
+        saveStandardEffortChanges: async (projectId, options = {}) => {
+          if (!projectId) {
+            set({
+              standardEffortSaveError: "공수 산정 저장에 실패했습니다.",
+              standardEffortSaveMessage: "",
+            });
+            return false;
+          }
+
+          const state = get();
+          const solutionSelections = state.standardProjectSolutionSelections
+            .filter((selection) => isRowForProject(selection, projectId))
+            .map((selection) => {
+              const normalized = normalizeProjectSolutionSelection(selection);
+
+              return {
+                solution_variant_id: normalized.solution_variant_id,
+                enabled: normalized.enabled === true,
+                actual_effort_mm: normalized.actual_effort_mm,
+              };
+            });
+          const itemSelections = state.standardProjectItemSelections
+            .filter((selection) => isRowForProject(selection, projectId))
+            .map((selection) => {
+              const normalized = normalizeProjectItemSelection(selection);
+
+              return {
+                solution_variant_id: normalized.solution_variant_id,
+                item_id: normalized.item_id,
+                checked: normalized.checked === true,
+              };
+            });
+
+          set({
+            standardEffortSaving: true,
+            standardEffortLoading: true,
+            standardEffortError: null,
+            standardEffortSaveError: "",
+            standardEffortSaveMessage: "저장 중...",
+          });
+
+          try {
+            const [savedSolutionSelections, savedItemSelections] =
+              await Promise.all([
+                solutionSelections.length > 0
+                  ? upsertProjectSolutionSelections(
+                      projectId,
+                      solutionSelections,
+                      undefined,
+                      options
+                    )
+                  : Promise.resolve([]),
+                itemSelections.length > 0
+                  ? upsertProjectItemSelections(
+                      projectId,
+                      itemSelections,
+                      undefined,
+                      options
+                    )
+                  : Promise.resolve([]),
+              ]);
+            const nextState = get();
+            const nextSolutionSelections =
+              normalizeSolutionSelectionsForStore(
+                savedSolutionSelections.length > 0
+                  ? mergeByKey(
+                      nextState.standardProjectSolutionSelections,
+                      savedSolutionSelections,
+                      (row) =>
+                        getProjectScopedSolutionSelectionKey(row, projectId)
+                    )
+                  : nextState.standardProjectSolutionSelections,
+                projectId
+              );
+            const nextItemSelections =
+              normalizeItemSelectionsForStore(
+                savedItemSelections.length > 0
+                  ? mergeByKey(
+                      nextState.standardProjectItemSelections,
+                      savedItemSelections,
+                      (row) => getProjectScopedItemSelectionKey(row, projectId)
+                    )
+                  : nextState.standardProjectItemSelections,
+                projectId
+              );
+            const standardEffortResults = calculateStandardResultsFromState(
+              nextState,
+              {
+                projectId,
+                projectSolutionSelections: nextSolutionSelections,
+                projectItemSelections: nextItemSelections,
+              }
+            );
+
+            set({
+              standardProjectSolutionSelections: nextSolutionSelections,
+              standardProjectItemSelections: nextItemSelections,
+              standardEffortResults,
+              standardEffortLoadedProjectId: projectId,
+              standardEffortDirty: false,
+              standardEffortSaving: false,
+              standardEffortLoading: false,
+              standardEffortError: null,
+              standardEffortSaveError: "",
+              standardEffortSaveMessage: "공수 산정 내용을 저장했습니다.",
+            });
+
+            await get().loadStandardEffortLastChange(projectId);
+            return true;
+          } catch (error) {
+            console.error(error);
+            const message = getErrorMessage(
+              error,
+              "공수 산정 저장에 실패했습니다."
+            );
+
+            set({
+              standardEffortDirty: true,
+              standardEffortSaving: false,
+              standardEffortLoading: false,
+              standardEffortError: null,
+              standardEffortSaveError: message,
+              standardEffortSaveMessage: "",
+            });
+
+            return false;
+          }
         },
 
         saveStandardProjectSolutionSelections: async (
