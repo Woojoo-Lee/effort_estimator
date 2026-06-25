@@ -1,17 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  AUDIT_EVENT_TYPES,
-  AUDIT_TARGET_TYPES,
-  createAuditLogSafe,
-  decorateAuditMetadata,
-  resolveFrontendAuditPolicy,
-  shouldWriteFrontendAudit,
-} from "../../../audit";
-import { buildRowHistoryActor } from "../../../auth/lib/rowHistoryActor";
 import StandardEffortPanel from "./StandardEffortPanel";
 
-const SAVE_COMPLETE_VISIBLE_MS = 1600;
 const REFRESH_COMPLETE_VISIBLE_MS = 1600;
 
 function isSameProjectId(left, right) {
@@ -57,6 +47,51 @@ function toNumberOrZero(value) {
   return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
+function upsertSolutionSelection(selections = [], nextSelection = {}, projectId) {
+  let didReplace = false;
+  const nextSelections = selections.map((selection) => {
+    const isSameRow =
+      selection.solution_variant_id === nextSelection.solution_variant_id &&
+      isSelectionForProject(selection, projectId);
+
+    if (!isSameRow) {
+      return selection;
+    }
+
+    didReplace = true;
+    return {
+      ...selection,
+      ...nextSelection,
+      project_id: selection.project_id ?? nextSelection.project_id,
+    };
+  });
+
+  return didReplace ? nextSelections : [...nextSelections, nextSelection];
+}
+
+function upsertItemSelection(selections = [], nextSelection = {}, projectId) {
+  let didReplace = false;
+  const nextSelections = selections.map((selection) => {
+    const isSameRow =
+      selection.solution_variant_id === nextSelection.solution_variant_id &&
+      selection.item_id === nextSelection.item_id &&
+      isSelectionForProject(selection, projectId);
+
+    if (!isSameRow) {
+      return selection;
+    }
+
+    didReplace = true;
+    return {
+      ...selection,
+      ...nextSelection,
+      project_id: selection.project_id ?? nextSelection.project_id,
+    };
+  });
+
+  return didReplace ? nextSelections : [...nextSelections, nextSelection];
+}
+
 export default function StandardEffortSection({
   projectId,
   standardEffort,
@@ -67,12 +102,7 @@ export default function StandardEffortSection({
   actualEffortReadOnly = readOnly,
   auditActor,
 }) {
-  const saveStatusTimerRef = useRef(null);
   const refreshStatusTimerRef = useRef(null);
-  const [saveStatus, setSaveStatus] = useState({
-    status: "idle",
-    message: "",
-  });
   const [refreshStatus, setRefreshStatus] = useState({
     status: "idle",
     message: "",
@@ -90,15 +120,9 @@ export default function StandardEffortSection({
   const {
     loadProjectStandardEffort,
     refreshProjectStandardEffort,
-    saveStandardProjectSolutionSelections,
-    saveStandardProjectItemSelections,
-    updateStandardActualEffort,
+    setStandardProjectSolutionSelections,
+    setStandardProjectItemSelections,
   } = standardEffortActions || {};
-  const rowHistoryOptions = useMemo(() => {
-    const currentUser = buildRowHistoryActor(auditActor);
-
-    return currentUser ? { currentUser } : null;
-  }, [auditActor?.actorUserId]);
   const visibleProjectSolutionSelections = useMemo(
     () =>
       projectSolutionSelections.filter((selection) =>
@@ -114,48 +138,6 @@ export default function StandardEffortSection({
     [projectId, projectItemSelections]
   );
 
-  const recordAudit = useCallback(
-    (input) => {
-      const policy = resolveFrontendAuditPolicy();
-
-      if (!shouldWriteFrontendAudit(policy)) {
-        return;
-      }
-
-      const metadata = {
-        ...(input.metadata || {}),
-        ...(auditActor?.devOnly ? { dev_only: true } : {}),
-      };
-      const decoratedMetadata = decorateAuditMetadata(metadata, policy);
-      const payload = {
-        ...input,
-        actorUserId: auditActor?.actorUserId ?? null,
-        actorEmail: auditActor?.actorEmail ?? null,
-        metadata: decoratedMetadata,
-      };
-
-      try {
-        Promise.resolve(createAuditLogSafe(payload))
-          .then((result) => {
-            if (result && result.ok === false) {
-              console.warn("Standard effort audit log failed.", result.error);
-            }
-          })
-          .catch((error) => {
-            console.warn("Standard effort audit log failed.", error);
-          });
-      } catch (error) {
-        console.warn("Standard effort audit log failed.", error);
-      }
-    },
-    [auditActor?.actorEmail, auditActor?.actorUserId, auditActor?.devOnly]
-  );
-  const clearSaveStatusTimer = useCallback(() => {
-    if (saveStatusTimerRef.current) {
-      clearTimeout(saveStatusTimerRef.current);
-      saveStatusTimerRef.current = null;
-    }
-  }, []);
   const clearRefreshStatusTimer = useCallback(() => {
     if (refreshStatusTimerRef.current) {
       clearTimeout(refreshStatusTimerRef.current);
@@ -163,20 +145,6 @@ export default function StandardEffortSection({
     }
   }, []);
 
-  const setTransientSaveStatus = useCallback(
-    (nextStatus) => {
-      clearSaveStatusTimer();
-      setSaveStatus(nextStatus);
-
-      if (nextStatus.status === "saved") {
-        saveStatusTimerRef.current = setTimeout(() => {
-          setSaveStatus({ status: "idle", message: "" });
-          saveStatusTimerRef.current = null;
-        }, SAVE_COMPLETE_VISIBLE_MS);
-      }
-    },
-    [clearSaveStatusTimer]
-  );
   const setTransientRefreshStatus = useCallback(
     (nextStatus) => {
       clearRefreshStatusTimer();
@@ -192,38 +160,7 @@ export default function StandardEffortSection({
     [clearRefreshStatusTimer]
   );
 
-  useEffect(() => clearSaveStatusTimer, [clearSaveStatusTimer]);
   useEffect(() => clearRefreshStatusTimer, [clearRefreshStatusTimer]);
-
-  const runSave = useCallback(
-    async (saveOperation, { rethrow = false } = {}) => {
-      setTransientSaveStatus({ status: "saving", message: "저장 중..." });
-
-      try {
-        const result = await saveOperation();
-
-        if (result === false) {
-          throw new Error("Standard effort save returned false.");
-        }
-
-        setTransientSaveStatus({ status: "saved", message: "저장 완료" });
-        return true;
-      } catch (error) {
-        console.error(error);
-        setTransientSaveStatus({
-          status: "failed",
-          message: "저장 실패. 다시 시도해 주세요.",
-        });
-
-        if (rethrow) {
-          throw error;
-        }
-
-        return false;
-      }
-    },
-    [setTransientSaveStatus]
-  );
 
   const handleRefresh = useCallback(async () => {
     if (!projectId || !refreshProjectStandardEffort) {
@@ -279,11 +216,7 @@ export default function StandardEffortSection({
         return false;
       }
 
-      if (!projectId || !saveStandardProjectSolutionSelections) {
-        setTransientSaveStatus({
-          status: "failed",
-          message: "저장 실패. 다시 시도해 주세요.",
-        });
+      if (!projectId) {
         return false;
       }
 
@@ -298,66 +231,26 @@ export default function StandardEffortSection({
           existingSelection?.actual_effort_md ??
           existingSelection?.actual_effort
       );
-      const previousEnabled = existingSelection?.enabled === true;
-      const saved = await runSave(() =>
-        rowHistoryOptions
-          ? saveStandardProjectSolutionSelections(
-              projectId,
-              [
-                {
-                  solution_variant_id: solutionVariantId,
-                  enabled,
-                  actual_effort_mm: existingActualEffortMm,
-                },
-              ],
-              rowHistoryOptions
-            )
-          : saveStandardProjectSolutionSelections(projectId, [
-              {
-                solution_variant_id: solutionVariantId,
-                enabled,
-                actual_effort_mm: existingActualEffortMm,
-              },
-            ])
-      );
-
-      if (saved) {
-        recordAudit({
-          eventType: AUDIT_EVENT_TYPES.STANDARD_EFFORT_SOLUTION_TOGGLE,
-          targetType: AUDIT_TARGET_TYPES.STANDARD_EFFORT,
-          targetId: `${projectId}:${solutionVariantId}`,
-          projectId,
-          before: {
-            project_id: projectId,
-            solution_variant_id: solutionVariantId,
-            enabled: previousEnabled,
-            actual_effort_mm: existingActualEffortMm,
-          },
-          after: {
+      setStandardProjectSolutionSelections?.(
+        upsertSolutionSelection(
+          projectSolutionSelections,
+          {
             project_id: projectId,
             solution_variant_id: solutionVariantId,
             enabled,
             actual_effort_mm: existingActualEffortMm,
           },
-          metadata: {
-            section: "solution_selection",
-            project_id: projectId,
-            solution_variant_id: solutionVariantId,
-          },
-        });
-      }
+          projectId
+        )
+      );
 
-      return saved;
+      return true;
     },
     [
-      recordAudit,
       projectId,
       projectSolutionSelections,
       solutionSelectionReadOnly,
-      rowHistoryOptions,
-      runSave,
-      saveStandardProjectSolutionSelections,
-      setTransientSaveStatus,
+      setStandardProjectSolutionSelections,
     ]
   );
 
@@ -367,11 +260,7 @@ export default function StandardEffortSection({
         return false;
       }
 
-      if (!projectId || !saveStandardProjectItemSelections) {
-        setTransientSaveStatus({
-          status: "failed",
-          message: "저장 실패. 다시 시도해 주세요.",
-        });
+      if (!projectId) {
         return false;
       }
 
@@ -381,67 +270,26 @@ export default function StandardEffortSection({
         itemId,
         projectId
       );
-      const previousChecked = existingSelection?.checked === true;
-      const saved = await runSave(() =>
-        rowHistoryOptions
-          ? saveStandardProjectItemSelections(
-              projectId,
-              [
-                {
-                  solution_variant_id: solutionVariantId,
-                  item_id: itemId,
-                  checked,
-                },
-              ],
-              rowHistoryOptions
-            )
-          : saveStandardProjectItemSelections(projectId, [
-              {
-                solution_variant_id: solutionVariantId,
-                item_id: itemId,
-                checked,
-              },
-            ])
-      );
-
-      if (saved) {
-        recordAudit({
-          eventType: AUDIT_EVENT_TYPES.STANDARD_EFFORT_ITEM_CHECK,
-          targetType: AUDIT_TARGET_TYPES.STANDARD_EFFORT,
-          targetId: `${projectId}:${solutionVariantId}:${itemId}`,
-          projectId,
-          before: {
-            project_id: projectId,
-            solution_variant_id: solutionVariantId,
-            item_id: itemId,
-            checked: previousChecked,
-          },
-          after: {
+      setStandardProjectItemSelections?.(
+        upsertItemSelection(
+          projectItemSelections,
+          {
             project_id: projectId,
             solution_variant_id: solutionVariantId,
             item_id: itemId,
             checked,
           },
-          metadata: {
-            section: "item_selection",
-            project_id: projectId,
-            solution_variant_id: solutionVariantId,
-            item_id: itemId,
-          },
-        });
-      }
+          projectId
+        )
+      );
 
-      return saved;
+      return true;
     },
     [
-      recordAudit,
       projectId,
       projectItemSelections,
       itemSelectionReadOnly,
-      rowHistoryOptions,
-      runSave,
-      saveStandardProjectItemSelections,
-      setTransientSaveStatus,
+      setStandardProjectItemSelections,
     ]
   );
 
@@ -451,12 +299,8 @@ export default function StandardEffortSection({
         return false;
       }
 
-      if (!projectId || !updateStandardActualEffort) {
+      if (!projectId) {
         const error = new Error("projectId 또는 solutionVariantId가 없습니다.");
-        setTransientSaveStatus({
-          status: "failed",
-          message: "저장 실패. 다시 시도해 주세요.",
-        });
         return Promise.reject(error);
       }
 
@@ -465,67 +309,32 @@ export default function StandardEffortSection({
         solutionVariantId,
         projectId
       );
-      const previousActualEffortMm = toNumberOrZero(
-        existingSelection?.actual_effort_mm ??
-          existingSelection?.actual_effort_md ??
-          existingSelection?.actual_effort
-      );
       const nextActualEffortMm = toNumberOrZero(value);
-      const saved = await runSave(
-        () =>
-          rowHistoryOptions
-            ? updateStandardActualEffort(
-                projectId,
-                solutionVariantId,
-                value,
-                rowHistoryOptions
-              )
-            : updateStandardActualEffort(projectId, solutionVariantId, value),
-        { rethrow: true }
-      );
+      const previousEnabled = existingSelection?.enabled !== false;
 
-      if (saved && previousActualEffortMm !== nextActualEffortMm) {
-        recordAudit({
-          eventType: AUDIT_EVENT_TYPES.STANDARD_EFFORT_ACTUAL_EFFORT_UPDATE,
-          targetType: AUDIT_TARGET_TYPES.STANDARD_EFFORT,
-          targetId: `${projectId}:${solutionVariantId}`,
-          projectId,
-          before: {
+      setStandardProjectSolutionSelections?.(
+        upsertSolutionSelection(
+          projectSolutionSelections,
+          {
             project_id: projectId,
             solution_variant_id: solutionVariantId,
-            actual_effort_mm: previousActualEffortMm,
-          },
-          after: {
-            project_id: projectId,
-            solution_variant_id: solutionVariantId,
+            enabled: previousEnabled,
             actual_effort_mm: nextActualEffortMm,
           },
-          metadata: {
-            section: "actual_effort",
-            project_id: projectId,
-            solution_variant_id: solutionVariantId,
-            unit: "M/M",
-          },
-        });
-      }
+          projectId
+        )
+      );
 
-      return saved;
+      return true;
     },
     [
       actualEffortReadOnly,
       projectId,
       projectSolutionSelections,
-      recordAudit,
-      rowHistoryOptions,
-      runSave,
-      setTransientSaveStatus,
-      updateStandardActualEffort,
+      setStandardProjectSolutionSelections,
     ]
   );
-  const displayError =
-    saveStatus.status === "failed" || refreshStatus.status === "failed"
-      ? ""
-      : error;
+  const displayError = refreshStatus.status === "failed" ? "" : error;
 
   return (
     <section className="mt-3" aria-label="표준공수 산정 신규">
@@ -538,7 +347,6 @@ export default function StandardEffortSection({
         totals={totals}
         loading={loading}
         error={displayError}
-        saveStatus={saveStatus}
         refreshStatus={refreshStatus}
         refreshDisabled={
           !projectId || loading || refreshStatus.status === "refreshing"

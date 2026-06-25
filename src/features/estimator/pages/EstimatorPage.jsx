@@ -12,6 +12,7 @@ import VersionHistoryModal from "../../projects/components/VersionHistoryModal";
 import { useAutoSave } from "../../../hooks/useAutoSave";
 import { useAppPageModel } from "../../../app/useAppPageModel";
 import { PERMISSIONS, isAuthPermissionEnabled, useAuthPermission } from "../../auth";
+import { buildRowHistoryActor } from "../../auth/lib/rowHistoryActor";
 import { canManageProject } from "../../projects/lib/projectAccessPolicy";
 import { resolveStandardEffortMode } from "../lib/standardEffortMode";
 
@@ -240,6 +241,15 @@ export default function EstimatorPage() {
     actorEmail: user?.email || authz.user?.email || null,
     devOnly: Boolean(devOnly),
   };
+  const standardEffortSaveActor = buildRowHistoryActor(currentActor);
+  const standardEffortSaveOptions = standardEffortSaveActor
+    ? { currentUser: standardEffortSaveActor }
+    : {};
+  const handleSaveStandardEffort = () =>
+    page.estimatorView.standardEffortActions.saveStandardEffortChanges(
+      page.projectSelector.projectId,
+      standardEffortSaveOptions
+    );
 
   useAutoSave({ enabled: projectLifecycleEnabled });
 
@@ -275,6 +285,15 @@ export default function EstimatorPage() {
             }
             standardEffortLastChangeLoading={
               page.estimatorView.standardEffort.lastChangeLoading
+            }
+            showStandardEffortSaveButton={standardEffortMode.isStandardMode}
+            onSaveStandardEffort={handleSaveStandardEffort}
+            canSaveStandardEffort={!standardEffortEffectiveReadOnly}
+            standardEffortDirty={page.estimatorView.standardEffort.dirty}
+            standardEffortSaving={page.estimatorView.standardEffort.saving}
+            standardEffortSaveError={page.estimatorView.standardEffort.saveError}
+            standardEffortSaveMessage={
+              page.estimatorView.standardEffort.saveMessage
             }
           />
 

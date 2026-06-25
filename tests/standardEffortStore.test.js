@@ -177,6 +177,10 @@ function resetStandardEffortState() {
     standardEffortLastChange: null,
     standardEffortLastChangeLoading: false,
     standardEffortLastChangeError: "",
+    standardEffortDirty: false,
+    standardEffortSaving: false,
+    standardEffortSaveError: "",
+    standardEffortSaveMessage: "",
   });
 }
 
@@ -401,6 +405,223 @@ describe("standard effort store smoke behavior", () => {
     expect(
       standardEffortRepositoryMock.updateProjectActualEffort
     ).toHaveBeenCalledWith(42, "pbx", 8, undefined, options);
+  });
+
+  it("persists solution, item, and actual effort drafts only through explicit standard effort save", async () => {
+    const options = { currentUser: { user_id: "user-1" } };
+    standardEffortRepositoryMock.upsertProjectSolutionSelections.mockResolvedValue(
+      [
+        {
+          project_id: 42,
+          solution_variant_id: "pbx",
+          enabled: false,
+          actual_effort_mm: 8,
+        },
+        {
+          project_id: 42,
+          solution_variant_id: "cti",
+          enabled: true,
+          actual_effort_mm: 2,
+        },
+      ]
+    );
+    standardEffortRepositoryMock.upsertProjectItemSelections.mockResolvedValue([
+      {
+        project_id: 42,
+        solution_variant_id: "pbx",
+        item_id: "item-a",
+        checked: false,
+      },
+    ]);
+
+    useEstimatorStore.getState().setStandardProjectSolutionSelections([
+      {
+        project_id: 42,
+        solution_variant_id: "pbx",
+        enabled: false,
+        actual_effort_mm: 8,
+      },
+      {
+        project_id: 42,
+        solution_variant_id: "cti",
+        enabled: true,
+        actual_effort_mm: 2,
+      },
+      {
+        project_id: 7,
+        solution_variant_id: "pbx",
+        enabled: true,
+        actual_effort_mm: 99,
+      },
+    ]);
+    useEstimatorStore.getState().setStandardProjectItemSelections([
+      {
+        project_id: 42,
+        solution_variant_id: "pbx",
+        item_id: "item-a",
+        checked: false,
+      },
+      {
+        project_id: 7,
+        solution_variant_id: "pbx",
+        item_id: "item-a",
+        checked: true,
+      },
+    ]);
+
+    expect(useEstimatorStore.getState().standardEffortDirty).toBe(true);
+    expect(
+      standardEffortRepositoryMock.upsertProjectSolutionSelections
+    ).not.toHaveBeenCalled();
+    expect(
+      standardEffortRepositoryMock.upsertProjectItemSelections
+    ).not.toHaveBeenCalled();
+    expect(
+      standardEffortRepositoryMock.updateProjectActualEffort
+    ).not.toHaveBeenCalled();
+
+    const result = await useEstimatorStore
+      .getState()
+      .saveStandardEffortChanges(42, options);
+
+    expect(result).toBe(true);
+    expect(
+      standardEffortRepositoryMock.upsertProjectSolutionSelections
+    ).toHaveBeenCalledWith(
+      42,
+      [
+        {
+          solution_variant_id: "pbx",
+          enabled: false,
+          actual_effort_mm: 8,
+        },
+        {
+          solution_variant_id: "cti",
+          enabled: true,
+          actual_effort_mm: 2,
+        },
+      ],
+      undefined,
+      options
+    );
+    expect(
+      standardEffortRepositoryMock.upsertProjectItemSelections
+    ).toHaveBeenCalledWith(
+      42,
+      [
+        {
+          solution_variant_id: "pbx",
+          item_id: "item-a",
+          checked: false,
+        },
+      ],
+      undefined,
+      options
+    );
+    expect(
+      standardEffortRepositoryMock.updateProjectActualEffort
+    ).not.toHaveBeenCalled();
+    expect(useEstimatorStore.getState().standardEffortDirty).toBe(false);
+    expect(useEstimatorStore.getState().standardEffortSaving).toBe(false);
+    expect(useEstimatorStore.getState().standardEffortSaveError).toBe("");
+    expect(useEstimatorStore.getState().standardEffortSaveMessage).toBe(
+      "공수 산정 내용을 저장했습니다."
+    );
+    expect(
+      standardEffortRepositoryMock.fetchStandardEffortLastChange
+    ).toHaveBeenCalledWith(42);
+  });
+
+  it("keeps standard effort draft dirty when explicit save fails", async () => {
+    standardEffortRepositoryMock.upsertProjectSolutionSelections.mockRejectedValue(
+      new Error("save failed")
+    );
+
+    useEstimatorStore.getState().setStandardProjectSolutionSelections([
+      {
+        project_id: 42,
+        solution_variant_id: "pbx",
+        enabled: false,
+        actual_effort_mm: 8,
+      },
+    ]);
+
+    const result = await useEstimatorStore
+      .getState()
+      .saveStandardEffortChanges(42);
+
+    expect(result).toBe(false);
+    expect(useEstimatorStore.getState().standardEffortDirty).toBe(true);
+    expect(useEstimatorStore.getState().standardEffortSaving).toBe(false);
+    expect(useEstimatorStore.getState().standardEffortSaveError).toBe(
+      "save failed"
+    );
+    expect(
+      useEstimatorStore.getState().standardProjectSolutionSelections
+    ).toEqual([
+      {
+        project_id: 42,
+        solution_variant_id: "pbx",
+        enabled: false,
+        actual_effort_mm: 8,
+      },
+    ]);
+  });
+
+  it("normalizes saved actual effort values and keeps dirty cleared after explicit save", async () => {
+    standardEffortRepositoryMock.upsertProjectSolutionSelections.mockResolvedValue(
+      [
+        {
+          project_id: 42,
+          solution_variant_id: "pbx",
+          enabled: true,
+          actual_effort_mm: "8",
+        },
+      ]
+    );
+    standardEffortRepositoryMock.upsertProjectItemSelections.mockResolvedValue(
+      []
+    );
+
+    useEstimatorStore.getState().setStandardProjectSolutionSelections([
+      {
+        project_id: 42,
+        solution_variant_id: "pbx",
+        enabled: true,
+        actual_effort_mm: "8",
+      },
+    ]);
+
+    const result = await useEstimatorStore
+      .getState()
+      .saveStandardEffortChanges(42);
+
+    expect(result).toBe(true);
+    expect(useEstimatorStore.getState().standardEffortDirty).toBe(false);
+    expect(
+      useEstimatorStore.getState().standardProjectSolutionSelections
+    ).toEqual([
+      {
+        project_id: 42,
+        solution_variant_id: "pbx",
+        enabled: true,
+        actual_effort_mm: 8,
+      },
+    ]);
+  });
+
+  it("does not mark standard effort dirty when refreshing last-change metadata", async () => {
+    useEstimatorStore.setState({
+      standardEffortDirty: false,
+      standardEffortSaveMessage: "공수 산정 내용을 저장했습니다.",
+    });
+
+    await useEstimatorStore.getState().loadStandardEffortLastChange(42);
+
+    expect(useEstimatorStore.getState().standardEffortDirty).toBe(false);
+    expect(useEstimatorStore.getState().standardEffortSaveMessage).toBe(
+      "공수 산정 내용을 저장했습니다."
+    );
   });
 
   it("refreshes standard effort last-change after standard effort writes", async () => {

@@ -49,6 +49,9 @@ Latest known gate before Production handoff:
 - Solution toggle save.
 - Item checkbox save.
 - `actual_effort_mm` save for admin.
+- Explicit `공수 저장` button for Standard Effort changes.
+- Solution toggle, item checkbox, and `actual_effort_mm` edits remain local
+  draft changes until `공수 저장` is clicked.
 - Standard Effort Excel download.
 - Standard Effort meta management.
 - Minimum row-history responsibility tracking with business table
@@ -72,6 +75,26 @@ Current Production smoke status: `PASS`
 - Project archive/restore policy: `PASS`.
 - Broken footer text removed: `PASS`.
 - Secret/password/hash exposure check: `PASS`.
+
+## Phase 15-HF-1 Hotfix Note
+
+Status: `READY FOR HOTFIX VALIDATION`
+
+Production users found that Standard Effort edits were persisted immediately on
+solution toggle, item checkbox, and `actual_effort_mm` edit/blur. The hotfix
+changes the operating model to explicit save:
+
+- Users can make multiple Standard Effort changes locally.
+- The screen shows `저장되지 않은 변경사항이 있습니다.` while draft changes are
+  unsaved.
+- `공수 저장` persists solution selections, item selections, and
+  `actual_effort_mm`.
+- Row history updates at the `공수 저장` click time, not at each checkbox/input
+  change.
+- A successful `공수 저장` clears the dirty indicator and leaves only the
+  success message.
+- Failed saves keep the draft dirty so the user can retry.
+- Project creation/edit/archive responsibility remains in Project Management.
 
 Detailed repeatable smoke steps are maintained in
 [Production Smoke Checklist](./production-smoke-checklist.md).

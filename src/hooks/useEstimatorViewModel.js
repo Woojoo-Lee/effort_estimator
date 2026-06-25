@@ -79,6 +79,14 @@ export function useEstimatorViewModel() {
   const standardEffortLastChangeError = useEstimatorStore(
     (s) => s.standardEffortLastChangeError
   );
+  const standardEffortDirty = useEstimatorStore((s) => s.standardEffortDirty);
+  const standardEffortSaving = useEstimatorStore((s) => s.standardEffortSaving);
+  const standardEffortSaveError = useEstimatorStore(
+    (s) => s.standardEffortSaveError
+  );
+  const standardEffortSaveMessage = useEstimatorStore(
+    (s) => s.standardEffortSaveMessage
+  );
 
   const setActiveTab = useEstimatorStore((s) => s.setActiveTab);
   const setScaleFactor = useEstimatorStore((s) => s.setScaleFactor);
@@ -117,6 +125,9 @@ export function useEstimatorViewModel() {
   const updateStandardActualEffort = useEstimatorStore(
     (s) => s.updateStandardActualEffort
   );
+  const saveStandardEffortChanges = useEstimatorStore(
+    (s) => s.saveStandardEffortChanges
+  );
   const loadStandardEffortLastChange = useEstimatorStore(
     (s) => s.loadStandardEffortLastChange
   );
@@ -150,6 +161,10 @@ export function useEstimatorViewModel() {
       lastChange: standardEffortLastChange,
       lastChangeLoading: standardEffortLastChangeLoading,
       lastChangeError: standardEffortLastChangeError,
+      dirty: standardEffortDirty,
+      saving: standardEffortSaving,
+      saveError: standardEffortSaveError,
+      saveMessage: standardEffortSaveMessage,
       totals: standardEffortTotals,
     }),
     [
@@ -163,6 +178,10 @@ export function useEstimatorViewModel() {
       standardEffortLastChange,
       standardEffortLastChangeLoading,
       standardEffortLastChangeError,
+      standardEffortDirty,
+      standardEffortSaving,
+      standardEffortSaveError,
+      standardEffortSaveMessage,
       standardEffortTotals,
     ]
   );
@@ -178,6 +197,7 @@ export function useEstimatorViewModel() {
       saveStandardProjectSolutionSelections,
       saveStandardProjectItemSelections,
       updateStandardActualEffort,
+      saveStandardEffortChanges,
       loadStandardEffortLastChange,
     }),
     [
@@ -190,6 +210,7 @@ export function useEstimatorViewModel() {
       saveStandardProjectSolutionSelections,
       saveStandardProjectItemSelections,
       updateStandardActualEffort,
+      saveStandardEffortChanges,
       loadStandardEffortLastChange,
     ]
   );

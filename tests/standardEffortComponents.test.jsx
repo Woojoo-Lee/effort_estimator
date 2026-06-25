@@ -149,6 +149,10 @@ beforeEach(() => {
   });
 });
 
+function expectNoSectionDirtyWarning() {
+  expect(screen.queryByText("저장되지 않은 변경사항이 있습니다.")).toBeNull();
+}
+
 describe("ProjectSelectorBar compact standard effort header", () => {
   it("shows compact project controls without the duplicated selected project card", () => {
     render(
@@ -200,6 +204,136 @@ describe("ProjectSelectorBar compact standard effort header", () => {
 
     expect(refreshProjects).toHaveBeenCalledTimes(1);
     expect(downloadExcel).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows explicit standard effort save button only when draft changes need saving", () => {
+    const onSaveStandardEffort = vi.fn();
+
+    const { rerender } = render(
+      <ProjectSelectorBar
+        projects={[{ id: 42, project_name: "대표 보고 프로젝트" }]}
+        projectId={42}
+        loadProject={vi.fn()}
+        refreshProjects={vi.fn()}
+        dbReady={true}
+        isBusy={false}
+        showStandardEffortSaveButton
+        onSaveStandardEffort={onSaveStandardEffort}
+        canSaveStandardEffort={true}
+        standardEffortDirty={false}
+      />
+    );
+
+    const saveButton = screen.getByRole("button", { name: "공수 저장" });
+
+    expect(saveButton.disabled).toBe(true);
+
+    rerender(
+      <ProjectSelectorBar
+        projects={[{ id: 42, project_name: "대표 보고 프로젝트" }]}
+        projectId={42}
+        loadProject={vi.fn()}
+        refreshProjects={vi.fn()}
+        dbReady={true}
+        isBusy={false}
+        showStandardEffortSaveButton
+        onSaveStandardEffort={onSaveStandardEffort}
+        canSaveStandardEffort={true}
+        standardEffortDirty
+      />
+    );
+
+    expect(screen.getByText("저장되지 않은 변경사항이 있습니다.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "공수 저장" }));
+
+    expect(onSaveStandardEffort).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows explicit standard effort saving and failure states", () => {
+    const { rerender } = render(
+      <ProjectSelectorBar
+        projects={[{ id: 42, project_name: "대표 보고 프로젝트" }]}
+        projectId={42}
+        loadProject={vi.fn()}
+        refreshProjects={vi.fn()}
+        dbReady={true}
+        isBusy={false}
+        showStandardEffortSaveButton
+        onSaveStandardEffort={vi.fn()}
+        standardEffortDirty
+        standardEffortSaving
+        standardEffortSaveMessage="저장 중..."
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "공수 저장" }).disabled).toBe(
+      true
+    );
+    expect(screen.getAllByText("저장 중...").length).toBeGreaterThanOrEqual(1);
+
+    rerender(
+      <ProjectSelectorBar
+        projects={[{ id: 42, project_name: "대표 보고 프로젝트" }]}
+        projectId={42}
+        loadProject={vi.fn()}
+        refreshProjects={vi.fn()}
+        dbReady={true}
+        isBusy={false}
+        showStandardEffortSaveButton
+        onSaveStandardEffort={vi.fn()}
+        standardEffortDirty
+        standardEffortSaveError="공수 산정 저장에 실패했습니다."
+      />
+    );
+
+    expect(screen.getByText("공수 산정 저장에 실패했습니다.")).toBeTruthy();
+    expect(screen.getByText("저장되지 않은 변경사항이 있습니다.")).toBeTruthy();
+  });
+
+  it("clears the dirty warning after explicit standard effort save succeeds", () => {
+    const { rerender } = render(
+      <ProjectSelectorBar
+        projects={[{ id: 42, project_name: "대표 보고 프로젝트" }]}
+        projectId={42}
+        loadProject={vi.fn()}
+        refreshProjects={vi.fn()}
+        dbReady={true}
+        isBusy={false}
+        showStandardEffortSaveButton
+        onSaveStandardEffort={vi.fn()}
+        canSaveStandardEffort={true}
+        standardEffortDirty
+      />
+    );
+
+    expect(screen.getByText("저장되지 않은 변경사항이 있습니다.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "공수 저장" }).disabled).toBe(
+      false
+    );
+
+    rerender(
+      <ProjectSelectorBar
+        projects={[{ id: 42, project_name: "대표 보고 프로젝트" }]}
+        projectId={42}
+        loadProject={vi.fn()}
+        refreshProjects={vi.fn()}
+        dbReady={true}
+        isBusy={false}
+        showStandardEffortSaveButton
+        onSaveStandardEffort={vi.fn()}
+        canSaveStandardEffort={true}
+        standardEffortDirty={false}
+        standardEffortSaveMessage="공수 산정 내용을 저장했습니다."
+      />
+    );
+
+    expect(
+      screen.queryByText("저장되지 않은 변경사항이 있습니다.")
+    ).toBeNull();
+    expect(screen.getByText("공수 산정 내용을 저장했습니다.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "공수 저장" }).disabled).toBe(
+      true
+    );
   });
 
   it("uses login_id fallback without exposing raw updated_by UUID", () => {
@@ -617,11 +751,13 @@ describe("StandardEffortSection", () => {
     consoleError.mockRestore();
   });
 
-  it("loads by numeric projectId and passes projectId through handlers without uuid conversion", async () => {
+  it("loads by numeric projectId and updates standard effort draft without uuid conversion", async () => {
     const loadProjectStandardEffort = vi.fn();
     const saveStandardProjectSolutionSelections = vi.fn();
     const saveStandardProjectItemSelections = vi.fn();
     const updateStandardActualEffort = vi.fn();
+    const setStandardProjectSolutionSelections = vi.fn();
+    const setStandardProjectItemSelections = vi.fn();
 
     render(
       <StandardEffortSection
@@ -657,6 +793,8 @@ describe("StandardEffortSection", () => {
         }}
         standardEffortActions={{
           loadProjectStandardEffort,
+          setStandardProjectSolutionSelections,
+          setStandardProjectItemSelections,
           saveStandardProjectSolutionSelections,
           saveStandardProjectItemSelections,
           updateStandardActualEffort,
@@ -669,25 +807,34 @@ describe("StandardEffortSection", () => {
     const checkboxes = screen.getAllByRole("checkbox");
 
     fireEvent.click(checkboxes[0]);
-    await screen.findByText("저장 완료");
-    expect(saveStandardProjectSolutionSelections).toHaveBeenCalledWith(42, [
+    expectNoSectionDirtyWarning();
+    expect(setStandardProjectSolutionSelections).toHaveBeenCalledWith([
       {
+        project_id: 42,
         solution_variant_id: "pbx",
         enabled: false,
         actual_effort_mm: 4.5,
       },
+      {
+        solution_variant_id: "cti-v4",
+        enabled: false,
+        actual_effort_mm: 0,
+      },
     ]);
+    expect(saveStandardProjectSolutionSelections).not.toHaveBeenCalled();
 
     fireEvent.click(checkboxes[checkboxes.length - 1]);
     await waitFor(() =>
-      expect(saveStandardProjectItemSelections).toHaveBeenCalledWith(42, [
+      expect(setStandardProjectItemSelections).toHaveBeenCalledWith([
         {
+          project_id: 42,
           solution_variant_id: "pbx",
           item_id: "item-a",
           checked: true,
         },
       ])
     );
+    expect(saveStandardProjectItemSelections).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.getByRole("spinbutton").disabled).toBe(false));
 
     const actualInput = screen.getByRole("spinbutton");
@@ -699,15 +846,24 @@ describe("StandardEffortSection", () => {
 
     fireEvent.blur(actualInput);
     await waitFor(() =>
-      expect(updateStandardActualEffort).toHaveBeenCalledWith(
-        42,
-        "pbx",
-        "9.25"
-      )
+      expect(setStandardProjectSolutionSelections).toHaveBeenLastCalledWith([
+        {
+          project_id: 42,
+          solution_variant_id: "pbx",
+          enabled: true,
+          actual_effort_mm: 9.25,
+        },
+        {
+          solution_variant_id: "cti-v4",
+          enabled: false,
+          actual_effort_mm: 0,
+        },
+      ])
     );
+    expect(updateStandardActualEffort).not.toHaveBeenCalled();
   });
 
-  it("shows save complete after a successful solution toggle", async () => {
+  it("keeps solution toggle as a local draft until explicit save", async () => {
     vi.stubEnv("VITE_DATA_BACKEND", "supabase");
     vi.stubEnv("VITE_FRONTEND_AUDIT_MODE", "auto");
     const saveStandardProjectSolutionSelections = vi
@@ -744,43 +900,9 @@ describe("StandardEffortSection", () => {
 
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
 
-    expect(await screen.findByText("저장 완료")).toBeTruthy();
-    expect(saveStandardProjectSolutionSelections).toHaveBeenCalledWith(42, [
-      {
-        solution_variant_id: "pbx",
-        enabled: false,
-        actual_effort_mm: 4.5,
-      },
-    ]);
-    expect(auditMocks.createAuditLogSafe).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventType: "standard_effort.solution.toggle",
-        targetType: "standard_effort",
-        targetId: "42:pbx",
-        projectId: 42,
-        actorUserId: null,
-        actorEmail: null,
-        before: {
-          project_id: 42,
-          solution_variant_id: "pbx",
-          enabled: true,
-          actual_effort_mm: 4.5,
-        },
-        after: {
-          project_id: 42,
-          solution_variant_id: "pbx",
-          enabled: false,
-          actual_effort_mm: 4.5,
-        },
-        metadata: expect.objectContaining({
-          section: "solution_selection",
-          project_id: 42,
-          solution_variant_id: "pbx",
-          audit_source: "frontend",
-          data_backend: "supabase",
-        }),
-      })
-    );
+    expectNoSectionDirtyWarning();
+    expect(saveStandardProjectSolutionSelections).not.toHaveBeenCalled();
+    expect(auditMocks.createAuditLogSafe).not.toHaveBeenCalled();
   });
 
   it("skips solution toggle frontend audit in api auto mode without breaking save UX", async () => {
@@ -823,22 +945,8 @@ describe("StandardEffortSection", () => {
 
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
 
-    expect(await screen.findByText("저장 완료")).toBeTruthy();
-    expect(saveStandardProjectSolutionSelections).toHaveBeenCalledWith(
-      42,
-      [
-        {
-          solution_variant_id: "pbx",
-          enabled: false,
-          actual_effort_mm: 4.5,
-        },
-      ],
-      {
-        currentUser: {
-          user_id: "user-solution",
-        },
-      }
-    );
+    expectNoSectionDirtyWarning();
+    expect(saveStandardProjectSolutionSelections).not.toHaveBeenCalled();
     expect(auditMocks.createAuditLogSafe).not.toHaveBeenCalled();
   });
 
@@ -885,14 +993,9 @@ describe("StandardEffortSection", () => {
 
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
 
-    expect(await screen.findByText("저장 완료")).toBeTruthy();
-    expect(saveStandardProjectSolutionSelections).toHaveBeenCalled();
-    await waitFor(() =>
-      expect(consoleWarn).toHaveBeenCalledWith(
-        "Standard effort audit log failed.",
-        expect.any(Error)
-      )
-    );
+    expectNoSectionDirtyWarning();
+    expect(saveStandardProjectSolutionSelections).not.toHaveBeenCalled();
+    expect(consoleWarn).not.toHaveBeenCalled();
     consoleWarn.mockRestore();
   });
 
@@ -937,13 +1040,9 @@ describe("StandardEffortSection", () => {
 
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
 
-    expect(await screen.findByText("저장 완료")).toBeTruthy();
-    await waitFor(() =>
-      expect(consoleWarn).toHaveBeenCalledWith(
-        "Standard effort audit log failed.",
-        expect.any(Error)
-      )
-    );
+    expectNoSectionDirtyWarning();
+    expect(saveStandardProjectSolutionSelections).not.toHaveBeenCalled();
+    expect(consoleWarn).not.toHaveBeenCalled();
     consoleWarn.mockRestore();
   });
 
@@ -985,11 +1084,10 @@ describe("StandardEffortSection", () => {
 
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
 
-    expect(
-      await screen.findByText("저장 실패. 다시 시도해 주세요.")
-    ).toBeTruthy();
-    expect(saveStandardProjectSolutionSelections).toHaveBeenCalled();
+    expectNoSectionDirtyWarning();
+    expect(saveStandardProjectSolutionSelections).not.toHaveBeenCalled();
     expect(auditMocks.createAuditLogSafe).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
     consoleError.mockRestore();
   });
 
@@ -1031,17 +1129,10 @@ describe("StandardEffortSection", () => {
 
     fireEvent.click(screen.getByLabelText("PBX 업종 금융_증권 선택"));
 
-    expect(
-      await screen.findByText("저장 실패. 다시 시도해 주세요.")
-    ).toBeTruthy();
-    expect(saveStandardProjectItemSelections).toHaveBeenCalledWith(42, [
-      {
-        solution_variant_id: "pbx",
-        item_id: "item-a",
-        checked: true,
-      },
-    ]);
+    expectNoSectionDirtyWarning();
+    expect(saveStandardProjectItemSelections).not.toHaveBeenCalled();
     expect(auditMocks.createAuditLogSafe).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
     consoleError.mockRestore();
   });
 
@@ -1092,14 +1183,8 @@ describe("StandardEffortSection", () => {
 
     fireEvent.click(itemCheckbox);
 
-    await screen.findByText("저장 완료");
-    expect(saveStandardProjectItemSelections).toHaveBeenCalledWith(42, [
-      {
-        solution_variant_id: "pbx",
-        item_id: "item-a",
-        checked: true,
-      },
-    ]);
+    expectNoSectionDirtyWarning();
+    expect(saveStandardProjectItemSelections).not.toHaveBeenCalled();
 
     fireEvent.change(actualInput, {
       target: { value: "9.25" },
@@ -1152,53 +1237,9 @@ describe("StandardEffortSection", () => {
 
     fireEvent.click(screen.getByLabelText("PBX 업종 금융_증권 선택"));
 
-    await screen.findByText("저장 완료");
-    expect(saveStandardProjectItemSelections).toHaveBeenCalledWith(
-      42,
-      [
-        {
-          solution_variant_id: "pbx",
-          item_id: "item-a",
-          checked: true,
-        },
-      ],
-      {
-        currentUser: {
-          user_id: "user-1",
-        },
-      }
-    );
-    expect(auditMocks.createAuditLogSafe).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventType: "standard_effort.item.check",
-        targetType: "standard_effort",
-        targetId: "42:pbx:item-a",
-        projectId: 42,
-        actorUserId: "user-1",
-        actorEmail: "user@example.com",
-        before: {
-          project_id: 42,
-          solution_variant_id: "pbx",
-          item_id: "item-a",
-          checked: false,
-        },
-        after: {
-          project_id: 42,
-          solution_variant_id: "pbx",
-          item_id: "item-a",
-          checked: true,
-        },
-        metadata: expect.objectContaining({
-          section: "item_selection",
-          project_id: 42,
-          solution_variant_id: "pbx",
-          item_id: "item-a",
-          dev_only: true,
-          audit_source: "frontend",
-          data_backend: "supabase",
-        }),
-      })
-    );
+    expectNoSectionDirtyWarning();
+    expect(saveStandardProjectItemSelections).not.toHaveBeenCalled();
+    expect(auditMocks.createAuditLogSafe).not.toHaveBeenCalled();
   });
 
   it("skips item check frontend audit in disabled mode", async () => {
@@ -1241,8 +1282,8 @@ describe("StandardEffortSection", () => {
 
     fireEvent.click(screen.getByLabelText("PBX 업종 금융_증권 선택"));
 
-    await screen.findByText("저장 완료");
-    expect(saveStandardProjectItemSelections).toHaveBeenCalled();
+    expectNoSectionDirtyWarning();
+    expect(saveStandardProjectItemSelections).not.toHaveBeenCalled();
     expect(auditMocks.createAuditLogSafe).not.toHaveBeenCalled();
   });
 
@@ -1287,20 +1328,9 @@ describe("StandardEffortSection", () => {
 
     fireEvent.click(screen.getByLabelText("PBX 업종 금융_증권 선택"));
 
-    await screen.findByText("저장 완료");
-    expect(auditMocks.createAuditLogSafe).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventType: "standard_effort.item.check",
-        metadata: expect.objectContaining({
-          section: "item_selection",
-          project_id: 42,
-          solution_variant_id: "pbx",
-          item_id: "item-a",
-          audit_source: "frontend",
-          data_backend: "api",
-        }),
-      })
-    );
+    expectNoSectionDirtyWarning();
+    expect(saveStandardProjectItemSelections).not.toHaveBeenCalled();
+    expect(auditMocks.createAuditLogSafe).not.toHaveBeenCalled();
   });
 
   it("rolls back actual effort draft when save fails", async () => {
@@ -1350,12 +1380,11 @@ describe("StandardEffortSection", () => {
     });
     fireEvent.blur(actualInput);
 
-    expect(
-      await screen.findByText("저장 실패. 다시 시도해 주세요.")
-    ).toBeTruthy();
-    await waitFor(() => expect(actualInput.value).toBe("4.5"));
-    expect(updateStandardActualEffort).toHaveBeenCalledWith(42, "pbx", "9.25");
+    expectNoSectionDirtyWarning();
+    expect(actualInput.value).toBe("9.25");
+    expect(updateStandardActualEffort).not.toHaveBeenCalled();
     expect(auditMocks.createAuditLogSafe).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
     consoleError.mockRestore();
   });
 
@@ -1409,43 +1438,9 @@ describe("StandardEffortSection", () => {
 
     fireEvent.blur(actualInput);
 
-    await screen.findByText("저장 완료");
-    expect(updateStandardActualEffort).toHaveBeenCalledWith(
-      "42",
-      "pbx",
-      "9.25",
-      {
-        currentUser: {
-          user_id: "user-2",
-        },
-      }
-    );
-    expect(auditMocks.createAuditLogSafe).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventType: "standard_effort.actual_effort.update",
-        targetType: "standard_effort",
-        targetId: "42:pbx",
-        projectId: "42",
-        before: {
-          project_id: "42",
-          solution_variant_id: "pbx",
-          actual_effort_mm: 4.5,
-        },
-        after: {
-          project_id: "42",
-          solution_variant_id: "pbx",
-          actual_effort_mm: 9.25,
-        },
-        metadata: expect.objectContaining({
-          section: "actual_effort",
-          project_id: "42",
-          solution_variant_id: "pbx",
-          unit: "M/M",
-          audit_source: "frontend",
-          data_backend: "supabase",
-        }),
-      })
-    );
+    expectNoSectionDirtyWarning();
+    expect(updateStandardActualEffort).not.toHaveBeenCalled();
+    expect(auditMocks.createAuditLogSafe).not.toHaveBeenCalled();
   });
 
   it("records actual effort shadow audit metadata in shadow mode", async () => {
@@ -1495,21 +1490,9 @@ describe("StandardEffortSection", () => {
     });
     fireEvent.blur(actualInput);
 
-    await screen.findByText("저장 완료");
-    expect(auditMocks.createAuditLogSafe).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventType: "standard_effort.actual_effort.update",
-        metadata: expect.objectContaining({
-          section: "actual_effort",
-          project_id: "42",
-          solution_variant_id: "pbx",
-          unit: "M/M",
-          audit_source: "frontend",
-          data_backend: "api",
-          frontend_shadow: true,
-        }),
-      })
-    );
+    expectNoSectionDirtyWarning();
+    expect(updateStandardActualEffort).not.toHaveBeenCalled();
+    expect(auditMocks.createAuditLogSafe).not.toHaveBeenCalled();
   });
 
   it("does not record actual effort audit when the committed value is unchanged", async () => {

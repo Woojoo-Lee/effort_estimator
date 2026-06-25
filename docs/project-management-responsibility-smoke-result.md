@@ -23,7 +23,9 @@ Confirmed as `PASS`:
 - Login progress/loading state.
 - Estimation screen project creation/edit/save controls are hidden or blocked.
 - Existing project selection remains available.
-- Standard Effort save paths remain available.
+- Standard Effort explicit save path remains available through `공수 저장`.
+- Solution toggle, item checkbox, and `actual_effort_mm` edits are draft-only
+  until `공수 저장` is clicked.
 - Project Management screen owns project creation/editing.
 - Project Management screen shows the updater column.
 - Admin can archive/restore all projects, including ownerless legacy projects.
@@ -74,7 +76,7 @@ Confirmed:
 Policy:
 
 - The estimation screen is treated as an existing-project selection and
-  Standard Effort save surface.
+  Standard Effort draft/save surface.
 - Project creation and project basic-info editing belong to Project Management.
 
 ## Standard Effort Save Path Regression
@@ -84,8 +86,12 @@ Status: `PASS`
 Confirmed:
 
 - Solution toggle remains available according to the current role policy.
-- Item checkbox save remains available according to the current role policy.
-- `actual_effort_mm` remains available according to the current role policy.
+- Item checkbox draft changes remain available according to the current role
+  policy.
+- `actual_effort_mm` draft changes remain available according to the current
+  role policy.
+- `공수 저장` is the only Standard Effort persistence action from the
+  estimation screen.
 - Excel download remains available.
 
 Unchanged:
