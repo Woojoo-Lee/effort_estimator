@@ -13,10 +13,13 @@ session secrets, service role keys, or private env values.
 
 - Use the Production URL after confirming the latest Vercel deployment is
   ready.
+- Confirm `standard-effort-june-v1.1` is the deployed hotfix baseline.
 - Open the app in a private browser window or after Ctrl+F5 refresh.
 - Prepare `admin01`, `sales01`, and `viewer01` accounts.
 - Prepare one project with Standard Effort data.
 - Confirm Excel download is allowed in the browser.
+- Rehearse `공수 저장` on a safe project or decide to demonstrate the button
+  without changing Production data.
 - Keep Supabase SQL Editor, Vercel env screens, and secret-bearing files closed
   during the executive demo.
 
@@ -42,14 +45,19 @@ Message to explain:
 4. Show Standard Effort result summary.
 5. Show solution selection.
 6. Show item checkbox selection.
-7. Show `actual_effort_mm`, standard effort, and gap values.
-8. Show last updated time and updater display.
-9. Click refresh if needed.
+7. If a safe restore path is ready, make a small draft change and click
+   `공수 저장`.
+8. Confirm the dirty warning clears after save.
+9. Show `actual_effort_mm`, standard effort, and gap values.
+10. Show last updated time and updater display.
+11. Click refresh if needed.
 
 Message to explain:
 
 - The estimation screen is now focused on existing project selection and
   Standard Effort operation.
+- Standard Effort edits are saved explicitly through `공수 저장`, not at each
+  checkbox/input interaction.
 - Project creation/editing is handled in Project Management.
 - Responsibility tracking records updater information at row level.
 

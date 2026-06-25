@@ -82,6 +82,10 @@ See [Production Smoke Checklist](./production-smoke-checklist.md) for the
 repeatable Production smoke checklist after redeploys, env corrections, or
 hotfixes.
 
+See [Release Closure: Standard Effort June v1.1](./release-closure-standard-effort-june-v1-1.md)
+for the final June first release closure, v1.1 hotfix summary, 24-hour
+monitoring checklist, executive rehearsal checklist, and July backlog.
+
 See [Executive Demo Scenario 2026-06](./executive-demo-scenario-2026-06.md)
 for the representative executive demo flow.
 

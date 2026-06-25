@@ -3,7 +3,8 @@
 ## Purpose
 
 This checklist is the repeatable Production smoke path for the June first
-Standard Effort operation app.
+Standard Effort operation app, including the `standard-effort-june-v1.1`
+explicit-save hotfix.
 
 Use it after Vercel Production deploy, env correction/redeploy, or a hotfix.
 Record only PASS/FAIL/PARTIAL/SKIP outcomes. Do not record passwords, password
@@ -98,6 +99,7 @@ Login as `viewer01`.
 - Confirm saved values persist and the dirty message clears.
 - Confirm `공수 산정 내용을 저장했습니다.` is shown without the dirty message
   after a successful save.
+- Confirm row history changes are observed after `공수 저장`, not before it.
 - Confirm refresh keeps saved values.
 - Confirm Excel download works.
 
@@ -151,6 +153,17 @@ Login as `viewer01`.
 - Vite large chunk warning.
 - Existing non-blocking React/Vitest warning noise when tests pass.
 - Backend Maven test issue before Tomcat/Jenkins backend deployment.
+
+## 24-Hour Monitoring Add-On
+
+- Recheck Production login for the expected roles.
+- Recheck `공수 저장` dirty/success behavior on a safe project.
+- Recheck Standard Effort updater and updated time after save.
+- Recheck Excel download.
+- Recheck admin-only user/codebook management access.
+- Recheck project archive/restore policy.
+- Recheck Vercel Production deployment status.
+- Recheck Supabase row history spot evidence when an operating save occurs.
 
 ## Fail Criteria
 

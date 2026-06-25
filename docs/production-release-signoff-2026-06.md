@@ -15,10 +15,14 @@ Status: `PASS`
 
 - The June first feature scope based on `feature/app-auth-row-history` has been
   reflected in Production.
+- `standard-effort-june-v1` is the June first Production operating baseline
+  tag.
+- `standard-effort-june-v1.1` is the explicit Standard Effort save hotfix tag.
 - Production login had an initial operating issue.
 - The issue was resolved by reviewing and correcting Vercel Production env
   configuration, then redeploying Production.
 - Production login smoke passed after the redeploy.
+- v1.1 Production deploy and operating smoke are complete.
 - Secret values, passwords, password hashes, cookies, session secrets, service
   role keys, and DB passwords are intentionally not recorded.
 
@@ -78,7 +82,7 @@ Current Production smoke status: `PASS`
 
 ## Phase 15-HF-1 Hotfix Note
 
-Status: `READY FOR HOTFIX VALIDATION`
+Status: `CLOSED`
 
 Production users found that Standard Effort edits were persisted immediately on
 solution toggle, item checkbox, and `actual_effort_mm` edit/blur. The hotfix
@@ -96,8 +100,14 @@ changes the operating model to explicit save:
 - Failed saves keep the draft dirty so the user can retry.
 - Project creation/edit/archive responsibility remains in Project Management.
 
+The v1.1 hotfix has been tagged as `standard-effort-june-v1.1`, deployed to
+Production, and smoke-tested as `PASS`.
+
 Detailed repeatable smoke steps are maintained in
 [Production Smoke Checklist](./production-smoke-checklist.md).
+
+Final closure state is maintained in
+[Release Closure: Standard Effort June v1.1](./release-closure-standard-effort-june-v1-1.md).
 
 ## Known Non-Blocking Items
 
@@ -150,9 +160,12 @@ Preferred rollback order:
 The representative executive demo flow is tracked in
 [Executive Demo Scenario 2026-06](./executive-demo-scenario-2026-06.md).
 
+The final release closure and post-hotfix monitoring checklist is tracked in
+[Release Closure: Standard Effort June v1.1](./release-closure-standard-effort-june-v1-1.md).
+
 ## Decision
 
-June first Production handoff decision: `PASS`
+June first Production handoff and v1.1 hotfix closure decision: `PASS`
 
 The app is acceptable for controlled June first operation and executive demo,
 with the non-blocking items above carried into follow-up phases.
