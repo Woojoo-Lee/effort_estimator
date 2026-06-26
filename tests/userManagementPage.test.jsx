@@ -135,7 +135,9 @@ describe("UserManagementPage", () => {
     fireEvent.change(roleSelect, { target: { value: "viewer" } });
 
     const saveButton = within(row).getByRole("button", { name: "저장" });
-    expect(saveButton.disabled).toBe(false);
+    await waitFor(() => {
+      expect(saveButton.disabled).toBe(false);
+    });
 
     fireEvent.click(saveButton);
 
