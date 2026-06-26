@@ -135,6 +135,17 @@ Login as `viewer01`.
 - Soft archive/restore works according to admin/sales policy.
 - Hard-delete wording is absent.
 
+### Standard Effort Meta Grid
+
+- Admin can open `표준공수 메타`.
+- `기능항목/계수` grid does not create page-level horizontal scroll.
+- Smaller desktop screens use grid-internal horizontal scroll.
+- `구분`, `기능항목`, and `옵션` columns remain readable.
+- Solution headers and coefficient inputs are center-aligned.
+- WFM column is accessible.
+- Coefficient edit/save/restore works.
+- Base effort save has no regression.
+
 ## Visual Smoke
 
 - Sidebar brand displays `표준 공수 운영 관리`.
@@ -164,6 +175,8 @@ Login as `viewer01`.
 - Recheck project archive/restore policy.
 - Recheck Vercel Production deployment status.
 - Recheck Supabase row history spot evidence when an operating save occurs.
+- Recheck Standard Effort Meta coefficient grid on a representative small
+  desktop screen when preparing executive reporting.
 
 ## Fail Criteria
 

@@ -76,6 +76,15 @@ Common checks:
 - Secret/password/hash/cookie/service-role-key exposure absent: `PASS`.
 - Hard-delete UX absent: `PASS`.
 
+Post-closure UI smoke:
+
+- Standard Effort Meta coefficient grid compact UI smoke: `PASS`.
+- 1366 x 768 and 1920 x 1080 viewport checks: `PASS`.
+- WFM column accessibility: `PASS`.
+- Coefficient save/restore and base effort regression checks: `PASS`.
+- Details are tracked in
+  [Standard Effort Meta Grid Smoke Result](./standard-effort-meta-grid-smoke-result.md).
+
 ## Known Non-Blocking Items
 
 - Backend Maven `DbHealthControllerTest` failure:
@@ -126,6 +135,8 @@ Before the representative executive demo:
 - Download Excel.
 - Open `사용자 관리` and explain role/active controls without exposing secrets.
 - Open `코드북 관리` and show value management without delete/hard-delete.
+- Open `표준공수 메타` and show the compact coefficient grid, WFM access, and
+  readable left-side columns.
 - Open `프로젝트 관리` and explain create/edit/soft archive responsibility.
 - Log in as `sales01` and explain own-project editing plus
   `actual_effort_mm` read-only behavior.
