@@ -104,12 +104,12 @@ function validateDraftRow(draftRow = {}, variants = []) {
 }
 
 const COLUMN_WIDTH = {
-  category: "104px",
-  item: "320px",
-  option: "168px",
-  coefficient: "64px",
-  active: "88px",
-  action: "112px",
+  category: "112px",
+  item: "232px",
+  option: "180px",
+  coefficient: "52px",
+  active: "72px",
+  action: "96px",
 };
 
 export default function StandardCoefficientGrid({
@@ -227,7 +227,7 @@ export default function StandardCoefficientGrid({
         <table
           ref={tableRef}
           data-testid="standard-coefficient-grid-table"
-          className="w-max min-w-full table-fixed border-collapse text-sm"
+          className="w-max table-fixed border-collapse text-sm"
         >
           <colgroup>
             <col style={{ width: COLUMN_WIDTH.category }} />
@@ -252,13 +252,13 @@ export default function StandardCoefficientGrid({
               </th>
               <th
                 data-testid="coefficient-item-header"
-                className="px-3 py-3 text-left"
+                className="px-3 py-3 text-center"
               >
                 기능항목
               </th>
               <th
                 data-testid="coefficient-option-header"
-                className="px-3 py-3 text-left"
+                className="px-3 py-3 text-center"
               >
                 옵션
               </th>
@@ -269,7 +269,7 @@ export default function StandardCoefficientGrid({
                   className="px-1 py-3 text-center align-middle"
                   title={getVariantLabel(variant)}
                 >
-                  <span className="mx-auto block max-w-[60px] whitespace-normal break-words text-center leading-tight">
+                  <span className="mx-auto block max-w-[50px] whitespace-normal break-words text-center leading-tight">
                     {getVariantLabel(variant)}
                     {variant.active === false ? " (미사용)" : ""}
                   </span>
@@ -329,14 +329,21 @@ export default function StandardCoefficientGrid({
                       item.active === false ? "bg-slate-50 text-slate-400" : ""
                     }`}
                   >
-                    <td className="px-2 py-3 text-center text-slate-500">
-                      {category}
+                    <td
+                      className="px-2 py-3 text-left text-slate-500"
+                      title={category}
+                    >
+                      <span className="block whitespace-normal break-words leading-snug">
+                        {category}
+                      </span>
                     </td>
                     <td
                       className="px-3 py-3 text-left font-semibold text-slate-800"
                       title={item.item_name}
                     >
-                      <span className="break-words">{item.item_name}</span>
+                      <span className="block whitespace-normal break-words leading-snug">
+                        {item.item_name}
+                      </span>
                       {dirty ? (
                         <span className="ml-2 rounded-lg bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700">
                           변경됨
@@ -347,7 +354,9 @@ export default function StandardCoefficientGrid({
                       className="px-3 py-3 text-left text-slate-500"
                       title={normalizeText(item.item_option).trim()}
                     >
-                      {normalizeText(item.item_option).trim()}
+                      <span className="block whitespace-normal break-words leading-snug">
+                        {normalizeText(item.item_option).trim()}
+                      </span>
                     </td>
                     {variants.map((variant) => {
                       const label = getVariantLabel(variant);
@@ -374,7 +383,7 @@ export default function StandardCoefficientGrid({
                                 event.target.value
                               );
                             }}
-                            className="mx-auto h-8 w-full max-w-14 min-w-0 rounded-lg border border-slate-200 bg-white px-1 text-center text-xs font-semibold tabular-nums text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+                            className="mx-auto h-8 w-full max-w-12 min-w-0 rounded-lg border border-slate-200 bg-white px-1 text-center text-xs font-semibold tabular-nums text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
                             disabled={
                               readOnlyCoefficient || saving || activeSaving
                             }
@@ -382,7 +391,7 @@ export default function StandardCoefficientGrid({
                         </td>
                       );
                     })}
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-1 py-3 text-center">
                       <label className="inline-flex items-center justify-center gap-2 text-xs font-bold text-slate-600">
                         <input
                           type="checkbox"
@@ -402,7 +411,7 @@ export default function StandardCoefficientGrid({
                           className="h-4 w-4 rounded border-slate-300 text-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
                         />
                         <span
-                          className={`rounded-lg px-2 py-1 ${
+                          className={`rounded-lg px-1.5 py-1 ${
                             item.active === false
                               ? "bg-slate-100 text-slate-500"
                               : "bg-emerald-50 text-emerald-700"
@@ -418,8 +427,8 @@ export default function StandardCoefficientGrid({
                         </span>
                       </label>
                     </td>
-                    <td className="px-3 py-3">
-                      <div className="flex justify-center gap-2">
+                    <td className="px-1 py-3">
+                      <div className="flex justify-center gap-1">
                         {dirty ? (
                           <button
                             type="button"
@@ -433,7 +442,7 @@ export default function StandardCoefficientGrid({
                             disabled={
                               readOnlyCoefficient || saving || activeSaving
                             }
-                            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             되돌리기
                           </button>
@@ -454,7 +463,7 @@ export default function StandardCoefficientGrid({
                             saving ||
                             activeSaving
                           }
-                          className="h-9 rounded-lg bg-blue-600 px-3 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                          className="h-8 rounded-lg bg-blue-600 px-2 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
                         >
                           {saving
                             ? "저장 중..."
