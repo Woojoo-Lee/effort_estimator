@@ -320,8 +320,39 @@ describe("StandardEffortMetaPage", () => {
     const coefficientGrid = screen.getByRole("region", {
       name: "표준공수 기능항목 계수",
     });
+    const coefficientScroll = screen.getByTestId(
+      "standard-coefficient-grid-scroll"
+    );
+    const coefficientTable = screen.getByTestId(
+      "standard-coefficient-grid-table"
+    );
+    const coefficientColumns = coefficientTable.querySelectorAll("col");
+
+    expect(screen.getByTestId("standard-effort-meta-page").className).toContain(
+      "overflow-x-hidden"
+    );
     expect(screen.getByTestId("standard-coefficient-top-scroll")).toBeTruthy();
-    expect(screen.getByTestId("standard-coefficient-grid-scroll")).toBeTruthy();
+    expect(coefficientScroll.className).toContain("overflow-auto");
+    expect(coefficientTable.className).toContain("table-fixed");
+    expect(coefficientTable.querySelector("thead").className).toContain(
+      "sticky"
+    );
+    expect(coefficientColumns[0].style.width).toBe("104px");
+    expect(coefficientColumns[1].style.width).toBe("320px");
+    expect(coefficientColumns[2].style.width).toBe("168px");
+    expect(coefficientColumns[3].style.width).toBe("64px");
+    expect(
+      screen.getByTestId("coefficient-category-header").className
+    ).toContain("text-center");
+    expect(screen.getByTestId("coefficient-item-header").className).toContain(
+      "text-left"
+    );
+    expect(screen.getByTestId("coefficient-option-header").className).toContain(
+      "text-left"
+    );
+    expect(
+      screen.getByTestId("coefficient-solution-header-variant-wfm").className
+    ).toContain("text-center");
     expect(within(coefficientGrid).getAllByText("공통정보").length).toBeGreaterThan(
       0
     );
@@ -341,6 +372,11 @@ describe("StandardEffortMetaPage", () => {
 
     expect(pbxCoefficientInput.value).toBe("0.5");
     expect(wfmCoefficientInput.value).toBe("0");
+    expect(pbxCoefficientInput.className).toContain("max-w-14");
+    expect(pbxCoefficientInput.className).toContain("text-center");
+    expect(pbxCoefficientInput.className).toContain("tabular-nums");
+    expect(wfmCoefficientInput.className).toContain("max-w-14");
+    expect(wfmCoefficientInput.className).toContain("text-center");
     expect(
       within(pbxCoefficientInput.closest("tr")).getByRole("button", {
         name: "저장",

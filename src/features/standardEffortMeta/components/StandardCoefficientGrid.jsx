@@ -103,6 +103,15 @@ function validateDraftRow(draftRow = {}, variants = []) {
   return "";
 }
 
+const COLUMN_WIDTH = {
+  category: "104px",
+  item: "320px",
+  option: "168px",
+  coefficient: "64px",
+  active: "88px",
+  action: "112px",
+};
+
 export default function StandardCoefficientGrid({
   solutionVariants = [],
   itemRows = [],
@@ -212,26 +221,62 @@ export default function StandardCoefficientGrid({
       <div
         ref={tableScrollRef}
         data-testid="standard-coefficient-grid-scroll"
-        className="overflow-x-auto rounded-lg border border-slate-200 bg-white"
+        className="max-w-full overflow-auto rounded-lg border border-slate-200 bg-white"
         onScroll={() => syncScroll(tableScrollRef, topScrollRef)}
       >
-        <table ref={tableRef} className="min-w-full border-collapse text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-extrabold text-slate-500">
+        <table
+          ref={tableRef}
+          data-testid="standard-coefficient-grid-table"
+          className="w-max min-w-full table-fixed border-collapse text-sm"
+        >
+          <colgroup>
+            <col style={{ width: COLUMN_WIDTH.category }} />
+            <col style={{ width: COLUMN_WIDTH.item }} />
+            <col style={{ width: COLUMN_WIDTH.option }} />
+            {variants.map((variant) => (
+              <col
+                key={variant.solution_variant_id}
+                style={{ width: COLUMN_WIDTH.coefficient }}
+              />
+            ))}
+            <col style={{ width: COLUMN_WIDTH.active }} />
+            <col style={{ width: COLUMN_WIDTH.action }} />
+          </colgroup>
+          <thead className="sticky top-0 z-10 bg-slate-50 text-xs font-extrabold text-slate-500">
             <tr className="border-b border-slate-200">
-              <th className="w-36 px-3 py-3">구분</th>
-              <th className="w-48 px-3 py-3">기능항목</th>
-              <th className="w-44 px-3 py-3">옵션</th>
+              <th
+                data-testid="coefficient-category-header"
+                className="px-2 py-3 text-center"
+              >
+                구분
+              </th>
+              <th
+                data-testid="coefficient-item-header"
+                className="px-3 py-3 text-left"
+              >
+                기능항목
+              </th>
+              <th
+                data-testid="coefficient-option-header"
+                className="px-3 py-3 text-left"
+              >
+                옵션
+              </th>
               {variants.map((variant) => (
                 <th
                   key={variant.solution_variant_id}
-                  className="min-w-28 px-3 py-3 text-right"
+                  data-testid={`coefficient-solution-header-${variant.solution_variant_id}`}
+                  className="px-1 py-3 text-center align-middle"
+                  title={getVariantLabel(variant)}
                 >
-                  {getVariantLabel(variant)}
-                  {variant.active === false ? " (미사용)" : ""}
+                  <span className="mx-auto block max-w-[60px] whitespace-normal break-words text-center leading-tight">
+                    {getVariantLabel(variant)}
+                    {variant.active === false ? " (미사용)" : ""}
+                  </span>
                 </th>
               ))}
-              <th className="px-3 py-3 text-center">사용 여부</th>
-              <th className="px-3 py-3 text-center">저장</th>
+              <th className="px-2 py-3 text-center">사용 여부</th>
+              <th className="px-2 py-3 text-center">저장</th>
             </tr>
           </thead>
           <tbody>
@@ -284,16 +329,24 @@ export default function StandardCoefficientGrid({
                       item.active === false ? "bg-slate-50 text-slate-400" : ""
                     }`}
                   >
-                    <td className="px-3 py-3 text-slate-500">{category}</td>
-                    <td className="px-3 py-3 font-semibold text-slate-800">
-                      {item.item_name}
+                    <td className="px-2 py-3 text-center text-slate-500">
+                      {category}
+                    </td>
+                    <td
+                      className="px-3 py-3 text-left font-semibold text-slate-800"
+                      title={item.item_name}
+                    >
+                      <span className="break-words">{item.item_name}</span>
                       {dirty ? (
                         <span className="ml-2 rounded-lg bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700">
                           변경됨
                         </span>
                       ) : null}
                     </td>
-                    <td className="px-3 py-3 text-slate-500">
+                    <td
+                      className="px-3 py-3 text-left text-slate-500"
+                      title={normalizeText(item.item_option).trim()}
+                    >
                       {normalizeText(item.item_option).trim()}
                     </td>
                     {variants.map((variant) => {
@@ -302,7 +355,7 @@ export default function StandardCoefficientGrid({
                       return (
                         <td
                           key={`${itemId}:${variant.solution_variant_id}`}
-                          className="px-3 py-3 text-right"
+                          className="px-1 py-2 text-center"
                         >
                           <input
                             type="number"
@@ -321,7 +374,7 @@ export default function StandardCoefficientGrid({
                                 event.target.value
                               );
                             }}
-                            className="h-9 w-24 rounded-lg border border-slate-200 bg-white px-2 text-right text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+                            className="mx-auto h-8 w-full max-w-14 min-w-0 rounded-lg border border-slate-200 bg-white px-1 text-center text-xs font-semibold tabular-nums text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
                             disabled={
                               readOnlyCoefficient || saving || activeSaving
                             }

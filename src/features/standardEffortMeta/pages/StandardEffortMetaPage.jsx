@@ -101,7 +101,10 @@ function StandardEffortMetaContent({
   } = useStandardEffortMetaAdmin({ auditActor });
 
   return (
-    <div className="mx-auto w-full max-w-none space-y-4 px-3 py-4 sm:px-4 lg:px-6">
+    <div
+      data-testid="standard-effort-meta-page"
+      className="mx-auto w-full max-w-none space-y-4 overflow-x-hidden px-3 py-4 sm:px-4 lg:px-6"
+    >
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -143,7 +146,7 @@ function StandardEffortMetaContent({
         canWriteActive={canWriteActive}
       />
 
-      <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="min-w-0 space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <StandardEffortMetaTabs
           activeTab={activeTab}
           onChange={setActiveTab}

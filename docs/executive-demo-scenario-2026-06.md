@@ -99,7 +99,22 @@ Message to explain:
 - Auth role policy is still the fixed `admin` / `sales` / `viewer` policy and
   is not dynamically driven by codebook rows.
 
-### 6. Project Management
+### 6. Standard Effort Meta Management
+
+1. Open `표준공수 메타` as `admin01`.
+2. Open `기능항목/계수`.
+3. Show that the grid keeps `구분`, `기능항목`, and `옵션` readable.
+4. Show centered solution headers and coefficient inputs.
+5. Point out that WFM is reachable through the grid area without page-level
+   horizontal scroll.
+
+Message to explain:
+
+- The meta grid is compact enough for representative reporting while keeping
+  the descriptive columns readable.
+- Coefficient changes still use the existing save/restore flow.
+
+### 7. Project Management
 
 1. Open `프로젝트 관리`.
 2. Show project create/edit area.
@@ -112,7 +127,7 @@ Message to explain:
 - Project lifecycle operations are separated from the estimation screen.
 - Hard delete wording and behavior are intentionally not exposed.
 
-### 7. Sales Role Difference
+### 8. Sales Role Difference
 
 1. Log out.
 2. Log in as `sales01`.
@@ -127,7 +142,7 @@ Message to explain:
 - Sales can work on their own project selections.
 - Build-team managed actual effort remains controlled.
 
-### 8. Viewer Role Difference
+### 9. Viewer Role Difference
 
 1. Log out.
 2. Log in as `viewer01`.
