@@ -333,6 +333,8 @@ describe("StandardEffortMetaPage", () => {
     );
     expect(screen.getByTestId("standard-coefficient-top-scroll")).toBeTruthy();
     expect(coefficientScroll.className).toContain("overflow-auto");
+    expect(coefficientTable.className).toContain("w-full");
+    expect(coefficientTable.className).toContain("min-w-max");
     expect(coefficientTable.className).toContain("table-fixed");
     expect(coefficientTable.className).not.toContain("min-w-full");
     expect(coefficientTable.querySelector("thead").className).toContain(
@@ -341,7 +343,7 @@ describe("StandardEffortMetaPage", () => {
     expect(coefficientColumns[0].style.width).toBe("112px");
     expect(coefficientColumns[1].style.width).toBe("232px");
     expect(coefficientColumns[2].style.width).toBe("180px");
-    expect(coefficientColumns[3].style.width).toBe("52px");
+    expect(coefficientColumns[3].style.width).toBe("64px");
     expect(coefficientColumns[5].style.width).toBe("72px");
     expect(
       screen.getByTestId("coefficient-category-header").className
@@ -378,10 +380,14 @@ describe("StandardEffortMetaPage", () => {
     expect(coefficientRowCells[0].className).toContain("text-left");
     expect(coefficientRowCells[1].className).toContain("text-left");
     expect(coefficientRowCells[2].className).toContain("text-left");
-    expect(pbxCoefficientInput.className).toContain("max-w-12");
+    expect(pbxCoefficientInput.className).not.toContain("max-w-12");
+    expect(pbxCoefficientInput.className).toContain("min-w-[56px]");
+    expect(pbxCoefficientInput.className).toContain("max-w-[72px]");
     expect(pbxCoefficientInput.className).toContain("text-center");
     expect(pbxCoefficientInput.className).toContain("tabular-nums");
-    expect(wfmCoefficientInput.className).toContain("max-w-12");
+    expect(wfmCoefficientInput.className).not.toContain("max-w-12");
+    expect(wfmCoefficientInput.className).toContain("min-w-[56px]");
+    expect(wfmCoefficientInput.className).toContain("max-w-[72px]");
     expect(wfmCoefficientInput.className).toContain("text-center");
     expect(
       within(pbxCoefficientInput.closest("tr")).getByRole("button", {

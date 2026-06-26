@@ -107,7 +107,7 @@ const COLUMN_WIDTH = {
   category: "112px",
   item: "232px",
   option: "180px",
-  coefficient: "52px",
+  coefficient: "64px",
   active: "72px",
   action: "96px",
 };
@@ -227,7 +227,7 @@ export default function StandardCoefficientGrid({
         <table
           ref={tableRef}
           data-testid="standard-coefficient-grid-table"
-          className="w-max table-fixed border-collapse text-sm"
+          className="w-full min-w-max table-fixed border-collapse text-sm"
         >
           <colgroup>
             <col style={{ width: COLUMN_WIDTH.category }} />
@@ -269,7 +269,7 @@ export default function StandardCoefficientGrid({
                   className="px-1 py-3 text-center align-middle"
                   title={getVariantLabel(variant)}
                 >
-                  <span className="mx-auto block max-w-[50px] whitespace-normal break-words text-center leading-tight">
+                  <span className="mx-auto block max-w-[72px] whitespace-normal break-words text-center leading-tight">
                     {getVariantLabel(variant)}
                     {variant.active === false ? " (미사용)" : ""}
                   </span>
@@ -383,7 +383,7 @@ export default function StandardCoefficientGrid({
                                 event.target.value
                               );
                             }}
-                            className="mx-auto h-8 w-full max-w-12 min-w-0 rounded-lg border border-slate-200 bg-white px-1 text-center text-xs font-semibold tabular-nums text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+                            className="mx-auto h-8 w-full min-w-[56px] max-w-[72px] rounded-lg border border-slate-200 bg-white px-1.5 text-center text-xs font-semibold tabular-nums text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
                             disabled={
                               readOnlyCoefficient || saving || activeSaving
                             }
